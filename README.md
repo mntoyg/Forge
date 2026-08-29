@@ -39,8 +39,8 @@ You need [uv](https://docs.astral.sh/uv/). Python 3.13 is installed by uv, not
 by you.
 
 ```bash
-git clone https://github.com/mntoyg/forge.git
-cd forge
+git clone https://github.com/mntoyg/Forge.git
+cd Forge
 uv sync --all-groups
 uv run forge --version
 ```

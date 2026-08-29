@@ -30,10 +30,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/mntoyg/forge"
-Repository = "https://github.com/mntoyg/forge"
-Issues = "https://github.com/mntoyg/forge/issues"
-Changelog = "https://github.com/mntoyg/forge/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/mntoyg/Forge"
+Repository = "https://github.com/mntoyg/Forge"
+Issues = "https://github.com/mntoyg/Forge/issues"
+Changelog = "https://github.com/mntoyg/Forge/blob/main/CHANGELOG.md"
 
 [project.scripts]
 forge = "forge.main:app"

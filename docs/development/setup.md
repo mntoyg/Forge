@@ -11,8 +11,8 @@ You do **not** need to install Python 3.13 yourself; uv will fetch it.
 ## Quick start
 
 ```bash
-git clone https://github.com/mntoyg/forge.git
-cd forge
+git clone https://github.com/mntoyg/Forge.git
+cd Forge
 uv sync --all-groups
 ```
 
