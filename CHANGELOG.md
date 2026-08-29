@@ -36,6 +36,9 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   context files.
 - Issue templates, a pull request template, `.env.example`, and an example
   input file.
+- `.gitattributes` pinning line endings to LF in the repository and the working
+  tree, so a commit's line endings no longer depend on the contributor's
+  `core.autocrlf` setting.
 
 ### Security
 

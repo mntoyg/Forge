@@ -1,0 +1,31 @@
+# Line endings are decided by this file, not by each contributor's
+# core.autocrlf setting. Without it, whether a commit lands as LF or CRLF
+# depends on the machine it was made on, which produces whole-file phantom
+# diffs the first time someone with a different setting touches a file.
+#
+# The repository stores LF everywhere, and checks out LF everywhere. Python,
+# the toolchain, and every editor this project expects handle LF on Windows.
+* text=auto eol=lf
+
+# Windows-only scripts break if they are not CRLF. None exist today; the rule
+# is here so that adding one does not silently produce a broken file.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Never transform a binary.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.gz   binary
+*.whl  binary
+*.pyc  binary
+
+# Generated, and versioned deliberately. Collapsing it keeps a dependency bump
+# from burying the reviewable part of a diff. It is still reviewed when it
+# changes - see docs/development/setup.md.
+uv.lock linguist-generated=true
