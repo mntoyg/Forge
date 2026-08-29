@@ -1,0 +1,152 @@
+[project]
+name = "forge-cli"
+version = "0.0.1"
+description = "Forge - an open-source, AI-first coding assistant for the terminal."
+readme = "README.md"
+requires-python = ">=3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "Forge Contributors" }]
+keywords = ["ai", "cli", "developer-tools", "debugging", "code-review"]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Typing :: Typed",
+]
+
+# Runtime dependencies are deliberately minimal. Each one maps to an explicit
+# architectural role; see docs/architecture/components.md before adding more.
+dependencies = [
+    "typer>=0.15.0",          # presentation: CLI command surface
+    "rich>=13.9.0",           # presentation: terminal rendering
+    "pydantic-settings>=2.7.0", # infrastructure: typed configuration loading
+    "openai>=1.60.0",         # infrastructure: AI provider adapter (behind a port)
+    "httpx>=0.28.0",          # infrastructure: HTTP transport
+    "loguru>=0.7.3",          # infrastructure: structured logging
+    "gitpython>=3.1.44",      # infrastructure: repository inspection
+]
+
+[project.urls]
+Homepage = "https://github.com/mntoyg/forge"
+Repository = "https://github.com/mntoyg/forge"
+Issues = "https://github.com/mntoyg/forge/issues"
+Changelog = "https://github.com/mntoyg/forge/blob/main/CHANGELOG.md"
+
+[project.scripts]
+forge = "forge.main:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.9.0",
+    "black>=24.10.0",
+    "mypy>=1.14.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/forge"]
+
+# --------------------------------------------------------------------------
+# Formatting - Black is the single source of truth for code layout.
+# --------------------------------------------------------------------------
+[tool.black]
+line-length = 88
+target-version = ["py313"]
+
+# --------------------------------------------------------------------------
+# Linting - Ruff runs as a linter only; formatting belongs to Black.
+# --------------------------------------------------------------------------
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "TID",  # flake8-tidy-imports
+    "PTH",  # flake8-use-pathlib
+    "RUF",  # ruff-specific rules
+    "S",    # flake8-bandit (security)
+]
+ignore = [
+    "E501",  # line length is enforced by Black
+]
+
+# TID251 below enforces the dependency direction: the banned-api list makes the
+# framework imports illegal by default, and these entries re-allow them only in
+# the layers that are permitted to touch them.
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "TID251"]          # assert is the point of a test
+"scripts/**/*.py" = ["TID251", "S603", "S607"]  # dev tooling shells out on purpose
+"src/forge/main.py" = ["TID251"]               # composition root wires Typer
+"src/forge/cli/**/*.py" = ["TID251"]           # presentation layer
+"src/forge/presentation/**/*.py" = ["TID251"]  # presentation layer
+"src/forge/infrastructure/**/*.py" = ["TID251"]  # adapters own the SDKs
+
+[tool.ruff.lint.isort]
+known-first-party = ["forge"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+# Architectural boundary enforcement. The domain layer must stay free of any
+# framework or I/O dependency; see docs/architecture/overview.md.
+# This list is mirrored by FORBIDDEN_PACKAGES in tests/unit/test_package.py.
+# Keep the two in step.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"typer".msg = "Presentation-layer dependency. Import it only under src/forge/cli or src/forge/presentation."
+"click".msg = "Presentation-layer dependency. Import it only under src/forge/cli or src/forge/presentation."
+"rich".msg = "Presentation-layer dependency. Import it only under src/forge/cli or src/forge/presentation."
+"openai".msg = "Infrastructure-layer dependency. Import it only under src/forge/infrastructure."
+"httpx".msg = "Infrastructure-layer dependency. Import it only under src/forge/infrastructure."
+"git".msg = "Infrastructure-layer dependency. Import it only under src/forge/infrastructure."
+"loguru".msg = "Infrastructure-layer dependency. Import it only under src/forge/infrastructure."
+"pydantic".msg = "Infrastructure-layer dependency. The domain uses plain dataclasses; import it only under src/forge/infrastructure."
+"pydantic_settings".msg = "Infrastructure-layer dependency. Import it only under src/forge/infrastructure."
+
+# --------------------------------------------------------------------------
+# Type checking
+# --------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.13"
+files = ["src", "tests", "scripts"]
+strict = true
+warn_unreachable = true
+warn_unused_ignores = true
+disallow_any_generics = true
+no_implicit_reexport = true
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = ["git.*"]
+ignore_missing_imports = true
+
+# --------------------------------------------------------------------------
+# Tests
+# --------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = ["-ra", "--strict-markers", "--strict-config"]
+markers = [
+    "unit: fast, isolated, no I/O and no network",
+    "integration: crosses one real boundary (filesystem, git, fake AI provider)",
+    "e2e: drives the installed CLI end to end",
+]

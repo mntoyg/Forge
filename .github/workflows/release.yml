@@ -1,0 +1,51 @@
+name: Release
+
+# Releases are cut by pushing an annotated tag; see .forge/workflows/release.md.
+# This workflow builds the distribution and attaches it to a GitHub Release.
+# Publishing to PyPI is intentionally out of scope until the project has a
+# first user-facing capability.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and publish a GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --all-groups --locked
+
+      # A tag must never ship something that would fail CI.
+      - name: Re-run the quality gate
+        run: |
+          uv run black --check .
+          uv run ruff check .
+          uv run mypy
+          uv run pytest
+
+      - name: Build the distribution
+        run: uv build
+
+      - name: Create the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
