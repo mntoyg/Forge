@@ -1,0 +1,126 @@
+# =============================================================================
+# Files an AI coding assistant must not read while working on Forge.
+#
+# Two different kinds of rule live below, and the difference matters:
+#
+#   1. LEAK DEFENCE - credentials and private data. One of these reaching a
+#      model is an incident, not an inconvenience. Assume anything read is
+#      retained somewhere you do not control.
+#   2. NOISE - generated, vendored, or enormous files. Excluding them costs
+#      nothing and keeps the assistant reading code instead of lockfiles.
+#      (.venv alone is 6,500+ files.)
+#
+# Keep this file, .claudeignore, and .gitignore in step. A path that is
+# git-ignored but not listed here is still on disk, and still readable.
+#
+# IMPORTANT: an ignore file is a hint to a tool, not an access control. It
+# does not stop a shell command from reading the file, and it is only as good
+# as the tool's willingness to honour it. Treat it as one layer, not the only
+# one: keep real credentials outside the working tree, and rotate anything you
+# suspect was read.
+# =============================================================================
+
+# --- Credentials: never, under any circumstances --------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.ppk
+.netrc
+_netrc
+.npmrc
+.pypirc
+secrets/
+secret/
+credentials
+credentials.*
+*.credentials
+*.token
+*_token
+*.secret
+
+# --- Cloud and CI credentials that end up in a working tree by accident ---
+.aws/
+.azure/
+.gcloud/
+gha-creds-*.json
+service-account*.json
+*-service-account.json
+
+# --- Local agent, editor, and tool state ----------------------------------
+# These can hold prompts, file contents, absolute paths, and occasionally a
+# key that was pasted into a chat.
+.claude/settings.local.json
+.forge/local/
+.aider*
+.cursor/
+.vscode/settings.json
+.idea/
+
+# --- Python: generated, vendored, or huge ---------------------------------
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+
+# --- Generated lockfile ----------------------------------------------------
+# 855 lines of pinned versions and hashes, with no design signal in it.
+# pyproject.toml is the file that answers "what does this depend on".
+uv.lock
+
+# --- Version control internals --------------------------------------------
+.git/
+
+# --- Data and logs ---------------------------------------------------------
+# Forge has no data directory today. The rules are here so that adding one
+# does not quietly open a hole: a log or a local database can contain
+# anything a user ever fed to the tool.
+data/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.bak
+
+# --- Binaries and archives -------------------------------------------------
+*.whl
+*.tar.gz
+*.zip
+*.so
+*.dll
+*.dylib
+*.exe
+
+# --- Not used by Forge today; listed so that adding them is already covered
+node_modules/
+.next/
+coverage/
+
+# --- Deliberately NOT ignored ---------------------------------------------
+# examples/    - small, deliberately flawed sample files. They exist to be
+#                read, and contain no secrets by rule (see examples/README.md).
+# .env.example - documents every supported key with empty values. It is the
+#                thing a contributor is supposed to read.

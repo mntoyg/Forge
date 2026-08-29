@@ -23,8 +23,8 @@ If you are an AI agent, also read
 ## Setup
 
 ```bash
-git clone https://github.com/mntoyg/forge.git
-cd forge
+git clone https://github.com/mntoyg/Forge.git
+cd Forge
 uv sync --all-groups
 uv run python scripts/check.py
 ```
@@ -119,6 +119,11 @@ Rules that apply to every contribution:
 
 - Never commit a secret, a key, or a token - not in code, not in a test
   fixture, not in an example, not in an issue comment.
+- Do not weaken `.claudeignore` or `.perplexityignore`. They keep credentials
+  and local state out of an AI assistant's context. Treat them as one layer
+  rather than a guarantee: an ignore file is a hint a tool chooses to honour,
+  not an access control, so the real defence is still keeping credentials out
+  of the working tree.
 - If a secret is ever committed, **treat it as compromised and rotate it
   immediately.** Removing it from history is necessary but not sufficient.
 - Validate file paths; nothing outside the workspace is read.
