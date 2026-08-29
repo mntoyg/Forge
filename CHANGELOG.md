@@ -40,9 +40,37 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   tree, so a commit's line endings no longer depend on the contributor's
   `core.autocrlf` setting.
 
+- Typed configuration in `forge.infrastructure.config`: every `FORGE_*` value
+  loaded from the environment or a local `.env`, validated on load, and
+  immutable once read.
+- The `AIProvider` port and its value objects in `forge.domain.ai` - `Message`,
+  `CompletionRequest`, `CompletionResponse`, `TokenUsage` - each validating its
+  own invariants so an invalid instance cannot be constructed.
+- A shared error vocabulary in `forge.domain.errors`, from `ForgeError` down to
+  the five provider failures a user acts on differently.
+- An OpenAI adapter in `forge.infrastructure.openai_provider` that translates
+  every SDK exception into a domain error and validates the reply before
+  passing it inward.
+- A fake provider in `tests/support/fakes.py` that can answer *or* fail, so the
+  failure branches are exercised.
+- One provider contract test run against both the fake and the real adapter,
+  so the fake cannot drift from what it stands in for.
+- Logging through Loguru with redaction applied at the sink, so a known secret
+  cannot reach the terminal regardless of what a caller logs - tracebacks and
+  local variables included.
+
 ### Security
 
 - `.env` is git-ignored and `.env.example` ships only empty placeholders.
+- The API key is held as a `SecretStr`; tests assert it survives no `repr`,
+  `str`, or `model_dump`.
+- A rejected configuration value is never echoed back in the error message, so
+  a key typed into the wrong variable is not printed to the terminal.
+- Loguru's `diagnose` is disabled, keeping local variables - the likeliest
+  place a credential is sitting when something fails - out of tracebacks.
+- `.claudeignore` and `.perplexityignore` keep credentials, local agent state,
+  and generated files out of an AI assistant's context. The two files carry an
+  identical rule set.
 - Documented security principles for handling secrets, file paths, command
   execution, and untrusted repository and model content.
 

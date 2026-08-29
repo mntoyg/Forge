@@ -10,7 +10,7 @@ refers to live in
 summary that a visitor sees first; when the two disagree, the one under `docs/`
 is correct and this one is stale.
 
-## Phase 0 - Foundation *(current)*
+## Phase 0 - Foundation *(complete)*
 
 Repository structure, Clean Architecture skeleton, toolchain, enforced layer
 boundaries, test scaffold, CI, release automation, documentation, ADRs 0001 to
@@ -19,16 +19,16 @@ boundaries, test scaffold, CI, release automation, documentation, ADRs 0001 to
 **Exit:** CI green, package installable and importable, docs consistent, no
 secrets committed.
 
-## Phase 1 - Configuration and the provider port
+## Phase 1 - Configuration and the provider port *(complete)*
 
 `FORGE_*` settings through Pydantic Settings, the `AIProvider` port, an OpenAI
 adapter, a fake provider for tests, logging with secret redaction, and error
 translation at the adapter boundary.
 
-**Exit:** a use case can obtain a model response through the port, proven by
-tests, with no provider SDK import outside `infrastructure/`.
+**Exit:** met. One contract test runs against both the fake and the real
+adapter, and no provider SDK is imported outside `infrastructure/`.
 
-## Phase 2 - `forge debug` (MVP)
+## Phase 2 - `forge debug` (MVP) *(next)*
 
 Design and review first, then: safe file reading with path and size
 validation, the domain model for findings, the analyse use case, prompt design

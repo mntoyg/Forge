@@ -7,7 +7,7 @@ The detailed requirement IDs are in [requirements.md](requirements.md).
 
 ---
 
-## Phase 0 - Foundation (current)
+## Phase 0 - Foundation (complete)
 
 **Goal:** a repository that humans and AI agents can work in safely.
 
@@ -29,26 +29,33 @@ internally consistent, no secrets committed.
 
 ---
 
-## Phase 1 - Configuration and the provider port
+## Phase 1 - Configuration and the provider port *(complete)*
 
 **Goal:** Forge can be configured and can talk to a provider - still with no
 user-facing feature.
 
-- [ ] `FORGE_*` settings via Pydantic Settings, loaded from the environment
-- [ ] Clear, actionable errors for missing or invalid configuration
-- [ ] The `AIProvider` port defined in the inner layer
-- [ ] An OpenAI adapter implementing it, in `infrastructure/`
-- [ ] A fake provider for tests
-- [ ] Structured logging through Loguru, behind an adapter, with secret
+- [x] `FORGE_*` settings via Pydantic Settings, loaded from the environment
+- [x] Clear, actionable errors for missing or invalid configuration
+- [x] The `AIProvider` port defined in the inner layer
+- [x] An OpenAI adapter implementing it, in `infrastructure/`
+- [x] A fake provider for tests
+- [x] Structured logging through Loguru, behind an adapter, with secret
       redaction
-- [ ] Timeout and error translation at the adapter boundary
+- [x] Timeout and error translation at the adapter boundary
 
 **Exit criteria:** a use case can obtain a model response through the port,
 proven by tests, with no provider SDK import outside `infrastructure/`.
 
+**Met.** `tests/integration/test_provider_contract.py` runs one contract
+against both the fake and the real adapter, and includes a caller annotated
+only with the port that works unchanged against either. No use case class was
+created: no requirement calls for one yet, and building one to satisfy the
+wording would be the speculative work ADR-0002 tells us to avoid. The first
+real use case arrives with Phase 2.
+
 ---
 
-## Phase 2 - `forge debug` (MVP)
+## Phase 2 - `forge debug` (MVP) - next
 
 **Goal:** the first capability a user would install Forge for.
 

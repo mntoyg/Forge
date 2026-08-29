@@ -10,9 +10,13 @@ of the requirement that needs it.
 | --- | --- | --- | --- |
 | Package root | `src/forge/__init__.py` | Version, layer documentation | Done |
 | Composition root | `src/forge/main.py` | Build the Typer app, wire adapters | Done |
-| Domain package | `src/forge/domain/` | Rules and ports | Skeleton |
+| Domain errors | `src/forge/domain/errors.py` | The error vocabulary every layer shares | Done |
+| AI provider port | `src/forge/domain/ai.py` | The port and the value objects crossing it | Done |
+| Configuration | `src/forge/infrastructure/config.py` | Typed `FORGE_*` settings, secrets protected | Done |
+| Logging | `src/forge/infrastructure/logging.py` | Loguru, with redaction at the sink | Done |
+| OpenAI adapter | `src/forge/infrastructure/openai_provider.py` | The provider port, implemented | Done |
+| Fake provider | `tests/support/fakes.py` | The test double for the port | Done |
 | Application package | `src/forge/application/` | Use cases | Skeleton |
-| Infrastructure package | `src/forge/infrastructure/` | Adapters | Skeleton |
 | Presentation package | `src/forge/presentation/` | Rendering | Skeleton |
 | CLI package | `src/forge/cli/` | Commands | Skeleton |
 
@@ -35,23 +39,40 @@ Ruff enforces this table (`TID251`), and `tests/unit/test_package.py` mirrors
 the same list for `domain/` and `application/`. If you need one of these
 somewhere else, the answer is a port, not an exception.
 
-## Planned components
+### A note on httpx
+
+Two httpx major versions are present in the environment, and this trips people
+up the first time they see it. The OpenAI SDK (v3) vendors its own copy as
+`httpx2`; the `httpx` in the table is the one Forge will use directly for any
+HTTP it makes itself. They are different packages and do not interchange - a
+client passed to the OpenAI SDK must be an `httpx2` client.
+
+Nothing outside `infrastructure/` is affected, which is the point of the
+boundary. Forge does not import `httpx` directly yet; the dependency is
+declared because it is the approved transport for the HTTP work Phase 3 brings,
+and removing it now only to re-add it later would cost an ADR each way.
+
+## Component detail
 
 ### Configuration - `infrastructure/config`
 
 Reads `FORGE_*` variables through Pydantic Settings and exposes a validated,
-immutable settings object. Never prints or logs a value. A missing key produces
-an actionable message, not a traceback.
+immutable settings object. The API key is a `SecretStr`, so it survives no
+`repr`, `str`, or `model_dump`. A missing or invalid value raises
+`ConfigurationError` naming the variable at fault, and the rejected input is
+deliberately excluded from the message - a user who types their key into the
+wrong variable must not see it echoed back.
 
-*Satisfies FR-2.x.*
+*Satisfies FR-2.1 to FR-2.6.*
 
 ### AI provider port and adapter
 
 The port is a narrow interface: send a request, get a structured response. The
 adapter wraps the OpenAI SDK, applies the configured timeout, and translates
-every SDK exception into a domain error - `ProviderTimeout`, `RateLimited`,
-`AuthenticationFailed`, `ProviderUnavailable` - so no SDK type escapes the
-boundary.
+every SDK exception into a domain error - `ProviderTimeoutError`,
+`ProviderRateLimitError`, `ProviderAuthenticationError`,
+`ProviderUnavailableError`, `ProviderResponseError` - so no SDK type escapes
+the boundary.
 
 A fake implementation lives in the test suite and returns canned responses.
 That fake is what makes the use cases testable.

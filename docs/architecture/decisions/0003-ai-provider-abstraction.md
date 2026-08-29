@@ -30,9 +30,10 @@ with an adapter in `infrastructure/`.
   response. It expresses what Forge needs, not what the SDK offers.
 - The OpenAI SDK is imported in exactly one place: the adapter.
 - The adapter owns timeouts, retries, and **exception translation**. Every SDK
-  exception becomes a domain error - `ProviderTimeout`, `RateLimited`,
-  `AuthenticationFailed`, `ProviderUnavailable` - at that boundary. No SDK type
-  crosses it.
+  exception becomes a domain error - `ProviderTimeoutError`,
+  `ProviderRateLimitError`, `ProviderAuthenticationError`,
+  `ProviderUnavailableError`, `ProviderResponseError` - at that boundary. No
+  SDK type crosses it.
 - The test suite provides a fake implementation returning canned responses.
   Every use case is tested against the fake.
 - Ruff bans `openai` and `httpx` outside `infrastructure/`.
