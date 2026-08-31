@@ -2,9 +2,9 @@
 
 Task-oriented documentation for people using Forge.
 
-This directory is deliberately empty of user guides right now, because Forge
-has no user-facing capability yet. Writing a guide for something that does not
-exist produces documentation that is wrong on the day it is committed.
+Each guide arrives with the capability it describes, in the same pull request.
+Writing one ahead of the feature produces documentation that is wrong on the
+day it is committed.
 
 ## What goes here
 
@@ -17,17 +17,17 @@ A guide answers "how do I do X with Forge?" - as opposed to:
 | `docs/development/` | How do I contribute to it? |
 | `docs/guides/` | How do I use it to get something done? |
 
-## Planned guides
+## Available
 
-These arrive with the features they describe, in the same pull request:
+- **[Getting started](getting-started.md)** - install, configure a key, analyse
+  your first file, read the output, and use the exit codes in a script.
 
-- **Getting started** - install, configure a key, run your first command
-  *(with Phase 1)*
-- **Debugging a file** - what `forge debug` does, how to read the output, and
-  what it will not tell you *(with Phase 2)*
-- **Configuring a provider** - environment variables, model selection,
-  self-hosted endpoints *(with Phase 1)*
-- **Using Forge in CI** - non-TTY output, exit codes, scripting *(with Phase 4)*
+## Planned
+
+- **Debugging a change** - working against a diff rather than a file
+  *(with Phase 3)*
+- **Machine-readable output** - consuming Forge from another tool
+  *(with Phase 4)*
 
 See `docs/product/roadmap.md` for phase sequencing.
 

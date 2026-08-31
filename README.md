@@ -161,6 +161,7 @@ If you are an agent working in this repository, start at
 | What is coming, in order | [ROADMAP.md](ROADMAP.md) |
 | How it is built | [docs/architecture/overview.md](docs/architecture/overview.md) |
 | Why it is built that way | [docs/architecture/decisions/](docs/architecture/decisions/) |
+| Using Forge | [docs/guides/getting-started.md](docs/guides/getting-started.md) |
 | Setting up to develop | [docs/development/setup.md](docs/development/setup.md) |
 | How to contribute | [CONTRIBUTING.md](CONTRIBUTING.md) |
 

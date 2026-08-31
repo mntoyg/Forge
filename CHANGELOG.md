@@ -30,6 +30,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - Rich and plain renderers, chosen automatically by whether stdout is a
   terminal, with `--plain` to force it.
 - `FORGE_MAX_FILE_BYTES` to configure the size limit.
+- A getting-started guide covering installation, configuration, reading the
+  output, and using the exit codes from a script.
 
 - Repository foundation: Clean Architecture layer skeleton under `src/forge/`,
   with each layer documenting its own dependency rules.
