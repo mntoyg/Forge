@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-08-31, on branch `feat/diff-analysis`.
+**Last verified:** 2026-08-31, at commit `938c00f` on `main`, CI green.
 
 ---
 
