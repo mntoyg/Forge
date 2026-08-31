@@ -98,6 +98,22 @@ class Settings(BaseSettings):
             raise ValueError("must not be empty")
         return value.strip()
 
+    @field_validator("base_url")
+    @classmethod
+    def _blank_base_url_means_unset(cls, value: str | None) -> str | None:
+        """Treat ``FORGE_BASE_URL=`` (present but empty) as not set at all.
+
+        ``.env.example`` documents every key with an empty value, including
+        this one, so a value copied from it verbatim leaves the line present
+        but blank. Without this, that blank string reaches the OpenAI SDK as
+        an actual base URL, and every request fails with a connection error
+        that names nothing a user set - only that the network could not be
+        reached.
+        """
+        if value is not None and not value.strip():
+            return None
+        return value
+
     def require_api_key(self) -> str:
         """Return the API key, or explain how to provide one.
 

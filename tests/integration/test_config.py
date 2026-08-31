@@ -25,6 +25,30 @@ def test_defaults_apply_when_nothing_is_configured() -> None:
 
 
 @pytest.mark.integration
+def test_a_blank_base_url_is_treated_as_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``.env.example`` documents FORGE_BASE_URL with an empty value.
+
+    Copying that line verbatim into a real .env leaves the key present but
+    blank. Without this, the blank string reaches the OpenAI SDK as an actual
+    base URL and every request fails with a connection error that names
+    nothing the user set - exactly what a first-run user hits by following the
+    example file as given.
+    """
+    monkeypatch.setenv("FORGE_BASE_URL", "")
+
+    assert load_settings().base_url is None
+
+
+@pytest.mark.integration
+def test_a_real_base_url_is_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FORGE_BASE_URL", "https://example.invalid/v1")
+
+    assert load_settings().base_url == "https://example.invalid/v1"
+
+
+@pytest.mark.integration
 def test_every_value_can_be_set_from_the_environment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -54,6 +78,23 @@ def test_settings_are_read_from_a_dotenv_file(tmp_path: Path) -> None:
 
     assert settings.model == "from-dotenv"
     assert settings.timeout_seconds == 7.0
+
+
+@pytest.mark.integration
+def test_env_example_copied_verbatim_does_not_break_the_base_url(
+    tmp_path: Path,
+) -> None:
+    """The exact failure a user hits by following the setup guide as written.
+
+    ``cp .env.example .env`` and filling in only the key leaves every other
+    line - including ``FORGE_BASE_URL=`` - blank but present.
+    """
+    (tmp_path / ".env").write_text(
+        "FORGE_API_KEY=not-a-real-credential-0123456789\nFORGE_BASE_URL=\n",
+        encoding="utf-8",
+    )
+
+    assert load_settings().base_url is None
 
 
 @pytest.mark.integration

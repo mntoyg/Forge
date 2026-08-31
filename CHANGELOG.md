@@ -39,6 +39,13 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   truncated and collapsed to one line. The message previously reported only
   that parsing failed, which left a user with nothing to act on and nothing to
   report - and that message is the one met on a first run against a live model.
+- `FORGE_BASE_URL=` (present but blank) is now treated as unset, the same as
+  the variable being absent. Following `.env.example` verbatim - copying it to
+  `.env` and filling in only the key - left every other line present but
+  empty, and the blank base URL reached the OpenAI SDK as an actual endpoint.
+  Every request then failed with a connection error naming nothing the user
+  set. This is the failure a first real run hits by following the setup guide
+  exactly as written.
 
 - Repository foundation: Clean Architecture layer skeleton under `src/forge/`,
   with each layer documenting its own dependency rules.
