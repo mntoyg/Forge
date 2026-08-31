@@ -28,5 +28,6 @@ Thumbs.db
 
 # AI agent scratch space (never commit local agent state or transcripts)
 .aider*
+!.aider.conf.yml
 .claude/settings.local.json
 .forge/local/

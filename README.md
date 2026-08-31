@@ -150,7 +150,13 @@ the repository, not an afterthought:
 | Aider | Repository Coding Agent |
 
 If you are an agent working in this repository, start at
-[.forge/agents/README.md](.forge/agents/README.md).
+[AGENTS.md](AGENTS.md). It is the entry point for every tool - `CLAUDE.md`,
+`.cursorrules`, and `.aider.conf.yml` are thin pointers to it, so there is one
+set of rules rather than one per tool.
+
+The file that changes between sessions is
+[.forge/context/status.md](.forge/context/status.md): where the project stands
+today, what is next, and the gotchas worth not rediscovering.
 
 ## Documentation
 

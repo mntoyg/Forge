@@ -1,0 +1,34 @@
+# Cursor rules for Forge
+
+Read AGENTS.md in the repository root first. It is the entry point for every AI
+agent here, and these rules do not repeat it - two copies would drift.
+
+Start with these two files:
+
+- .forge/context/project.md   - what this repository is
+- .forge/context/status.md    - where the project is today, what is next, and
+                                the gotchas that would otherwise cost you time
+
+Your role is .forge/agents/cursor.md: pair programmer for small, local,
+well-understood changes. Cross-cutting architectural work is not yours - a
+change touching three layers, introducing a port, or adding a dependency needs
+a design step first.
+
+The rules that matter most while editing:
+
+- Dependencies point inwards: cli/presentation -> application -> domain.
+  Infrastructure implements ports the inner layers declare. Never import a
+  framework or SDK in domain/ or application/ - Ruff and a test both enforce it.
+- Absolute imports only. Black owns formatting, Ruff owns lint, mypy runs
+  strict. Do not hand-format or blanket-suppress.
+- Every behavioural change ships with a test. No test ever calls a real AI
+  provider.
+- Never commit a secret, and never run `forge debug` against a live provider
+  without being asked - it spends the user's money.
+- Do not reformat a file you are only partially editing.
+
+Before you say it is done, run this and report what it actually printed:
+
+    uv run python scripts/check.py
+
+Then update .forge/context/status.md if what you did changed what is true.

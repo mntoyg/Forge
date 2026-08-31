@@ -1,0 +1,27 @@
+# Aider configuration for Forge.
+#
+# The `read` entries below are loaded read-only into every aider session, so
+# the agent starts with the same contract every other agent gets. Without them
+# aider begins each session with no knowledge of the layer rules, the accepted
+# decisions, or where the project currently stands.
+#
+# AGENTS.md is the entry point and points at everything else. status.md is
+# listed separately because it is the one file that changes between sessions,
+# and reading a stale copy of it is the specific failure this configuration
+# exists to prevent.
+
+read:
+  - AGENTS.md
+  - .forge/context/status.md
+
+# Conventional Commits, matching docs/development/git-workflow.md. Aider is the
+# repository coding agent, so its commit messages are part of its deliverable.
+commit-prompt: >
+  Write a Conventional Commits message: <type>(<scope>): <imperative summary>.
+  Types: feat, fix, refactor, test, docs, chore, ci, build, perf, style.
+  Lowercase after the colon, no trailing period, 72 characters or fewer.
+  Explain why in the body when the subject is not self-evident.
+
+# Never commit automatically. Every change here goes through a pull request a
+# human approves - see AGENTS.md.
+auto-commits: false

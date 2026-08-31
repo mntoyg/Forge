@@ -7,12 +7,16 @@ defined role. This directory is the contract between them.
 
 ## Reading order for every agent
 
-1. `.forge/context/project.md` - what this repository is
-2. `.forge/context/architecture.md` - the layer rules
-3. `.forge/context/conventions.md` - how code and commits look
-4. `.forge/context/decisions.md` - the constraints already agreed
-5. `.forge/agents/<your-agent>.md` - your specific role
-6. The task itself
+1. `AGENTS.md` (repository root) - the entry point for every agent
+2. `.forge/context/project.md` - what this repository is
+3. `.forge/context/status.md` - **where the project is today**, what is next,
+   and the gotchas that would otherwise cost you time. This is the file that
+   changes between sessions; the rest are stable.
+4. `.forge/context/architecture.md` - the layer rules
+5. `.forge/context/conventions.md` - how code and commits look
+6. `.forge/context/decisions.md` - the constraints already agreed
+7. `.forge/agents/<your-agent>.md` - your specific role, if you have one
+8. The task itself
 
 ## Source of truth hierarchy
 
@@ -86,6 +90,40 @@ Silently working around a constraint is worse than not doing the task.
 No agent performs every task. An agent asked to work outside its role should
 say so and hand off. See [future-agents.md](future-agents.md) for adding a new
 one.
+
+## Wiring a tool up
+
+Each tool looks for a different filename. Rather than maintaining a copy of the
+rules per tool, every entry point below is a thin pointer to `AGENTS.md`, so
+there is one source of truth and nothing to drift.
+
+| Tool | Reads | Status |
+| --- | --- | --- |
+| Codex, OpenCode | `AGENTS.md` | Automatic |
+| Claude Code | `CLAUDE.md` | Automatic |
+| Cursor | `.cursorrules` | Automatic |
+| Aider | `.aider.conf.yml` (`read:` entries) | Automatic |
+| Anything else | - | Point it at `AGENTS.md` by hand |
+
+For a tool with no convention we support, the whole instruction is one line:
+
+```text
+Read AGENTS.md in the repository root, then follow it.
+```
+
+That is deliberately all it takes. If a tool needs more than that sentence to
+start working correctly here, the fault is in `AGENTS.md`, not in the tool.
+
+## Keeping the handover honest
+
+`.forge/context/status.md` is how a session that has never met you learns what
+is true. Update it in the same change as the work it describes.
+
+It records the **present**, not the past - history lives in `git log` and
+`CHANGELOG.md`. When a line stops being true, rewrite or delete it rather than
+appending a correction. **Length there is a defect:** a sibling project grew a
+13,000-line progress log that no agent could read without exhausting its
+context window, which made it worse than no notes at all.
 
 ## Handoff format
 

@@ -11,17 +11,13 @@ without leaving the shell.
 
 ## Current stage
 
-**Foundation.** The repository has structure, standards, documentation, and
-automation. It has no product capability yet.
+**MVP.** `forge debug <file>` works and has been run against a live model.
+Phases 0 to 2 of `docs/product/roadmap.md` are complete; Phase 3 has not been
+started.
 
-The first capability will be:
-
-```bash
-forge debug <file>
-```
-
-It is **not implemented**, and must not be implemented as a side effect of
-another task. See `docs/product/roadmap.md` for sequencing.
+`.forge/context/status.md` holds the current detail - what is verified, what is
+next, and what is blocked. This file describes the shape of the project; that
+one describes its state.
 
 ## Tech stack
 
@@ -66,6 +62,8 @@ examples/   Sample inputs used by docs and manual testing
 
 ## Where to look next
 
+- **Where the project is today -> `.forge/context/status.md`.** Read it before
+  starting anything; it is the only file here that changes between sessions.
 - Product intent -> `docs/product/vision.md`, `docs/product/requirements.md`
 - Architecture -> `docs/architecture/overview.md`
 - Decisions and their reasoning -> `docs/architecture/decisions/`

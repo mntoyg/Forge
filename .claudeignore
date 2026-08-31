@@ -60,6 +60,7 @@ service-account*.json
 .claude/settings.local.json
 .forge/local/
 .aider*
+!.aider.conf.yml
 .cursor/
 .vscode/settings.json
 .idea/

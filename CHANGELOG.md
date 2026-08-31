@@ -32,6 +32,16 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - `FORGE_MAX_FILE_BYTES` to configure the size limit.
 - A getting-started guide covering installation, configuration, reading the
   output, and using the exit codes from a script.
+- A handover contract for AI agents. `AGENTS.md` is the single entry point;
+  `CLAUDE.md`, `.cursorrules`, and `.aider.conf.yml` are thin pointers to it,
+  so several tools share one set of rules instead of each carrying a copy that
+  drifts.
+- `.forge/context/status.md` records where the project stands, what is next,
+  what is blocked, and the gotchas that would otherwise be rediscovered. It is
+  the only context file that changes between sessions.
+- `tests/unit/test_agent_contract.py` enforces the parts of that contract that
+  erode quietly: every entry point exists and points at `AGENTS.md`, and the
+  handover file stays inside a 150-line budget.
 
 ### Fixed
 
