@@ -21,6 +21,7 @@ from pydantic import Field, SecretStr, ValidationError, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from forge.domain.errors import ConfigurationError
+from forge.infrastructure.source import DEFAULT_MAX_BYTES
 
 LOG_LEVELS = ("TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL")
 
@@ -63,6 +64,10 @@ class Settings(BaseSettings):
         default=60.0,
         description="How long to wait for a provider response.",
     )
+    max_file_bytes: int = Field(
+        default=DEFAULT_MAX_BYTES,
+        description="Largest source file Forge will analyse.",
+    )
 
     @field_validator("log_level")
     @classmethod
@@ -77,6 +82,13 @@ class Settings(BaseSettings):
     def _positive_timeout(cls, value: float) -> float:
         if value <= 0:
             raise ValueError("must be greater than 0")
+        return value
+
+    @field_validator("max_file_bytes")
+    @classmethod
+    def _positive_size_limit(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("must be at least 1")
         return value
 
     @field_validator("model")

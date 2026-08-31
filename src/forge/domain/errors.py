@@ -27,6 +27,44 @@ class ConfigurationError(ForgeError):
     """
 
 
+class SourceError(ForgeError):
+    """A file could not be used as input.
+
+    Every subclass means the same thing to a caller - the input is unusable,
+    exit code 2 per ADR-0006 - but they are distinct so that a message can be
+    specific about which of the four ways it failed.
+    """
+
+
+class SourceNotFoundError(SourceError):
+    """Nothing exists at the given path."""
+
+
+class SourceUnreadableError(SourceError):
+    """The path exists but cannot be used as source.
+
+    A directory, a device, a permissions failure, an undecodable byte stream,
+    or a file with nothing in it.
+    """
+
+
+class SourceTooLargeError(SourceError):
+    """The file exceeds the configured size limit.
+
+    Refused rather than truncated. Analysing the first half of a file and
+    reporting on it as if it were whole produces confident nonsense.
+    """
+
+
+class PathOutsideWorkspaceError(SourceError):
+    """The path resolves outside the workspace.
+
+    Forge reads what you point it at, inside the directory you are working in.
+    Following a path - or a symlink - out of that directory is how a tool that
+    sends code to a third party turns into a way to exfiltrate it.
+    """
+
+
 class ProviderError(ForgeError):
     """The AI provider could not be used successfully.
 

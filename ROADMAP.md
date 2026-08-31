@@ -28,16 +28,17 @@ translation at the adapter boundary.
 **Exit:** met. One contract test runs against both the fake and the real
 adapter, and no provider SDK is imported outside `infrastructure/`.
 
-## Phase 2 - `forge debug` (MVP) *(next)*
+## Phase 2 - `forge debug` (MVP) *(complete)*
 
-Design and review first, then: safe file reading with path and size
-validation, the domain model for findings, the analyse use case, prompt design
-and response parsing, Rich and plain renderers, the command, and distinct exit
-codes per failure class.
+Safe file reading with path, size, and encoding validation; the domain model
+for findings; the analyse use case; prompt design and defensive response
+parsing; Rich and plain renderers; the command; and a published exit code
+contract (ADR-0006).
 
-**Exit:** FR-3.1 to FR-3.10 satisfied and tested. **This is `0.1.0`.**
+**Exit:** met. FR-3.1 to FR-3.10 and FR-4.1 to FR-4.3 are satisfied and
+tested, with one end-to-end test per exit code. **This is `0.1.0`.**
 
-## Phase 3 - Repository awareness
+## Phase 3 - Repository awareness *(next)*
 
 A `RepositoryInspector` port over GitPython: debug a diff rather than a file,
 blame and history context, and defined behaviour outside a git repository.

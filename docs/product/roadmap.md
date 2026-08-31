@@ -55,29 +55,32 @@ real use case arrives with Phase 2.
 
 ---
 
-## Phase 2 - `forge debug` (MVP) - next
+## Phase 2 - `forge debug` (MVP) *(complete)*
 
 **Goal:** the first capability a user would install Forge for.
 
-- [ ] Design and architecture review (this is where the work starts)
-- [ ] Safe source file reading: path validation, size limits, encoding
-- [ ] Domain model for a source file and a finding
-- [ ] The analyse use case
-- [ ] Prompt design and response parsing, with model output treated as
+- [x] Design and architecture review (ADR-0006, ADR-0007)
+- [x] Safe source file reading: path validation, size limits, encoding
+- [x] Domain model for a source file and a finding
+- [x] The analyse use case
+- [x] Prompt design and response parsing, with model output treated as
       untrusted
-- [ ] Rich rendering of findings, with a plain-text fallback
-- [ ] The `forge debug <file>` command
-- [ ] Distinct exit codes per failure class
-- [ ] End-to-end tests against a fake provider
-- [ ] Documentation and examples
+- [x] Rich rendering of findings, with a plain-text fallback
+- [x] The `forge debug <file>` command
+- [x] Distinct exit codes per failure class
+- [x] End-to-end tests against a fake provider
+- [x] Documentation and examples
 
 **Exit criteria:** FR-3.1 through FR-3.10 satisfied and tested.
+
+**Met.** Every requirement has a test, including one per exit code - ADR-0006
+holds that an exit code without a test is an intention, not a contract.
 
 **This is the first release worth tagging `0.1.0`.**
 
 ---
 
-## Phase 3 - Repository awareness
+## Phase 3 - Repository awareness *(next)*
 
 **Goal:** use git context to make answers better.
 

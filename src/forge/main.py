@@ -1,17 +1,24 @@
 """Composition root for the Forge CLI.
 
 This module is the only place allowed to know about every layer at once: it
-builds the Typer application and, in the future, wires concrete infrastructure
-adapters into application use cases. Keep it thin - it holds wiring, never
-business logic.
+builds the Typer application and wires concrete infrastructure adapters into
+application use cases. Keep it thin - it holds wiring, never business logic.
 """
 
+from pathlib import Path
 from typing import Annotated
 
 import typer
 from rich.console import Console
 
 from forge import __version__
+from forge.application.analyze import AnalyzeSourceFile
+from forge.cli import debug as debug_cli
+from forge.domain.source import AnalysisResult
+from forge.infrastructure.config import Settings, load_settings
+from forge.infrastructure.logging import configure_logging
+from forge.infrastructure.openai_provider import OpenAIProvider
+from forge.infrastructure.source import FilesystemSourceReader
 
 app = typer.Typer(
     name="forge",
@@ -43,12 +50,46 @@ def main(
         ),
     ] = False,
 ) -> None:
-    """Root callback.
+    """Root callback. Commands are registered at import time, below."""
 
-    Commands are registered here as capabilities land. The repository is
-    currently at the foundation stage: no feature commands exist yet, and
-    ``forge debug`` is deliberately not implemented.
+
+def build_analyzer(settings: Settings) -> AnalyzeSourceFile:
+    """Wire the concrete adapters into the analyse use case.
+
+    The workspace is the current working directory: Forge reads what you point
+    it at, from where you are standing. Enforcing that is the reader's job, not
+    this function's - wiring decides *which* adapter, never what it permits.
     """
+    reader = FilesystemSourceReader(Path.cwd(), max_bytes=settings.max_file_bytes)
+    provider = OpenAIProvider(
+        api_key=settings.require_api_key(),
+        model=settings.model,
+        base_url=settings.base_url,
+        timeout_seconds=settings.timeout_seconds,
+    )
+    return AnalyzeSourceFile(reader, provider)
+
+
+def _analyze(path: Path) -> AnalysisResult:
+    """Build the use case on demand, then run it.
+
+    Configuration is loaded here rather than at import time so that
+    ``forge --version`` and ``forge --help`` work on a machine with no API key.
+    Loading eagerly would make the help text require a credential, which is a
+    poor first impression and an unnecessary one.
+
+    Logging is configured with the key registered as a secret, so that the
+    redacting sink knows what to hide before anything is written.
+    """
+    settings = load_settings()
+    configure_logging(
+        settings.log_level,
+        secrets=[settings.api_key.get_secret_value()] if settings.api_key else [],
+    )
+    return build_analyzer(settings)(path)
+
+
+debug_cli.register(app, _analyze)
 
 
 if __name__ == "__main__":  # pragma: no cover - manual entry point

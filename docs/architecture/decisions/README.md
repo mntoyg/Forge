@@ -13,6 +13,8 @@ the decision will be obvious from the code, but the trade-off will not be.
 | [0003](0003-ai-provider-abstraction.md) | AI provider abstraction | Accepted |
 | [0004](0004-typer-for-cli.md) | Typer for the CLI | Accepted |
 | [0005](0005-uv-for-dependency-management.md) | uv for dependency management | Accepted |
+| [0006](0006-exit-code-contract.md) | Exit code contract | Accepted |
+| [0007](0007-structured-findings-by-prompt.md) | Structured findings by prompt | Accepted |
 
 ## When to write one
 

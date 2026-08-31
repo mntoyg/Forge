@@ -5,10 +5,9 @@
 Forge helps developers understand, debug, review, generate, and improve
 software without leaving the shell.
 
-> **Status: foundation.** The repository has its structure, standards,
-> documentation, and automation. It has **no product capability yet**. The
-> first one will be `forge debug <file>`; it is not implemented. See
-> [ROADMAP.md](ROADMAP.md).
+> **Status: MVP.** `forge debug` works. It reads a source file, analyses it
+> with an AI provider, and reports what it finds. See [ROADMAP.md](ROADMAP.md)
+> for what comes next.
 
 ---
 
@@ -47,17 +46,51 @@ uv run forge --version
 
 ## Usage
 
-Today, the CLI does exactly one thing:
+Set a key first - Forge uses your own:
 
 ```bash
-uv run forge --version
+cp .env.example .env    # then fill in FORGE_API_KEY
 ```
 
-Planned, and **not yet implemented**:
+Then point it at a file:
 
 ```bash
-forge debug <file>     # analyse a source file and report likely problems
+forge debug examples/buggy_division.py
 ```
+
+```text
+buggy_division.py: 2 findings
+
+  Severity   Line   Finding
+  HIGH          16   Divides by len(values) without guarding an empty list
+                     average([]) raises ZeroDivisionError.
+                     confidence: certain
+  MEDIUM        20   Off-by-one in the slice bound
+                     last_n(values, 3) returns two items, not three.
+                     confidence: likely
+
+model: gpt-4o-mini-2024-07-18 | tokens: 412 in, 186 out
+```
+
+Forge never modifies the file and never runs it.
+
+Output drops to plain text automatically when stdout is not a terminal, so a
+pipe or a CI log stays readable. `--plain` forces it.
+
+### Exit codes
+
+Findings do **not** change the exit code. A file with twenty problems still
+exits `0`, because the command succeeded - exit codes report whether Forge
+worked, not whether your code is good. (Linters make the opposite choice; the
+reasoning for ours is in [ADR-0006](docs/architecture/decisions/0006-exit-code-contract.md).)
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Analysis completed - with or without findings |
+| 1 | Ran, but could not produce a result |
+| 2 | Unusable input: missing, unreadable, too large, outside the workspace |
+| 3 | Not configured |
+| 4 | Provider failed: timeout, rate limit, rejected credentials |
 
 ## Architecture in one diagram
 

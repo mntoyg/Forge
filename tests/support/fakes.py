@@ -5,11 +5,15 @@ definition to keep faithful to the real adapter. See
 ``docs/development/testing.md``.
 """
 
+import json
+from pathlib import Path
+
 from forge.domain.ai import (
     CompletionRequest,
     CompletionResponse,
     TokenUsage,
 )
+from forge.domain.source import SourceFile
 
 DEFAULT_RESPONSE = CompletionResponse(
     text="A canned answer.",
@@ -51,3 +55,44 @@ class FakeProvider:
         if self._error is not None:
             raise self._error
         return self._response
+
+
+class FakeSourceReader:
+    """A :class:`~forge.domain.source.SourceReader` backed by memory.
+
+    Like :class:`FakeProvider`, it must be able to fail: every refusal the real
+    reader makes - missing, unreadable, too large, outside the workspace - is a
+    path a user will hit, and a use case test that cannot reach them is not
+    testing the use case.
+    """
+
+    def __init__(
+        self,
+        *,
+        source: SourceFile | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        if source is not None and error is not None:
+            raise ValueError("A FakeSourceReader either reads or fails, not both.")
+        self._source = source
+        self._error = error
+        self.paths: list[Path] = []
+
+    def read(self, path: Path) -> SourceFile:
+        """Implement :meth:`forge.domain.source.SourceReader.read`."""
+        self.paths.append(path)
+        if self._error is not None:
+            raise self._error
+        if self._source is not None:
+            return self._source
+        return SourceFile(path=path, content="x = 1\n")
+
+
+def findings_json(*findings: object, key: str = "findings") -> str:
+    """Build a model reply containing ``findings``.
+
+    Tests that care about *parsing* should hand-write their JSON, malformed
+    edges included. This helper is for tests that care about something else and
+    just need a well-formed reply.
+    """
+    return json.dumps({key: list(findings)})

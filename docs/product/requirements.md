@@ -44,24 +44,24 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 
 | ID | Requirement | Status |
 | --- | --- | --- |
-| FR-3.1 | `forge debug <file>` MUST accept a path to a single source file. | Planned |
-| FR-3.2 | It MUST refuse a path that does not exist, is a directory, or is not readable, with a distinct exit code. | Planned |
-| FR-3.3 | It MUST refuse a path that resolves outside the current workspace. | Planned |
-| FR-3.4 | It MUST refuse a file above a configured size limit rather than truncating silently. | Planned |
-| FR-3.5 | It MUST send the file content to the configured AI provider through the provider port. | Planned (port ready) |
-| FR-3.6 | It MUST render findings in a structured, readable form, each with a location where one is identifiable. | Planned |
-| FR-3.7 | It MUST NOT modify the analysed file or any other file. | Planned |
-| FR-3.8 | It MUST NOT execute the analysed file. | Planned |
-| FR-3.9 | It MUST exit non-zero when analysis could not be completed. | Planned |
-| FR-3.10 | It MUST report provider failures (timeout, rate limit, auth) as distinct, actionable messages. | Planned (errors ready) |
+| FR-3.1 | `forge debug <file>` MUST accept a path to a single source file. | Done |
+| FR-3.2 | It MUST refuse a path that does not exist, is a directory, or is not readable, with a distinct exit code. | Done |
+| FR-3.3 | It MUST refuse a path that resolves outside the current workspace. | Done |
+| FR-3.4 | It MUST refuse a file above a configured size limit rather than truncating silently. | Done |
+| FR-3.5 | It MUST send the file content to the configured AI provider through the provider port. | Done |
+| FR-3.6 | It MUST render findings in a structured, readable form, each with a location where one is identifiable. | Done |
+| FR-3.7 | It MUST NOT modify the analysed file or any other file. | Done |
+| FR-3.8 | It MUST NOT execute the analysed file. | Done |
+| FR-3.9 | It MUST exit non-zero when analysis could not be completed. | Done |
+| FR-3.10 | It MUST report provider failures (timeout, rate limit, auth) as distinct, actionable messages. | Done |
 
 ## FR-4 - Output
 
 | ID | Requirement | Status |
 | --- | --- | --- |
-| FR-4.1 | Human-readable output MUST be the default. | Planned |
-| FR-4.2 | Output MUST degrade to plain text when stdout is not a TTY. | Planned |
-| FR-4.3 | Errors MUST go to stderr; results MUST go to stdout. | Planned |
+| FR-4.1 | Human-readable output MUST be the default. | Done |
+| FR-4.2 | Output MUST degrade to plain text when stdout is not a TTY. | Done |
+| FR-4.3 | Errors MUST go to stderr; results MUST go to stdout. | Done |
 | FR-4.4 | A machine-readable output mode SHOULD exist for scripting. | Deferred |
 
 ## NFR-1 - Quality
@@ -73,7 +73,7 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 | NFR-1.3 | The test suite MUST be deterministic. | Done |
 | NFR-1.4 | Unit tests MUST NOT require an API key or network access. | Done |
 | NFR-1.5 | CI MUST run format, lint, type, and test checks on every pull request. | Done |
-| NFR-1.6 | Every user-facing behaviour MUST have a test. | Planned |
+| NFR-1.6 | Every user-facing behaviour MUST have a test. | Done |
 
 ## NFR-2 - Security
 
@@ -81,16 +81,16 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 | --- | --- | --- |
 | NFR-2.1 | Secrets MUST NOT be committed to the repository. | Done |
 | NFR-2.2 | Secrets MUST NOT appear in logs, errors, or terminal output. | Done |
-| NFR-2.3 | Every file path MUST be validated against escape outside the workspace. | Planned |
-| NFR-2.4 | Forge MUST NOT execute arbitrary commands derived from file content or model output. | Planned |
-| NFR-2.5 | Forge MUST NOT modify user files without explicit approval. | Planned |
-| NFR-2.6 | Repository content and model output MUST be treated as untrusted input. | Done (provider output) |
+| NFR-2.3 | Every file path MUST be validated against escape outside the workspace. | Done |
+| NFR-2.4 | Forge MUST NOT execute arbitrary commands derived from file content or model output. | Done |
+| NFR-2.5 | Forge MUST NOT modify user files without explicit approval. | Done |
+| NFR-2.6 | Repository content and model output MUST be treated as untrusted input. | Done |
 
 ## NFR-3 - Usability
 
 | ID | Requirement | Status |
 | --- | --- | --- |
-| NFR-3.1 | Every error message MUST state what went wrong and what to do next. | Planned |
+| NFR-3.1 | Every error message MUST state what went wrong and what to do next. | Done |
 | NFR-3.2 | A long-running operation SHOULD show progress. | Planned |
 | NFR-3.3 | The tool MUST run on Linux, macOS, and Windows. | Planned |
 
@@ -100,7 +100,7 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 | --- | --- | --- |
 | NFR-4.1 | The AI provider MUST be replaceable without changing domain or application code. | Done |
 | NFR-4.2 | The model MUST be configurable. | Done |
-| NFR-4.3 | Forge SHOULD avoid sending more content than the task requires. | Planned |
+| NFR-4.3 | Forge SHOULD avoid sending more content than the task requires. | Done |
 
 ## Excluded
 

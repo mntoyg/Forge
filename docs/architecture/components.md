@@ -15,10 +15,15 @@ of the requirement that needs it.
 | Configuration | `src/forge/infrastructure/config.py` | Typed `FORGE_*` settings, secrets protected | Done |
 | Logging | `src/forge/infrastructure/logging.py` | Loguru, with redaction at the sink | Done |
 | OpenAI adapter | `src/forge/infrastructure/openai_provider.py` | The provider port, implemented | Done |
-| Fake provider | `tests/support/fakes.py` | The test double for the port | Done |
-| Application package | `src/forge/application/` | Use cases | Skeleton |
-| Presentation package | `src/forge/presentation/` | Rendering | Skeleton |
-| CLI package | `src/forge/cli/` | Commands | Skeleton |
+| Fake provider | `tests/support/fakes.py` | Test doubles for both ports | Done |
+| Source model | `src/forge/domain/source.py` | Findings, source files, the reader port | Done |
+| Source reader | `src/forge/infrastructure/source.py` | Safe filesystem reads inside the workspace | Done |
+| Prompt | `src/forge/application/prompt.py` | The analysis prompt (ADR-0007) | Done |
+| Parser | `src/forge/application/parsing.py` | Defensive parsing of model output | Done |
+| Analyse use case | `src/forge/application/analyze.py` | Read, ask, parse | Done |
+| Renderers | `src/forge/presentation/findings.py` | Rich and plain output | Done |
+| Debug command | `src/forge/cli/debug.py` | `forge debug <file>` | Done |
+| Exit codes | `src/forge/cli/exit_codes.py` | The ADR-0006 contract, mapped once | Done |
 
 Each layer package carries its dependency rules in its module docstring, so the
 contract is visible where the code is written, not only in this document.
@@ -118,15 +123,19 @@ renderer itself stays a pure function of its input.
 
 ### Commands - `cli/`
 
-`forge debug <file>` will parse arguments, call the analyse use case, hand the
-result to a renderer, and map domain errors to exit codes.
+`forge debug <file>` parses arguments, calls the analyse use case, hands the
+result to a renderer, and maps domain errors to exit codes. It takes the use
+case as a parameter rather than building one, so an end-to-end test drives the
+real command surface against fakes.
 
-Exit code allocation (proposed, to be fixed when the command is designed):
+Exit code allocation, binding per
+[ADR-0006](decisions/0006-exit-code-contract.md). Mapping lives in
+`cli/exit_codes.py` and nowhere else:
 
 | Code | Meaning |
 | --- | --- |
 | 0 | Success |
-| 1 | Analysis completed but could not produce a result |
+| 1 | Ran but could not produce a result, including an unparseable reply |
 | 2 | Invalid input (missing file, unreadable, too large, outside workspace) |
 | 3 | Configuration error |
 | 4 | Provider error (timeout, rate limit, auth) |

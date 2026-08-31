@@ -29,13 +29,25 @@ def test_bare_invocation_shows_help_instead_of_failing_silently() -> None:
 
 
 @pytest.mark.e2e
-def test_debug_command_is_not_implemented_yet() -> None:
-    """Guards the Day 1 scope boundary.
+def test_the_debug_command_is_registered() -> None:
+    """The real command replaced the Day 1 placeholder that guarded this name.
 
-    ``forge debug`` is the planned first capability. Until it is designed,
-    reviewed, and implemented, invoking it must fail rather than half-work.
-    Delete this test in the same change that introduces the real command.
+    Behaviour is covered in ``test_debug_command.py``; this only asserts the
+    composition root wired it in, which no other test can see.
     """
-    result = runner.invoke(app, ["debug", "example.py"])
+    result = runner.invoke(app, ["--help"])
 
-    assert result.exit_code != 0
+    assert "debug" in result.stdout
+
+
+@pytest.mark.e2e
+def test_version_works_without_any_configuration() -> None:
+    """Configuration is loaded per command, not at import.
+
+    If that ever changes, ``--version`` starts demanding an API key, and the
+    first thing a new user runs stops working.
+    """
+    result = runner.invoke(app, ["--version"])
+
+    assert result.exit_code == 0
+    assert "FORGE_API_KEY" not in result.output

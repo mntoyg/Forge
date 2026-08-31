@@ -10,6 +10,8 @@
 | [0003](../../docs/architecture/decisions/0003-ai-provider-abstraction.md) | AI access behind a provider port | Accepted | No layer except `infrastructure/` imports an AI SDK. |
 | [0004](../../docs/architecture/decisions/0004-typer-for-cli.md) | Typer for the CLI surface | Accepted | Typer types stay in `cli/`; no `typer` import in inner layers. |
 | [0005](../../docs/architecture/decisions/0005-uv-for-dependency-management.md) | uv for dependency and environment management | Accepted | `uv.lock` is committed; do not add pip/Poetry workflows. |
+| [0006](../../docs/architecture/decisions/0006-exit-code-contract.md) | Exit code contract | Accepted | Findings never change the exit code; mapping lives in `cli/` only. |
+| [0007](../../docs/architecture/decisions/0007-structured-findings-by-prompt.md) | Structured findings by prompt | Accepted | Do not widen `AIProvider` with a response format; parse defensively instead. |
 
 ## How to use these
 

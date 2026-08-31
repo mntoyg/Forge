@@ -11,6 +11,26 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Added
 
+- **`forge debug <file>`** - the first product capability. Reads a source
+  file, analyses it with the configured provider, and reports findings with
+  severity, confidence, and a line number where one is identifiable.
+- A published exit code contract (ADR-0006). Findings never change the exit
+  code: a file with twenty problems still exits 0, because the command
+  succeeded. Each of the five codes has an end-to-end test.
+- `forge.domain.source` - `Severity`, `Confidence`, `Location`, `Finding`,
+  `SourceFile`, `AnalysisResult`, and the `SourceReader` port. Severity and
+  confidence use different vocabularies on purpose: how bad it would be and
+  how sure we are are different questions.
+- `FilesystemSourceReader`, refusing anything outside the workspace, over the
+  size limit, not UTF-8, or empty. Symlinks are resolved before the boundary
+  check, so a link inside the workspace cannot point out of it.
+- Prompt-level structured output with defensive parsing (ADR-0007). A finding
+  that fails validation is dropped, never repaired - a line number outside the
+  file becomes no location rather than a confident wrong one.
+- Rich and plain renderers, chosen automatically by whether stdout is a
+  terminal, with `--plain` to force it.
+- `FORGE_MAX_FILE_BYTES` to configure the size limit.
+
 - Repository foundation: Clean Architecture layer skeleton under `src/forge/`,
   with each layer documenting its own dependency rules.
 - `forge` console entry point with `--version`, and help on a bare invocation.
@@ -68,6 +88,12 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   a key typed into the wrong variable is not printed to the terminal.
 - Loguru's `diagnose` is disabled, keeping local variables - the likeliest
   place a credential is sitting when something fails - out of tracebacks.
+- Every path is resolved and confirmed to stay inside the workspace before it
+  is read. Forge sends what it reads to a third party, so a path that escapes
+  is an exfiltration route rather than merely a crash.
+- The analysis prompt states that file content is data, never instructions, so
+  a comment addressed to the model is analysed rather than obeyed.
+- Model output is never executed and never written to disk.
 - `.claudeignore` and `.perplexityignore` keep credentials, local agent state,
   and generated files out of an AI assistant's context. The two files carry an
   identical rule set.
