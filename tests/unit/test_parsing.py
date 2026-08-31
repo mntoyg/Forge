@@ -130,6 +130,58 @@ def test_findings_of_the_wrong_type_is_reported() -> None:
         parse_findings('{"findings": "none"}', SOURCE)
 
 
+# --- diagnosing a bad reply -------------------------------------------------
+
+
+@pytest.mark.unit
+def test_an_unusable_reply_is_quoted_back() -> None:
+    """A failure that does not say what happened cannot be acted on or reported.
+
+    This is the message a user meets on their first real run against a live
+    model, so it has to carry enough to diagnose the prompt.
+    """
+    refusal = "I am sorry, but I cannot analyse this file."
+
+    with pytest.raises(ProviderResponseError) as caught:
+        parse_findings(refusal, SOURCE)
+
+    assert refusal in str(caught.value)
+
+
+@pytest.mark.unit
+def test_a_reply_with_the_wrong_key_is_quoted_back() -> None:
+    with pytest.raises(ProviderResponseError) as caught:
+        parse_findings('{"results": []}', SOURCE)
+
+    assert "results" in str(caught.value)
+
+
+@pytest.mark.unit
+def test_a_long_reply_is_truncated_rather_than_dumped() -> None:
+    """An essay pasted into a terminal helps nobody."""
+    with pytest.raises(ProviderResponseError) as caught:
+        parse_findings("x" * 5000, SOURCE)
+
+    message = str(caught.value)
+    assert len(message) < 500
+    assert "..." in message
+
+
+@pytest.mark.unit
+def test_a_multi_line_reply_is_collapsed_to_one_line() -> None:
+    """A wrapped refusal should not reformat the error into a paragraph."""
+    with pytest.raises(ProviderResponseError) as caught:
+        parse_findings("I cannot\n\ndo that,\n  sorry.", SOURCE)
+
+    assert "I cannot do that, sorry." in str(caught.value)
+
+
+@pytest.mark.unit
+def test_an_empty_reply_says_so_plainly() -> None:
+    with pytest.raises(ProviderResponseError, match="nothing at all"):
+        parse_findings("   ", SOURCE)
+
+
 # --- dropping what cannot be trusted ---------------------------------------
 
 

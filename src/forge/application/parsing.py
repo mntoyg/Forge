@@ -24,6 +24,13 @@ from forge.domain.source import (
     SourceFile,
 )
 
+EXCERPT_LIMIT = 200
+"""How much of an unusable reply to quote back.
+
+Enough to recognise what the model did - refused, apologised, wrapped the JSON
+in something unexpected - without pasting an essay into a terminal.
+"""
+
 
 def parse_findings(text: str, source: SourceFile) -> tuple[Finding, ...]:
     """Extract findings from a model reply.
@@ -44,7 +51,7 @@ def parse_findings(text: str, source: SourceFile) -> tuple[Finding, ...]:
     if raw_findings is None:
         raise ProviderResponseError(
             "The model's reply has no 'findings' key. It did not follow the "
-            "requested format."
+            f"requested format. It said: {_excerpt(text)}"
         )
     if not isinstance(raw_findings, list):
         raise ProviderResponseError(
@@ -76,15 +83,35 @@ def _decode(text: str) -> dict[str, Any]:
         if extracted is None:
             raise ProviderResponseError(
                 "The model's reply was not JSON. Forge asked for a JSON object "
-                "and could not find one in the response."
+                f"and could not find one. It said: {_excerpt(text)}"
             ) from None
         payload = extracted
 
     if not isinstance(payload, dict):
         raise ProviderResponseError(
-            f"The model's reply was a JSON {type(payload).__name__}, not an object."
+            f"The model's reply was a JSON {type(payload).__name__}, not an "
+            f"object. It said: {_excerpt(text)}"
         )
     return payload
+
+
+def _excerpt(text: str) -> str:
+    """Quote enough of a reply to diagnose it, and no more.
+
+    Without this a parse failure says only that it failed, which leaves the
+    user with nothing to act on and nothing to report. Whitespace is collapsed
+    so a multi-line refusal stays on one line in the terminal.
+
+    The reply is the model's answer about the user's own file, shown back to
+    the person who ran the command - it carries no credential, and the key is
+    never part of a completion.
+    """
+    collapsed = " ".join(text.split())
+    if not collapsed:
+        return "(nothing at all)"
+    if len(collapsed) <= EXCERPT_LIMIT:
+        return repr(collapsed)
+    return repr(collapsed[:EXCERPT_LIMIT] + "...")
 
 
 def _strip_fence(text: str) -> str:

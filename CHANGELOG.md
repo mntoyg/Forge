@@ -33,6 +33,13 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - A getting-started guide covering installation, configuration, reading the
   output, and using the exit codes from a script.
 
+### Fixed
+
+- A reply Forge cannot parse now quotes what the model actually said,
+  truncated and collapsed to one line. The message previously reported only
+  that parsing failed, which left a user with nothing to act on and nothing to
+  report - and that message is the one met on a first run against a live model.
+
 - Repository foundation: Clean Architecture layer skeleton under `src/forge/`,
   with each layer documenting its own dependency rules.
 - `forge` console entry point with `--version`, and help on a bare invocation.
