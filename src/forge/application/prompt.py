@@ -63,26 +63,45 @@ confidence is how sure you are:
 Set "line" to null when the finding has no single location."""
 
 
-def build_request(source: SourceFile) -> CompletionRequest:
+CHANGE_INSTRUCTION = """\
+
+This run reviews a CHANGE, not the whole file. Lines the change touched are \
+marked with > in the margin; lines marked | are unchanged and are shown only \
+so you can understand the code around the change.
+
+Report findings about the marked lines only. Do not report pre-existing \
+problems in unmarked code, however real - the developer did not write them \
+now, and is not asking about them. If the change introduces a problem that \
+manifests in unmarked code, that is still a finding: cite the marked line \
+that causes it."""
+
+
+def build_request(
+    source: SourceFile, changed: frozenset[int] | None = None
+) -> CompletionRequest:
     """Build the completion request for analysing ``source``.
+
+    When ``changed`` is given, the request becomes a change review: the whole
+    file is still sent, so the model can see the code around the edit, but the
+    edit is marked and the instructions narrow the scope to it. See ADR-0008.
 
     Temperature is pinned to 0. This is an analysis task, not a creative one:
     the same file should produce the same answer twice, and a user paying per
     call should not need to run it three times to see whether a finding was
     real.
     """
+    system = SYSTEM_PROMPT + (CHANGE_INSTRUCTION if changed else "")
     return CompletionRequest(
         messages=(
-            Message(role=Role.SYSTEM, content=SYSTEM_PROMPT),
-            Message(role=Role.USER, content=_user_prompt(source)),
+            Message(role=Role.SYSTEM, content=system),
+            Message(role=Role.USER, content=_user_prompt(source, changed)),
         ),
         temperature=0.0,
     )
 
 
-def _user_prompt(source: SourceFile) -> str:
-    return (
-        f"File: {source.path.name}\n"
-        f"Lines: {source.line_count}\n\n"
-        f"{source.numbered()}"
-    )
+def _user_prompt(source: SourceFile, changed: frozenset[int] | None) -> str:
+    header = f"File: {source.path.name}\nLines: {source.line_count}\n"
+    if changed:
+        header += f"Changed lines: {len(changed)}, marked with >\n"
+    return f"{header}\n{source.numbered(changed)}"

@@ -80,14 +80,18 @@ holds that an exit code without a test is an intention, not a contract.
 
 ---
 
-## Phase 3 - Repository awareness *(next)*
+## Phase 3 - Repository awareness *(in progress)*
 
 **Goal:** use git context to make answers better.
 
-- [ ] A `RepositoryInspector` port over GitPython
-- [ ] Debug a change rather than a file: `forge debug --diff`
+- [x] A `RepositoryInspector` port over GitPython
+- [x] Debug a change rather than a file: `forge debug <file> --diff`
+- [ ] Sweep every changed file in one run (`forge debug --diff` with no file).
+      Deferred deliberately: one provider call per changed file multiplies
+      cost, and that deserves its own decision rather than being a silent
+      consequence of ADR-0008.
 - [ ] Blame and recent-history context for a finding
-- [ ] Graceful behaviour outside a git repository
+- [x] Graceful behaviour outside a git repository
 
 ---
 

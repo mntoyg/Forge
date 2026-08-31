@@ -22,7 +22,7 @@ from forge.domain.errors import ForgeError
 from forge.domain.source import AnalysisResult
 from forge.presentation.findings import render_plain, render_rich
 
-Analyze = Callable[[Path], AnalysisResult]
+Analyze = Callable[..., AnalysisResult]
 """What the command needs: something that turns a path into a result.
 
 Typed as a callable rather than as ``AnalyzeSourceFile`` so the composition
@@ -35,6 +35,11 @@ Analyse a source file and report likely defects.
 
 Reads the file, sends it to the configured AI provider, and prints what it \
 finds. Forge never modifies the file and never runs it.
+
+With --diff, only the lines you have changed since the last commit are \
+reviewed. The whole file is still sent, because a change cannot be judged \
+without the code around it - so --diff narrows the answer rather than the \
+bill.
 
 Findings do not change the exit code: a file with twenty problems still exits \
 0, because the command succeeded. Exit codes report whether Forge worked, not \
@@ -51,6 +56,7 @@ def debug(
     path: Path,
     *,
     plain: bool = False,
+    changes_only: bool = False,
 ) -> ExitCode:
     """Run the analysis and print it. Returns the exit code, never raises.
 
@@ -60,9 +66,10 @@ def debug(
         plain: Force plain output. Otherwise the choice is made from whether
             stdout is a terminal, so a piped run is readable without the caller
             having to remember a flag.
+        changes_only: Review only the lines with uncommitted changes.
     """
     try:
-        result = analyze(path)
+        result = analyze(path, changes_only=changes_only)
     except ForgeError as error:
         # Diagnostics go to stderr so that a piped stdout carries results only.
         print(f"forge: {error}", file=sys.stderr)
@@ -100,5 +107,12 @@ def register(app: typer.Typer, analyze: Analyze) -> None:
                 help="Plain text output, even in a terminal.",
             ),
         ] = False,
+        diff: Annotated[
+            bool,
+            typer.Option(
+                "--diff",
+                help="Review only the lines changed since the last commit.",
+            ),
+        ] = False,
     ) -> None:
-        raise typer.Exit(code=debug(analyze, path, plain=plain))
+        raise typer.Exit(code=debug(analyze, path, plain=plain, changes_only=diff))

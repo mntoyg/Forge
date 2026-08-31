@@ -12,6 +12,7 @@
 | [0005](../../docs/architecture/decisions/0005-uv-for-dependency-management.md) | uv for dependency and environment management | Accepted | `uv.lock` is committed; do not add pip/Poetry workflows. |
 | [0006](../../docs/architecture/decisions/0006-exit-code-contract.md) | Exit code contract | Accepted | Findings never change the exit code; mapping lives in `cli/` only. |
 | [0007](../../docs/architecture/decisions/0007-structured-findings-by-prompt.md) | Structured findings by prompt | Accepted | Do not widen `AIProvider` with a response format; parse defensively instead. |
+| [0008](../../docs/architecture/decisions/0008-marked-file-for-change-analysis.md) | Marked file for change analysis | Accepted | `--diff` sends the whole file with changed lines marked, never a raw diff. |
 
 ## How to use these
 

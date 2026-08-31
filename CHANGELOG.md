@@ -11,6 +11,16 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Added
 
+- **`forge debug <file> --diff`** - review only the lines changed since the
+  last commit. Staged and unstaged both count, and a newly created file counts
+  entirely as new.
+- A `RepositoryInspector` port with a GitPython adapter, so version control
+  stays behind a boundary and the inner layers never learn git exists.
+- ADR-0008: a change is shown as the whole file with changed lines marked,
+  never as a raw diff. A model cannot judge an edit without the code around
+  it, and file line numbers stay file line numbers so no location has to be
+  translated back.
+
 - **`forge debug <file>`** - the first product capability. Reads a source
   file, analyses it with the configured provider, and reports findings with
   severity, confidence, and a line number where one is identifiable.

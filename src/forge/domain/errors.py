@@ -65,6 +65,32 @@ class PathOutsideWorkspaceError(SourceError):
     """
 
 
+class RepositoryError(ForgeError):
+    """The repository could not answer what was asked of it.
+
+    Like :class:`SourceError`, every subclass means "the request cannot be
+    satisfied as asked" to a caller - exit code 2 per ADR-0006 - but they are
+    distinct so a message can be specific about why.
+    """
+
+
+class NotARepositoryError(RepositoryError):
+    """The working directory is not inside a git repository.
+
+    A normal thing to be, not a fault. Only the commands that need history
+    care, and they say so rather than failing obscurely.
+    """
+
+
+class NoChangesError(RepositoryError):
+    """The file has no uncommitted changes to analyse.
+
+    Reported rather than silently analysing the whole file: a user who asked
+    about their change should not be billed for a full-file review they did
+    not request.
+    """
+
+
 class ProviderError(ForgeError):
     """The AI provider could not be used successfully.
 

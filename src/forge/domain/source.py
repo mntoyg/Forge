@@ -115,15 +115,22 @@ class SourceFile:
     def line_count(self) -> int:
         return len(self.content.splitlines())
 
-    def numbered(self) -> str:
+    def numbered(self, changed: frozenset[int] | None = None) -> str:
         """Render the content with line numbers, for the prompt.
 
         The model cannot cite a line it was never shown. Numbering here rather
         than in the prompt builder keeps the numbering and ``line_count`` - the
         two things a location is validated against - in one place.
+
+        When ``changed`` is given, those lines are marked with ``>`` instead of
+        ``|``. Per ADR-0008 this is how a change is presented: the whole file,
+        so the model can see the code surrounding the edit, with the edit
+        itself picked out. Line numbers stay file line numbers either way, so
+        nothing has to be translated back and nothing can be translated wrongly.
         """
+        marked = changed or frozenset()
         return "\n".join(
-            f"{number:>4} | {line}"
+            f"{number:>4} {'>' if number in marked else '|'} {line}"
             for number, line in enumerate(self.content.splitlines(), start=1)
         )
 
@@ -187,5 +194,32 @@ class SourceReader(Protocol):
             SourceUnreadableError: it exists but cannot be used as source.
             SourceTooLargeError: it exceeds the configured limit.
             PathOutsideWorkspaceError: it resolves outside the workspace.
+        """
+        ...
+
+
+class RepositoryInspector(Protocol):
+    """The port for asking version control what changed.
+
+    Deliberately narrow, for the same reason as
+    :class:`forge.domain.ai.AIProvider`: it expresses what Forge needs, not
+    what a version control system offers. Blame, log, and branch state are not
+    here because nothing needs them yet.
+    """
+
+    def changed_lines(self, path: Path) -> frozenset[int]:
+        """Return the 1-based line numbers ``path`` has uncommitted changes on.
+
+        The comparison is the working tree against ``HEAD`` - staged and
+        unstaged together, which is what "what I am about to commit" means to
+        someone mid-change.
+
+        Only added and modified lines are returned. A deleted line has no
+        number in the current file to point at, and a finding must be able to
+        cite a line that exists.
+
+        Raises:
+            NotARepositoryError: there is no repository here.
+            NoChangesError: the file has no uncommitted changes.
         """
         ...

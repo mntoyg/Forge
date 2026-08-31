@@ -15,6 +15,7 @@ the decision will be obvious from the code, but the trade-off will not be.
 | [0005](0005-uv-for-dependency-management.md) | uv for dependency management | Accepted |
 | [0006](0006-exit-code-contract.md) | Exit code contract | Accepted |
 | [0007](0007-structured-findings-by-prompt.md) | Structured findings by prompt | Accepted |
+| [0008](0008-marked-file-for-change-analysis.md) | Marked file for change analysis | Accepted |
 
 ## When to write one
 

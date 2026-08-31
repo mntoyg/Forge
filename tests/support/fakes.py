@@ -88,6 +88,35 @@ class FakeSourceReader:
         return SourceFile(path=path, content="x = 1\n")
 
 
+class FakeRepositoryInspector:
+    """A :class:`~forge.domain.source.RepositoryInspector` backed by memory.
+
+    Like the other fakes it must be able to fail: not being in a repository,
+    and having nothing to review, are both normal answers a user will meet.
+    """
+
+    def __init__(
+        self,
+        *,
+        changed: frozenset[int] | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        if changed is not None and error is not None:
+            raise ValueError(
+                "A FakeRepositoryInspector either answers or fails, not both."
+            )
+        self._changed = changed if changed is not None else frozenset({2})
+        self._error = error
+        self.paths: list[Path] = []
+
+    def changed_lines(self, path: Path) -> frozenset[int]:
+        """Implement RepositoryInspector.changed_lines."""
+        self.paths.append(path)
+        if self._error is not None:
+            raise self._error
+        return self._changed
+
+
 def findings_json(*findings: object, key: str = "findings") -> str:
     """Build a model reply containing ``findings``.
 

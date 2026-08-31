@@ -125,7 +125,35 @@ The footer names the model that answered and what the call cost. Both are
 there because you paid for it, and because "which model said this" is the first
 question worth asking about a surprising finding.
 
-## 5. Use it in a script
+## 5. Review just what you changed
+
+Before committing, you usually want an opinion on the lines you just wrote -
+not on the whole file:
+
+```bash
+uv run forge debug src/app.py --diff
+```
+
+Only lines changed since the last commit are reviewed. Staged and unstaged
+count, and a file you have just created counts entirely as new.
+
+The whole file is still sent to the model, because a change cannot be judged
+without the code around it: `- if x > 0:` becoming `+ if x >= 0:` is either a
+fix or a bug, and nothing in those two lines says which. So `--diff` narrows
+the **answer**, not the bill - input cost is similar, output is smaller, and
+what you read is only about your change.
+
+Two things stop it working, and both say so plainly:
+
+```text
+forge: app.py has no uncommitted changes. Drop --diff to analyse the whole file.
+forge: ... is not inside a git repository, so there is no change to compare
+against. Drop --diff to analyse the whole file.
+```
+
+Both exit `2`. Everything else about `forge debug` works fine outside git.
+
+## 6. Use it in a script
 
 Findings do **not** change the exit code:
 

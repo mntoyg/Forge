@@ -72,6 +72,15 @@ buggy_division.py: 2 findings
 model: gpt-4o-mini-2024-07-18 | tokens: 412 in, 186 out
 ```
 
+Or review only what you changed since the last commit:
+
+```bash
+forge debug src/app.py --diff
+```
+
+The whole file is still sent, because a change cannot be judged without the
+code around it - so `--diff` narrows the answer, not the bill.
+
 Forge never modifies the file and never runs it.
 
 Output drops to plain text automatically when stdout is not a terminal, so a

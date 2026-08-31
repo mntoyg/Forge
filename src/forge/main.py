@@ -18,6 +18,7 @@ from forge.domain.source import AnalysisResult
 from forge.infrastructure.config import Settings, load_settings
 from forge.infrastructure.logging import configure_logging
 from forge.infrastructure.openai_provider import OpenAIProvider
+from forge.infrastructure.repository import GitRepositoryInspector
 from forge.infrastructure.source import FilesystemSourceReader
 
 app = typer.Typer(
@@ -60,17 +61,22 @@ def build_analyzer(settings: Settings) -> AnalyzeSourceFile:
     it at, from where you are standing. Enforcing that is the reader's job, not
     this function's - wiring decides *which* adapter, never what it permits.
     """
-    reader = FilesystemSourceReader(Path.cwd(), max_bytes=settings.max_file_bytes)
+    workspace = Path.cwd()
+    reader = FilesystemSourceReader(workspace, max_bytes=settings.max_file_bytes)
     provider = OpenAIProvider(
         api_key=settings.require_api_key(),
         model=settings.model,
         base_url=settings.base_url,
         timeout_seconds=settings.timeout_seconds,
     )
-    return AnalyzeSourceFile(reader, provider)
+    # The inspector is always wired, and always cheap: it opens no repository
+    # until a command asks it something. A user outside version control keeps
+    # every part of `forge debug` except --diff.
+    inspector = GitRepositoryInspector(workspace)
+    return AnalyzeSourceFile(reader, provider, inspector)
 
 
-def _analyze(path: Path) -> AnalysisResult:
+def _analyze(path: Path, *, changes_only: bool = False) -> AnalysisResult:
     """Build the use case on demand, then run it.
 
     Configuration is loaded here rather than at import time so that
@@ -86,7 +92,7 @@ def _analyze(path: Path) -> AnalysisResult:
         settings.log_level,
         secrets=[settings.api_key.get_secret_value()] if settings.api_key else [],
     )
-    return build_analyzer(settings)(path)
+    return build_analyzer(settings)(path, changes_only=changes_only)
 
 
 debug_cli.register(app, _analyze)

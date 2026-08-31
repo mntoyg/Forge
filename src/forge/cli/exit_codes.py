@@ -15,6 +15,7 @@ from forge.domain.errors import (
     ForgeError,
     ProviderError,
     ProviderResponseError,
+    RepositoryError,
     SourceError,
 )
 
@@ -45,7 +46,11 @@ def exit_code_for(error: ForgeError) -> ExitCode:
     rather than a new code, per ADR-0006: a wide table invites codes nobody
     handles.
     """
-    if isinstance(error, SourceError):
+    # A repository problem joins SourceError rather than taking a code of its
+    # own: to a caller, "no such file" and "no changes to review" are the same
+    # class of answer - the request cannot be satisfied as asked. ADR-0006
+    # warns that a wide table invites codes nobody handles.
+    if isinstance(error, SourceError | RepositoryError):
         return ExitCode.BAD_INPUT
     if isinstance(error, ConfigurationError):
         return ExitCode.NOT_CONFIGURED
