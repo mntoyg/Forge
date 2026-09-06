@@ -14,6 +14,7 @@
 | [0007](../../docs/architecture/decisions/0007-structured-findings-by-prompt.md) | Structured findings by prompt | Accepted | Do not widen `AIProvider` with a response format; parse defensively instead. |
 | [0008](../../docs/architecture/decisions/0008-marked-file-for-change-analysis.md) | Marked file for change analysis | Accepted | `--diff` sends the whole file with changed lines marked, never a raw diff. |
 | [0009](../../docs/architecture/decisions/0009-history-annotates-the-answer.md) | History annotates the answer | Accepted | Git history is rendered beside a finding, never put in the prompt. |
+| [0010](../../docs/architecture/decisions/0010-remove-httpx-dependency.md) | Remove httpx as a declared dependency | Accepted | Forge declares no HTTP dependency. Adding one arrives with the code that calls it. |
 
 ## How to use these
 

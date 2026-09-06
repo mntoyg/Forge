@@ -131,7 +131,7 @@ implements the interfaces the inner layers declare.
                            │ implements
    ┌───────────────────────┴──────────────────────┐
    │                Infrastructure                │
-   │  OpenAI adapter, httpx, GitPython, Loguru,   │
+   │   OpenAI adapter, GitPython, Loguru,         │
    │       Pydantic Settings, filesystem          │
    └──────────────────────────────────────────────┘
 ```
@@ -143,7 +143,7 @@ clean. Full description in
 
 ## Tech stack
 
-Python 3.13 - uv - Typer - Rich - Pydantic Settings - OpenAI SDK - httpx -
+Python 3.13 - uv - Typer - Rich - Pydantic Settings - OpenAI SDK -
 Loguru - GitPython - pytest - Ruff - Black - mypy
 
 Each dependency maps to one architectural role; see

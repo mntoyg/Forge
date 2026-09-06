@@ -41,6 +41,7 @@ verification - correct it or delete it instead.
 | No repository means no history and no failure | Every `RepositoryError` from that lookup becomes "no history" |
 | The model returns parseable JSON | Held on every live run so far. ADR-0007 stands |
 | No provider SDK or git import outside `infrastructure/` | Ruff `TID251` plus `tests/unit/test_package.py` |
+| Every declared dependency is imported by something | ADR-0010 removed the one that was not. `uv run python -c "import httpx"` fails, and nothing needs it to |
 | No secret is committed | `.env` git-ignored; `.env.example` ships empty values |
 
 ## What to do next
@@ -50,15 +51,10 @@ order, say why rather than silently reordering.
 
 1. **One piece of pre-`0.1.0` evidence is missing: a large file.** The
    control case and the non-Python file have now been run live and behaved.
-   Nothing has been run that approaches the size limit, where cost, truncation,
-   and a model's attention across a long file all stop being theoretical. Note
-   also that no live run has yet *shown* the history annotation - it is not on
-   `main`.
-2. **Decide about `httpx`.** Still a declared runtime dependency that nothing
-   imports. Phase 3 used GitPython, not HTTP, so the "we will need it soon"
-   argument is weaker than it was. Removing it needs an ADR; so does keeping
-   it. The drift is what is not acceptable.
-3. **Decide about the repository-wide sweep** - `forge debug --diff` with no
+   Nothing has been run that approaches the size limit, where cost,
+   truncation, and a model's attention across a long file all stop being
+   theoretical.
+2. **Decide about the repository-wide sweep** - `forge debug --diff` with no
    file, the last Phase 3 item. Deferred deliberately: one provider call per
    changed file multiplies cost, and that deserves its own decision rather
    than arriving as a silent consequence of ADR-0008.
@@ -86,9 +82,13 @@ Each of these cost real time once. They are here so it happens only once.
 - **`git blame --porcelain` omits the headers of a commit it has already
   described.** Parsing it means keeping a cache, and the cache is where the bug
   will be. `--line-porcelain` repeats every block; use that.
-- **The OpenAI SDK (v3) vendors its own httpx as `httpx2`.** The `httpx` in
-  `pyproject.toml` is a *different package*. A client passed to the SDK must be
-  an `httpx2` client - see `tests/integration/test_openai_provider.py`.
+- **Removing `httpx` also removed `certifi`, and that is safe.** `httpx2` gets
+  its TLS trust from `truststore` - the operating system's store - not from
+  certifi. Checked after the removal; nothing about the provider call changed.
+- **The OpenAI SDK (v3) vendors its own httpx as `httpx2`.** It is a different
+  package from `httpx`, which Forge no longer declares at all (ADR-0010). A
+  client passed to the SDK must be an `httpx2` client - see
+  `tests/integration/test_openai_provider.py`.
 - **A present-but-empty env var is `""`, not `None`.** This shipped as a bug:
   `FORGE_BASE_URL=` from `.env.example` reached the SDK as a real base URL and
   broke every request. Any new optional string setting needs the same guard.

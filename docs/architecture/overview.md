@@ -40,7 +40,7 @@ them are details.
                            │ implements
    ┌───────────────────────┴──────────────────────┐
    │                Infrastructure                │
-   │  OpenAI adapter, httpx, GitPython, Loguru,   │
+   │   OpenAI adapter, GitPython, Loguru,         │
    │       Pydantic Settings, filesystem          │
    └──────────────────────────────────────────────┘
 ```
@@ -75,7 +75,7 @@ not know which provider is configured.
 ### Infrastructure - `src/forge/infrastructure/`
 
 Adapters. Every external technology lives here and only here: the OpenAI
-client, httpx, GitPython, Loguru, Pydantic Settings, filesystem access.
+client, GitPython, Loguru, Pydantic Settings, filesystem access.
 
 **Constraints.** May import `domain` and `application` in order to implement
 their interfaces. Is never imported by them. Translates external exceptions
@@ -108,7 +108,8 @@ logic.
 Conventions decay. Two mechanisms keep this one honest:
 
 1. **Ruff `TID251`.** `pyproject.toml` bans every framework and SDK outright -
-   `typer`, `click`, `rich`, `openai`, `httpx`, `git`, `loguru`, `pydantic`,
+   `typer`, `click`, `rich`, `openai`, `httpx`, `httpx2`, `git`, `loguru`,
+   `pydantic`,
    `pydantic_settings` - then re-allows them only in the layers permitted to
    import them, via `per-file-ignores`. An import in the wrong place fails
    lint, and therefore fails CI.

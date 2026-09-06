@@ -25,7 +25,17 @@ LAYERS = [
 # pyproject.toml; see docs/architecture/overview.md.
 PURE_LAYERS = ["domain", "application"]
 FORBIDDEN_PACKAGES = frozenset(
-    {"typer", "click", "rich", "openai", "httpx", "git", "loguru", "pydantic"}
+    {
+        "typer",
+        "click",
+        "rich",
+        "openai",
+        "httpx",
+        "httpx2",
+        "git",
+        "loguru",
+        "pydantic",
+    }
 )
 
 SRC = Path(forge.__file__).parent

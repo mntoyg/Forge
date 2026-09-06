@@ -11,6 +11,21 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Added
 
+- **A spinner while the provider is thinking** (NFR-3.2). A provider call takes
+  seconds, and a terminal that prints nothing for that long cannot be told from
+  one that has hung. It is drawn on stderr, so a piped stdout still carries
+  results only, and it is skipped entirely for `--plain` and for a pipe.
+
+### Removed
+
+- **`httpx` is no longer a runtime dependency** (ADR-0010). It was declared in
+  Phase 1 for HTTP work that Phase 3 was expected to bring; Phase 3 brought git
+  instead, and nothing has ever imported it. The `httpx2` that appears in the
+  tests is the copy the OpenAI SDK vendors, and is unaffected. The import ban
+  stays and now covers `httpx2` as well.
+
+### Added
+
 - **Line history beside each finding** - when the file is in a repository, a
   finding that cites a line now says when that line last changed and by whom,
   and the header says how many commits touched the file in the last 90 days. A

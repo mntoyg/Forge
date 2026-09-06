@@ -90,7 +90,7 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 | ID | Requirement | Status |
 | --- | --- | --- |
 | NFR-3.1 | Every error message MUST state what went wrong and what to do next. | Done |
-| NFR-3.2 | A long-running operation SHOULD show progress. | Planned |
+| NFR-3.2 | A long-running operation SHOULD show progress. | Done |
 | NFR-3.3 | The tool MUST run on Linux, macOS, and Windows. | Done |
 
 ## NFR-4 - Portability and cost

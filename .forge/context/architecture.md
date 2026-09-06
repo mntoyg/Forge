@@ -25,7 +25,7 @@
                            │ implements
    ┌───────────────────────┴──────────────────────┐
    │                Infrastructure                │
-   │  OpenAI adapter, httpx, GitPython, Loguru,   │
+   │   OpenAI adapter, GitPython, Loguru,         │
    │       Pydantic Settings, filesystem          │
    └──────────────────────────────────────────────┘
 ```
@@ -36,7 +36,7 @@ inner layers declare. Nothing inner imports it.
 ## The rule that matters most
 
 If you are editing `src/forge/domain/` or `src/forge/application/` and you find
-yourself typing `import typer`, `import openai`, `import httpx`, `import git`,
+yourself typing `import typer`, `import openai`, `import httpx2`, `import git`,
 `from rich...`, or `from loguru...` - **stop**. You are about to invert the
 dependency direction. Declare a port instead and implement it in
 `infrastructure/`.

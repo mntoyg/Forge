@@ -29,7 +29,6 @@ one describes its state.
 | Terminal rendering | Rich | presentation |
 | Configuration | Pydantic Settings | infrastructure |
 | AI provider | OpenAI Python SDK | infrastructure |
-| HTTP | httpx | infrastructure |
 | Logging | Loguru | infrastructure |
 | Git access | GitPython | infrastructure |
 | Tests | pytest | - |

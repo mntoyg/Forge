@@ -11,11 +11,13 @@ no key, no filesystem beyond a temporary directory.
 """
 
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated
 
 import typer
+from rich.console import Console
 
 from forge.cli.exit_codes import ExitCode, exit_code_for
 from forge.domain.errors import ForgeError
@@ -28,6 +30,13 @@ Analyze = Callable[..., AnalysisResult]
 Typed as a callable rather than as ``AnalyzeSourceFile`` so the composition
 root can pass a wrapper that defers loading configuration until a command
 actually runs - without the command knowing or caring.
+"""
+
+WAITING = "Analysing {name}"
+"""What the spinner says while the provider is thinking.
+
+Named rather than inlined so a test can assert on the source string instead of
+on rendered terminal output, which wraps to whatever width happens to be there.
 """
 
 HELP = """\
@@ -69,7 +78,8 @@ def debug(
         changes_only: Review only the lines with uncommitted changes.
     """
     try:
-        result = analyze(path, changes_only=changes_only)
+        with _waiting(_progress_console(plain), path):
+            result = analyze(path, changes_only=changes_only)
     except ForgeError as error:
         # Diagnostics go to stderr so that a piped stdout carries results only.
         print(f"forge: {error}", file=sys.stderr)
@@ -78,6 +88,39 @@ def debug(
     use_plain = plain or not sys.stdout.isatty()
     print(render_plain(result) if use_plain else render_rich(result), end="")
     return ExitCode.OK
+
+
+def _progress_console(plain: bool) -> Console | None:
+    """Where the spinner should be drawn, or ``None`` if it should not be.
+
+    It is drawn on **stderr**, which is the same rule the diagnostics follow: a
+    piped stdout carries results and nothing else. And it is skipped entirely
+    when stderr is not a terminal, or when plain output was asked for, because
+    a spinner in a log file is a line of escape codes nobody wanted.
+    """
+    if plain or not sys.stderr.isatty():
+        return None
+    return Console(stderr=True)
+
+
+@contextmanager
+def _waiting(console: Console | None, path: Path) -> Iterator[None]:
+    """Show that something is happening while the provider thinks.
+
+    NFR-3.2. A provider call takes seconds, and a terminal that has printed
+    nothing for that long is indistinguishable from one that has hung - the
+    user's next move is Ctrl-C, on a call they have already paid for.
+
+    The console is passed in rather than built here so that the decision about
+    *whether* to draw one stays in :func:`_progress_console`, where it can be
+    read and tested on its own.
+    """
+    if console is None:
+        yield
+        return
+
+    with console.status(WAITING.format(name=path.name), spinner="dots"):
+        yield
 
 
 def register(app: typer.Typer, analyze: Analyze) -> None:

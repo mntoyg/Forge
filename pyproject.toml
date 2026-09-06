@@ -24,7 +24,6 @@ dependencies = [
     "rich>=13.9.0",           # presentation: terminal rendering
     "pydantic-settings>=2.7.0", # infrastructure: typed configuration loading
     "openai>=1.60.0",         # infrastructure: AI provider adapter (behind a port)
-    "httpx>=0.28.0",          # infrastructure: HTTP transport
     "loguru>=0.7.3",          # infrastructure: structured logging
     "gitpython>=3.1.44",      # infrastructure: repository inspection
 ]
@@ -115,6 +114,7 @@ ban-relative-imports = "all"
 "rich".msg = "Presentation-layer dependency. Import it only under src/forge/cli or src/forge/presentation."
 "openai".msg = "Infrastructure-layer dependency. Import it only under src/forge/infrastructure."
 "httpx".msg = "Infrastructure-layer dependency. Import it only under src/forge/infrastructure."
+"httpx2".msg = "Infrastructure-layer dependency - the httpx the OpenAI SDK vendors. Import it only under src/forge/infrastructure."
 "git".msg = "Infrastructure-layer dependency. Import it only under src/forge/infrastructure."
 "loguru".msg = "Infrastructure-layer dependency. Import it only under src/forge/infrastructure."
 "pydantic".msg = "Infrastructure-layer dependency. The domain uses plain dataclasses; import it only under src/forge/infrastructure."

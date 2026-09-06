@@ -389,6 +389,14 @@ def test_a_finding_arrives_with_what_git_knows_about_its_line() -> None:
 
 
 @pytest.mark.e2e
+def test_a_piped_run_carries_no_escape_codes() -> None:
+    """The spinner must never reach a log file, a pipe, or a CI transcript."""
+    result = runner.invoke(_app(_analyzing(*FINDINGS)), ["app.py", "--plain"])
+
+    assert "[" not in result.stdout
+
+
+@pytest.mark.e2e
 def test_outside_a_repository_the_findings_still_arrive() -> None:
     """History is context around the answer, never a condition for getting one."""
     result = runner.invoke(_app(_analyzing(FINDINGS[0])), ["app.py", "--plain"])

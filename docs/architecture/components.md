@@ -36,7 +36,7 @@ contract is visible where the code is written, not only in this document.
 | Rich | Terminal rendering | `presentation/`, `cli/` |
 | Pydantic Settings | Typed configuration from the environment | `infrastructure/` |
 | OpenAI SDK | Provider adapter | `infrastructure/` |
-| httpx | HTTP transport | `infrastructure/` |
+| httpx2 | The httpx the OpenAI SDK vendors | `infrastructure/` |
 | Loguru | Structured logging | `infrastructure/` |
 | GitPython | Repository inspection | `infrastructure/` |
 
@@ -46,16 +46,17 @@ somewhere else, the answer is a port, not an exception.
 
 ### A note on httpx
 
-Two httpx major versions are present in the environment, and this trips people
-up the first time they see it. The OpenAI SDK (v3) vendors its own copy as
-`httpx2`; the `httpx` in the table is the one Forge will use directly for any
-HTTP it makes itself. They are different packages and do not interchange - a
-client passed to the OpenAI SDK must be an `httpx2` client.
+The OpenAI SDK (v3) vendors its own httpx under the name `httpx2`, and this
+trips people up the first time they see it. It is a different package from
+`httpx`, and the two do not interchange: a client passed to the SDK must be an
+`httpx2` client. `tests/integration/test_openai_provider.py` is where that
+matters.
 
-Nothing outside `infrastructure/` is affected, which is the point of the
-boundary. Forge does not import `httpx` directly yet; the dependency is
-declared because it is the approved transport for the HTTP work Phase 3 brings,
-and removing it now only to re-add it later would cost an ADR each way.
+Forge itself declares no HTTP dependency. It held one until ADR-0010, on the
+prediction that Phase 3 would bring HTTP work; Phase 3 brought git instead, and
+a dependency nothing imports is one every installation pays for. The import ban
+covers `httpx2` because that is the one actually present here - the day HTTP
+returns, it returns with the code that calls it.
 
 ## Component detail
 
