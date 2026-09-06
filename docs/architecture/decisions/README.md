@@ -18,7 +18,8 @@ the decision will be obvious from the code, but the trade-off will not be.
 | [0008](0008-marked-file-for-change-analysis.md) | Marked file for change analysis | Accepted |
 | [0009](0009-history-annotates-the-answer.md) | History annotates the answer | Accepted |
 | [0010](0010-remove-httpx-dependency.md) | Remove httpx as a declared dependency | Accepted |
-| [0011](0011-warn-when-a-result-may-be-partial.md) | Warn when a result may be partial | Accepted |
+| [0011](0011-warn-when-a-result-may-be-partial.md) | Warn when a result may be partial | Superseded by 0012 |
+| [0012](0012-the-caveat-is-for-whole-file-runs.md) | The caveat is for whole-file runs only | Accepted |
 
 ## When to write one
 

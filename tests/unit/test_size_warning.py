@@ -46,18 +46,23 @@ def _result(input_tokens: int, *findings: Finding) -> AnalysisResult:
 @pytest.mark.unit
 def test_a_short_file_gets_no_caveat() -> None:
     """Most files are short. A caveat on all of them would be read by nobody."""
-    assert debug_cli._size_warning(_result(3_927)) is None
+    assert debug_cli._size_warning(_result(3_927), changes_only=False) is None
 
 
 @pytest.mark.unit
 def test_the_threshold_itself_is_still_trusted() -> None:
     """It is the last size seen to work, so it is inside the promise."""
-    assert debug_cli._size_warning(_result(debug_cli.RELIABLE_INPUT_TOKENS)) is None
+    assert (
+        debug_cli._size_warning(
+            _result(debug_cli.RELIABLE_INPUT_TOKENS), changes_only=False
+        )
+        is None
+    )
 
 
 @pytest.mark.unit
 def test_a_long_file_is_flagged() -> None:
-    assert debug_cli._size_warning(_result(10_225)) is not None
+    assert debug_cli._size_warning(_result(10_225), changes_only=False) is not None
 
 
 @pytest.mark.unit
@@ -66,7 +71,10 @@ def test_findings_do_not_excuse_the_caveat() -> None:
 
     A partial review is partial whether or not it found something on the way.
     """
-    assert debug_cli._size_warning(_result(23_359, FINDING)) is not None
+    assert (
+        debug_cli._size_warning(_result(23_359, FINDING), changes_only=False)
+        is not None
+    )
 
 
 # --- what it says -----------------------------------------------------------
@@ -75,7 +83,7 @@ def test_findings_do_not_excuse_the_caveat() -> None:
 @pytest.mark.unit
 def test_the_caveat_names_the_file_and_what_it_cost() -> None:
     """A number the reader can check beats an adjective they cannot."""
-    warning = debug_cli._size_warning(_result(44_295))
+    warning = debug_cli._size_warning(_result(44_295), changes_only=False)
 
     assert warning is not None
     assert "app.py" in warning
@@ -85,7 +93,7 @@ def test_the_caveat_names_the_file_and_what_it_cost() -> None:
 @pytest.mark.unit
 def test_the_caveat_says_which_part_of_the_file_it_doubts() -> None:
     """It is attention running out, not a size limit - the end is what is lost."""
-    warning = debug_cli._size_warning(_result(44_295))
+    warning = debug_cli._size_warning(_result(44_295), changes_only=False)
 
     assert warning is not None
     assert "end of a file" in warning
@@ -123,3 +131,40 @@ def test_a_short_run_says_nothing_extra(
     debug_cli.debug(analyze, Path("app.py"), plain=True)
 
     assert capsys.readouterr().err == ""
+
+
+# --- a change review is a different question --------------------------------
+
+
+@pytest.mark.unit
+def test_a_change_review_is_not_caveated() -> None:
+    """Marking the changed lines carries attention to them wherever they sit.
+
+    The same defect a whole-file run misses at the end of a 3,807-line file is
+    found there by --diff, at 44,409 input tokens. ADR-0012.
+    """
+    assert debug_cli._size_warning(_result(44_409), changes_only=True) is None
+
+
+@pytest.mark.unit
+def test_a_change_review_says_nothing_even_when_it_finds_something() -> None:
+    warning = debug_cli._size_warning(_result(44_409, FINDING), changes_only=True)
+
+    assert warning is None
+
+
+@pytest.mark.unit
+def test_the_diff_flag_silences_the_caveat_end_to_end(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """A caveat that fires where the evidence says it should not teaches people
+    to ignore it where it matters."""
+
+    def analyze(path: Path, *, changes_only: bool = False) -> AnalysisResult:
+        return _result(44_295, FINDING)
+
+    debug_cli.debug(analyze, Path("app.py"), plain=True, changes_only=True)
+
+    captured = capsys.readouterr()
+    assert captured.err == ""
+    assert "Divides without guarding zero" in captured.out

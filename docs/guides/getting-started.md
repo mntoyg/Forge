@@ -132,6 +132,13 @@ to stop reporting defects near the end of a file, so read this as an opinion on
 the start of core.py rather than on all of it.
 ```
 
+You will not see it on a `--diff` run. Marking the changed lines carries the
+model's attention to them wherever they sit in the file, which has been
+measured: the same defect a whole-file review misses at the end of a 3,807-line
+file is found there by `--diff`. On a long file that you are reviewing a change
+in, `--diff` is the better command for a reason that is now more than
+stylistic.
+
 It is not an error, and the findings above it are still findings. It is there
 because the failure it warns about is silent: the model reads the beginning of
 a long file and stops, and `no findings` is exactly what a clean file returns.

@@ -440,3 +440,26 @@ def test_an_ordinary_run_carries_no_caveat() -> None:
     result = runner.invoke(_app(_analyzing(*FINDINGS)), ["app.py", "--plain"])
 
     assert "end of a file" not in result.output
+
+
+@pytest.mark.e2e
+def test_a_long_change_review_carries_no_caveat() -> None:
+    """ADR-0012. Marking the changed lines carries attention to them, so the
+    caveat that a whole-file run earns would be false here."""
+    analyze = AnalyzeSourceFile(
+        FakeSourceReader(source=SOURCE),
+        FakeProvider(
+            response=CompletionResponse(
+                text=json.dumps({"findings": [FINDINGS[0]]}),
+                model="fake-model",
+                usage=TokenUsage(input_tokens=44_295, output_tokens=87),
+            )
+        ),
+        FakeRepositoryInspector(changed=frozenset({2})),
+    )
+
+    result = runner.invoke(_app(analyze), ["app.py", "--diff", "--plain"])
+
+    assert result.exit_code == ExitCode.OK
+    assert "Divides without guarding zero" in result.output
+    assert "end of a file" not in result.output

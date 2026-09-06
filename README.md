@@ -87,7 +87,12 @@ forge debug src/app.py --diff
 The whole file is still sent, because a change cannot be judged without the
 code around it - so `--diff` narrows the answer, not the bill.
 
-On a long file, Forge says when the answer may only cover its start. The
+On a long file, prefer `--diff` if you are reviewing a change: marking the
+changed lines keeps the model's attention on them, and it has been measured
+finding a defect on the last line of a 3,807-line file that a whole-file run
+misses ([ADR-0012](docs/architecture/decisions/0012-the-caveat-is-for-whole-file-runs.md)).
+
+On a whole-file run, Forge says when the answer may only cover its start. The
 model reads the beginning of a long file and stops, and "no findings" is what
 that looks like from outside - so above roughly 4,000 input tokens the run
 carries a caveat rather than an implication that the whole file was read

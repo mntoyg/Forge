@@ -110,7 +110,7 @@ def debug(
     use_plain = plain or not sys.stdout.isatty()
     print(render_plain(result) if use_plain else render_rich(result), end="")
 
-    partial = _size_warning(result)
+    partial = _size_warning(result, changes_only=changes_only)
     if partial is not None:
         # Same stream as the errors, and after the result rather than before
         # it: a caveat is read last, and a piped stdout still carries results
@@ -123,7 +123,7 @@ def debug(
     return ExitCode.OK
 
 
-def _size_warning(result: AnalysisResult) -> str | None:
+def _size_warning(result: AnalysisResult, *, changes_only: bool) -> str | None:
     """Say so when the result may only cover the start of the file.
 
     Judged on input tokens rather than on bytes, because tokens are what the
@@ -132,9 +132,14 @@ def _size_warning(result: AnalysisResult) -> str | None:
 
     Not conditional on whether anything was found. The run that missed the
     injected defect in a 1,922-line file still returned two findings, and a
-    partial review is partial either way. See ADR-0011.
+    partial review is partial either way.
+
+    Silent for a change review. Marking the changed lines carries the model's
+    attention to them wherever they sit: the same defect that a whole-file run
+    misses at the end of a 3,807-line file is found there by `--diff`, at
+    44,409 input tokens. See ADR-0012.
     """
-    if result.usage.input_tokens <= RELIABLE_INPUT_TOKENS:
+    if changes_only or result.usage.input_tokens <= RELIABLE_INPUT_TOKENS:
         return None
 
     return PARTIAL.format(

@@ -9,6 +9,18 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The partial-result caveat no longer fires on `--diff`** (ADR-0012,
+  superseding ADR-0011). Marking the changed lines carries the model's
+  attention to them wherever they sit: the same defect a whole-file review
+  misses at the end of a 3,807-line file is found there by `--diff`, at 44,409
+  input tokens. Three general prompt variants - "read it to the last line", an
+  end-of-file marker, and both - all failed to rescue the whole-file review, so
+  the difference is the marking rather than the wording. Telling a user that a
+  measured-reliable result may be partial teaches them to ignore the caveat
+  where it matters.
+
 ## [0.1.0] - 2026-09-06
 
 The first release worth installing. `forge debug <file>` reads a source file,
