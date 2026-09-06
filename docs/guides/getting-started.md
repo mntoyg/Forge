@@ -121,6 +121,32 @@ inventing one would send you to the wrong place. The same rule applies when the
 model cites a line that does not exist in your file - Forge drops the location
 rather than guessing a nearby one.
 
+### What git adds
+
+Inside a repository, a finding that cites a line carries one more line, and it
+is the only part of the report the model had no hand in:
+
+```text
+    history: last changed 2026-07-04 by A U Thor (a1b2c3d)
+```
+
+The header gains a count in the same spirit - `app.py: 2 findings (4 commits
+in the last 90 days)` - because a line last touched a year ago in a file nobody
+edits is a different risk from the same line in a file that changed nine times
+this quarter.
+
+Two things worth knowing about it:
+
+- A line you have edited but not committed says `not committed yet`. Git can
+  name no commit for it, and naming the previous author would blame them for
+  your unsaved work.
+- Outside a repository, or for a file git has never seen, the line is simply
+  absent. History is context around the answer, never a condition for getting
+  one - see [ADR-0009](../architecture/decisions/0009-history-annotates-the-answer.md).
+
+None of this is sent to the model. It costs no tokens, and it cannot be wrong
+in the way a finding can.
+
 The footer names the model that answered and what the call cost. Both are
 there because you paid for it, and because "which model said this" is the first
 question worth asking about a surprising finding.

@@ -12,8 +12,8 @@ without leaving the shell.
 ## Current stage
 
 **MVP.** `forge debug <file>` works and has been run against a live model.
-Phases 0 to 2 of `docs/product/roadmap.md` are complete; Phase 3 has not been
-started.
+Phases 0 to 2 of `docs/product/roadmap.md` are complete, and Phase 3 is nearly
+so.
 
 `.forge/context/status.md` holds the current detail - what is verified, what is
 next, and what is blocked. This file describes the shape of the project; that

@@ -6,7 +6,8 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-08-31, at commit `938c00f` on `main`, CI green.
+**Last verified:** 2026-09-01, on branch `feat/line-history`, CI green on
+[#8](https://github.com/mntoyg/Forge/pull/8). Not merged.
 
 ---
 
@@ -14,11 +15,11 @@
 
 `forge debug <file>` works and has been run against a live model. `--diff`
 narrows a run to the lines you have changed since the last commit, and has also
-been run live.
+been run live. A finding that cites a line now carries what git knows about
+that line - who last changed it, when, and how much the file has been moving.
 
-Phases 0 to 2 of `docs/product/roadmap.md` are complete. Phase 3 is partly
-done: the `RepositoryInspector` port, the GitPython adapter, and `--diff` for a
-single named file all exist. Two Phase 3 items remain - see below.
+Phases 0 to 2 of `docs/product/roadmap.md` are complete. Phase 3 has one item
+left, and it is the one that was deferred on purpose - see below.
 
 ## What is true right now
 
@@ -27,11 +28,17 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| 296 pass locally with 1 skipped; 297 pass on CI | `uv run pytest`. The skipped one is a symlink test Windows cannot run |
-| `forge debug` works against a live model | Run against `examples/buggy_division.py`, gpt-4o-mini |
+| 336 pass locally with 1 skipped | `uv run pytest`. The skipped one is a symlink test Windows cannot run |
+| `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
+| A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
+| Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
+| The same file can answer differently twice | Live, same file at temperature 0, identical 846-token prompt: 4 findings (354 out), then 3 (288 out), citing different lines. Temperature 0 is not determinism |
 | `forge debug --diff` reports only changed lines | Appended a bug to a file with two known older bugs; only the new one was reported |
 | `--diff` costs *more* input, less output | 775 in / 88 out, against 660 in / 235 out for the same file whole. ADR-0008 says the saving is focus, not price |
 | An untracked file counts entirely as new | Real repository test; `git diff` alone reports nothing for one |
+| A located finding says who last changed its line, and when | Integration tests against real repositories built in a temporary directory |
+| History never reaches the provider | It is looked up from the parsed findings, after the response. ADR-0009, and `tests/unit/test_analyze.py` |
+| No repository means no history and no failure | Every `RepositoryError` from that lookup becomes "no history" |
 | The model returns parseable JSON | Held on every live run so far. ADR-0007 stands |
 | No provider SDK or git import outside `infrastructure/` | Ruff `TID251` plus `tests/unit/test_package.py` |
 | No secret is committed | `.env` git-ignored; `.env.example` ships empty values |
@@ -41,24 +48,27 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Finish Phase 3.** Two items remain, and they are not equal. *Blame and
-   recent-history context* is the useful one: knowing a line changed three
-   times last week is real signal about risk. *Sweeping every changed file in
-   one run* was deferred on purpose, because one provider call per file
-   multiplies cost, and that needs its own decision rather than arriving as a
-   silent consequence of ADR-0008.
-2. **More real-model evidence before `0.1.0`.** Every live run so far has been
-   one small Python file. Try a large file, another language, and - most
-   importantly - **a file with no defects at all**, because a model asked to
-   find problems will find them whether they exist or not.
-3. **Decide about `httpx`.** Still a declared runtime dependency that nothing
+1. **One piece of pre-`0.1.0` evidence is missing: a large file.** The
+   control case and the non-Python file have now been run live and behaved.
+   Nothing has been run that approaches the size limit, where cost, truncation,
+   and a model's attention across a long file all stop being theoretical. Note
+   also that no live run has yet *shown* the history annotation - it is not on
+   `main`.
+2. **Decide about `httpx`.** Still a declared runtime dependency that nothing
    imports. Phase 3 used GitPython, not HTTP, so the "we will need it soon"
    argument is weaker than it was. Removing it needs an ADR; so does keeping
    it. The drift is what is not acceptable.
+3. **Decide about the repository-wide sweep** - `forge debug --diff` with no
+   file, the last Phase 3 item. Deferred deliberately: one provider call per
+   changed file multiplies cost, and that deserves its own decision rather
+   than arriving as a silent consequence of ADR-0008.
 
 ## Blocked, or needs a human
 
 - **Nothing is blocked right now.**
+- ADR-0009 is recorded as `Accepted` because the choice it records was made in
+  session, not by the agent that wrote it. A reviewer who disagrees should say
+  so before it merges.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
 - Merging is a human decision. Agents open pull requests; a person approves.
@@ -70,6 +80,12 @@ Each of these cost real time once. They are here so it happens only once.
 - **`git diff` says nothing about an untracked file.** A file the user just
   wrote would look unchanged - the worst possible answer from the command that
   exists to review new work. `repository.py` special-cases it.
+- **Blame the working tree, not `HEAD`.** One uncommitted insertion shifts
+  every line below it, so blaming `HEAD` annotates the wrong lines on exactly
+  the file this is most often run on. `git blame` with no revision is right.
+- **`git blame --porcelain` omits the headers of a commit it has already
+  described.** Parsing it means keeping a cache, and the cache is where the bug
+  will be. `--line-porcelain` repeats every block; use that.
 - **The OpenAI SDK (v3) vendors its own httpx as `httpx2`.** The `httpx` in
   `pyproject.toml` is a *different package*. A client passed to the SDK must be
   an `httpx2` client - see `tests/integration/test_openai_provider.py`.
@@ -85,6 +101,14 @@ Each of these cost real time once. They are here so it happens only once.
   a test that reads `result.stdout` for a flag name passes on a wide terminal
   and fails on CI's 80 columns. Assert on the source string - `debug_cli.HELP`
   - and keep one test that the text reaches the user at all.
+- **Temperature 0 is not determinism.** Two runs over one unchanged file
+  disagreed on how many findings there were and on which lines they sat.
+  Anything that needs a repeatable answer needs caching, not a temperature.
+- **A file that documents its own defects can pull the model's line numbers
+  into the comment that describes them.** One run cited the header block of
+  `examples/retry_backoff.js` rather than the code. Every file in `examples/`
+  carries such a header, so they are unusually prone to it - real user code is
+  not, and this is not evidence that locations are broken generally.
 - **`forge debug` on a clean file still exits 0.** ADR-0006, deliberate. Do not
   "fix" it.
 

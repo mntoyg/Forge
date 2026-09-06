@@ -72,6 +72,12 @@ buggy_division.py: 2 findings
 model: gpt-4o-mini-2024-07-18 | tokens: 412 in, 186 out
 ```
 
+Inside a repository, each finding that cites a line also says when that line
+last changed and by whom, and the header says how many commits touched the file
+in the last 90 days. That part comes from git rather than from the model: it
+costs no tokens, and it is left out silently when there is no repository to ask
+([ADR-0009](docs/architecture/decisions/0009-history-annotates-the-answer.md)).
+
 Or review only what you changed since the last commit:
 
 ```bash

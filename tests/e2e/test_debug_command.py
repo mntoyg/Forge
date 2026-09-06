@@ -11,6 +11,7 @@ There is therefore one test per code.
 
 import json
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -31,8 +32,12 @@ from forge.domain.errors import (
     SourceNotFoundError,
     SourceTooLargeError,
 )
-from forge.domain.source import SourceFile
-from tests.support.fakes import FakeProvider, FakeSourceReader
+from forge.domain.source import ChangeRecord, FileHistory, SourceFile
+from tests.support.fakes import (
+    FakeProvider,
+    FakeRepositoryInspector,
+    FakeSourceReader,
+)
 
 runner = CliRunner()
 
@@ -341,3 +346,53 @@ def test_the_help_text_actually_reaches_the_user() -> None:
 
     assert result.exit_code == 0
     assert "Analyse a source file" in result.stdout
+
+
+# --- history reaches the user -----------------------------------------------
+
+
+HISTORY = FileHistory(
+    recent_commits=4,
+    window_days=90,
+    records=(
+        ChangeRecord(
+            line=2, commit="a1b2c3d", author="A U Thor", changed_on=date(2026, 1, 15)
+        ),
+    ),
+)
+
+
+def _analyzing_in_a_repository(*findings: object) -> Callable[..., object]:
+    return AnalyzeSourceFile(
+        FakeSourceReader(source=SOURCE),
+        FakeProvider(
+            response=CompletionResponse(
+                text=json.dumps({"findings": list(findings)}),
+                model="fake-model",
+                usage=TokenUsage(input_tokens=120, output_tokens=45),
+            )
+        ),
+        FakeRepositoryInspector(history=HISTORY),
+    )
+
+
+@pytest.mark.e2e
+def test_a_finding_arrives_with_what_git_knows_about_its_line() -> None:
+    """Asserted on plain output: Rich wraps to the terminal running the test."""
+    result = runner.invoke(
+        _app(_analyzing_in_a_repository(FINDINGS[0])), ["app.py", "--plain"]
+    )
+
+    assert result.exit_code == ExitCode.OK
+    assert "a1b2c3d" in result.stdout
+    assert "2026-01-15" in result.stdout
+
+
+@pytest.mark.e2e
+def test_outside_a_repository_the_findings_still_arrive() -> None:
+    """History is context around the answer, never a condition for getting one."""
+    result = runner.invoke(_app(_analyzing(FINDINGS[0])), ["app.py", "--plain"])
+
+    assert result.exit_code == ExitCode.OK
+    assert "Divides without guarding zero" in result.stdout
+    assert "history:" not in result.stdout

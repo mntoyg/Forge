@@ -5,6 +5,7 @@ The plain renderer carries the stricter contract: it must survive a pipe, a log
 file, and a CI transcript, none of which want escape codes or box drawing.
 """
 
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,9 @@ import pytest
 from forge.domain.ai import TokenUsage
 from forge.domain.source import (
     AnalysisResult,
+    ChangeRecord,
     Confidence,
+    FileHistory,
     Finding,
     Location,
     Severity,
@@ -39,13 +42,25 @@ def _finding(
     )
 
 
-def _result(*findings: Finding) -> AnalysisResult:
+def _result(*findings: Finding, history: FileHistory | None = None) -> AnalysisResult:
     return AnalysisResult(
         source_path=Path("/work/app.py"),
         findings=findings,
         model="gpt-4o-mini",
         usage=USAGE,
+        history=history,
     )
+
+
+HISTORY = FileHistory(
+    recent_commits=4,
+    window_days=90,
+    records=(
+        ChangeRecord(
+            line=2, commit="a1b2c3d", author="A U Thor", changed_on=date(2026, 1, 15)
+        ),
+    ),
+)
 
 
 RENDERERS = [render_plain, render_rich]
@@ -223,3 +238,70 @@ def test_finding_text_is_not_interpreted_as_markup(render: object) -> None:
     output = render(result)  # type: ignore[operator]
 
     assert "[bold red]not markup[/bold red]" in output
+
+
+# --- history, when there is any ---------------------------------------------
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("render", RENDERERS, ids=IDS)
+def test_a_line_carries_what_git_knows_about_it(render: object) -> None:
+    output = render(_result(_finding(line=2), history=HISTORY))  # type: ignore[operator]
+
+    assert "2026-01-15" in output
+    assert "a1b2c3d" in output
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("render", RENDERERS, ids=IDS)
+def test_an_uncommitted_line_says_so_rather_than_naming_someone(
+    render: object,
+) -> None:
+    """Attributing the developer's own unsaved work to a previous author lies."""
+    output = render(_result(_finding(line=9), history=HISTORY))  # type: ignore[operator]
+
+    assert "not committed yet" in output
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("render", RENDERERS, ids=IDS)
+def test_how_much_the_file_has_been_moving_is_stated_with_its_window(
+    render: object,
+) -> None:
+    """A count with no period attached is a number nobody can read."""
+    output = render(_result(_finding(line=2), history=HISTORY))  # type: ignore[operator]
+
+    assert "4 commits in the last 90 days" in output
+
+
+@pytest.mark.unit
+def test_one_commit_is_not_pluralised() -> None:
+    history = FileHistory(recent_commits=1, window_days=90)
+
+    output = render_plain(_result(_finding(line=2), history=history))
+
+    assert "1 commit in the last 90 days" in output
+
+
+@pytest.mark.unit
+def test_no_repository_means_no_annotation_at_all() -> None:
+    """Absent history is silent. An empty label would read as a fact."""
+    output = render_plain(_result(_finding(line=2)))
+
+    assert "history:" not in output
+    assert "commits in the last" not in output
+
+
+@pytest.mark.unit
+def test_a_finding_with_no_line_gets_no_history_note() -> None:
+    """There is no line to look up, so there is nothing honest to print."""
+    output = render_plain(_result(_finding(line=None), history=HISTORY))
+
+    assert "history:" not in output
+
+
+@pytest.mark.unit
+def test_plain_history_output_has_no_escape_codes() -> None:
+    output = render_plain(_result(_finding(line=2), history=HISTORY))
+
+    assert "\x1b[" not in output

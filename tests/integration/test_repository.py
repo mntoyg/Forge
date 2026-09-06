@@ -6,13 +6,22 @@ the tests happen to be running in - that would make the suite pass or fail
 depending on whether the developer had uncommitted work.
 """
 
+from datetime import date
 from pathlib import Path
 
 import git
 import pytest
 
-from forge.domain.errors import NoChangesError, NotARepositoryError, RepositoryError
-from forge.infrastructure.repository import GitRepositoryInspector
+from forge.domain.errors import (
+    NoChangesError,
+    NoHistoryError,
+    NotARepositoryError,
+    RepositoryError,
+)
+from forge.infrastructure.repository import (
+    HISTORY_WINDOW_DAYS,
+    GitRepositoryInspector,
+)
 
 
 @pytest.fixture
@@ -178,5 +187,198 @@ def test_nothing_is_written_while_inspecting(repo: git.Repo) -> None:
     before = (root / "app.py").read_bytes()
 
     _inspect(repo).changed_lines(Path("app.py"))
+
+    assert (root / "app.py").read_bytes() == before
+
+
+# --- what history says ------------------------------------------------------
+
+
+@pytest.mark.integration
+def test_a_committed_line_names_who_last_changed_it(repo: git.Repo) -> None:
+    history = _inspect(repo).history(Path("app.py"), frozenset({2}))
+
+    record = history.at(2)
+
+    assert record is not None
+    assert record.author == "Test"
+    assert record.commit == repo.head.commit.hexsha[:7]
+
+
+@pytest.mark.integration
+def test_only_the_lines_that_were_asked_about_come_back(repo: git.Repo) -> None:
+    """The cost of the annotation stays proportional to the findings."""
+    history = _inspect(repo).history(Path("app.py"), frozenset({1, 3}))
+
+    assert [record.line for record in history.records] == [1, 3]
+
+
+@pytest.mark.integration
+def test_an_uncommitted_line_has_no_record(repo: git.Repo) -> None:
+    """Git can name no commit for it, and naming one anyway would be a lie."""
+    root = Path(str(repo.working_tree_dir))
+    (root / "app.py").write_bytes(b"one = 1\ntwo = MINE\nthree = 3\nfour = 4\n")
+
+    history = _inspect(repo).history(Path("app.py"), frozenset({1, 2}))
+
+    assert history.at(2) is None
+    assert history.at(1) is not None
+
+
+@pytest.mark.integration
+def test_line_numbers_follow_the_working_tree_not_head(repo: git.Repo) -> None:
+    """An uncommitted insertion shifts every line below it.
+
+    Blaming HEAD would annotate the wrong lines for exactly the file this is
+    most often run on: one that has just been edited.
+    """
+    root = Path(str(repo.working_tree_dir))
+    (root / "app.py").write_bytes(
+        b"inserted = 0\none = 1\ntwo = 2\nthree = 3\nfour = 4\n"
+    )
+
+    history = _inspect(repo).history(Path("app.py"), frozenset({1, 2}))
+
+    assert history.at(1) is None
+    assert history.at(2) is not None
+
+
+@pytest.mark.integration
+def test_the_date_is_the_one_the_author_saw(tmp_path: Path) -> None:
+    """Git stores the instant in UTC and the offset beside it.
+
+    01:00 on the 15th in +0700 is still the 14th in UTC. Reporting the 14th
+    would be wrong in the one field a reader uses to judge how long ago
+    something happened.
+    """
+    repository = git.Repo.init(tmp_path)
+    (tmp_path / "app.py").write_bytes(b"one = 1\n")
+    repository.index.add(["app.py"])
+    repository.index.commit(
+        "initial",
+        author=git.Actor("A U Thor", "author@example.invalid"),
+        # The committer is named too. Left out, GitPython invents one from
+        # whatever git config the machine happens to have - the kind of
+        # dependency that makes a suite pass here and fail on a fresh runner.
+        committer=git.Actor("Test", "test@example.invalid"),
+        author_date="2026-01-15 01:00:00 +0700",
+    )
+
+    history = GitRepositoryInspector(tmp_path).history(Path("app.py"), frozenset({1}))
+
+    record = history.at(1)
+    assert record is not None
+    assert record.changed_on == date(2026, 1, 15)
+
+
+@pytest.mark.integration
+def test_a_control_character_in_an_author_name_never_reaches_the_output(
+    tmp_path: Path,
+) -> None:
+    """A name is whatever somebody put in their git config, and it is printed."""
+    repository = git.Repo.init(tmp_path)
+    (tmp_path / "app.py").write_bytes(b"one = 1\n")
+    repository.index.add(["app.py"])
+    repository.index.commit(
+        "initial",
+        author=git.Actor("Bad\x07Name", "bad@example.invalid"),
+        committer=git.Actor("Test", "test@example.invalid"),
+    )
+
+    history = GitRepositoryInspector(tmp_path).history(Path("app.py"), frozenset({1}))
+
+    record = history.at(1)
+    assert record is not None
+    assert record.author == "BadName"
+
+
+# --- how much the file has been moving --------------------------------------
+
+
+@pytest.mark.integration
+def test_recent_commits_counts_what_touched_this_file(repo: git.Repo) -> None:
+    root = Path(str(repo.working_tree_dir))
+    for text_line in (b"one = 2\n", b"one = 3\n"):
+        (root / "app.py").write_bytes(text_line)
+        repo.index.add(["app.py"])
+        repo.index.commit("edit")
+
+    history = _inspect(repo).history(Path("app.py"), frozenset({1}))
+
+    assert history.recent_commits == 3
+
+
+@pytest.mark.integration
+def test_a_commit_to_another_file_is_not_counted(repo: git.Repo) -> None:
+    """Churn is a property of the file being analysed, not of the repository."""
+    root = Path(str(repo.working_tree_dir))
+    (root / "other.py").write_bytes(b"x = 1\n")
+    repo.index.add(["other.py"])
+    repo.index.commit("unrelated")
+
+    history = _inspect(repo).history(Path("app.py"), frozenset({1}))
+
+    assert history.recent_commits == 1
+
+
+@pytest.mark.integration
+def test_the_window_is_reported_alongside_the_count(repo: git.Repo) -> None:
+    """A count with no period attached is a number nobody can read."""
+    history = _inspect(repo).history(Path("app.py"), frozenset({1}))
+
+    assert history.window_days == HISTORY_WINDOW_DAYS
+
+
+# --- when there is no history to give ---------------------------------------
+
+
+@pytest.mark.integration
+def test_an_untracked_file_has_no_history(repo: git.Repo) -> None:
+    """It is not a failure. The caller degrades to showing none."""
+    root = Path(str(repo.working_tree_dir))
+    (root / "brand_new.py").write_bytes(b"a = 1\n")
+
+    with pytest.raises(NoHistoryError, match="never been committed"):
+        _inspect(repo).history(Path("brand_new.py"), frozenset({1}))
+
+
+@pytest.mark.integration
+def test_a_repository_with_no_commits_has_no_history(tmp_path: Path) -> None:
+    repository = git.Repo.init(tmp_path)
+    (tmp_path / "app.py").write_bytes(b"a = 1\n")
+    repository.index.add(["app.py"])
+
+    with pytest.raises(NoHistoryError):
+        GitRepositoryInspector(tmp_path).history(Path("app.py"), frozenset({1}))
+
+
+@pytest.mark.integration
+def test_a_file_outside_the_repository_has_no_history(
+    repo: git.Repo, tmp_path: Path
+) -> None:
+    elsewhere = tmp_path.parent / "stray_history.py"
+    elsewhere.write_bytes(b"a = 1\n")
+
+    with pytest.raises(NoHistoryError):
+        _inspect(repo).history(elsewhere, frozenset({1}))
+
+
+@pytest.mark.integration
+def test_history_outside_a_repository_says_so(tmp_path: Path) -> None:
+    outside = tmp_path / "plain_directory_for_history"
+    outside.mkdir()
+    (outside / "app.py").write_bytes(b"a = 1\n")
+
+    with pytest.raises(NotARepositoryError):
+        GitRepositoryInspector(outside).history(Path("app.py"), frozenset({1}))
+
+
+@pytest.mark.integration
+def test_nothing_is_written_while_reading_history(repo: git.Repo) -> None:
+    """FR-3.7: Forge must not modify any file."""
+    root = Path(str(repo.working_tree_dir))
+    before = (root / "app.py").read_bytes()
+
+    _inspect(repo).history(Path("app.py"), frozenset({1, 2, 3, 4}))
 
     assert (root / "app.py").read_bytes() == before

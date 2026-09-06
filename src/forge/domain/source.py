@@ -10,9 +10,15 @@ of code, made by something that can be wrong - so it carries how serious it
 would be if true (:class:`Severity`) *and* how sure the claim is
 (:class:`Confidence`). Collapsing those two into one number would hide exactly
 the distinction a reader needs.
+
+A :class:`ChangeRecord` sits on the other side of that line. It is a fact from
+version control rather than a claim from a model, and it is a separate type for
+that reason: the output has to be able to say which of the two a reader is
+looking at.
 """
 
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
@@ -136,6 +142,76 @@ class SourceFile:
 
 
 @dataclass(frozen=True, slots=True)
+class ChangeRecord:
+    """When one line was last changed, and by whom.
+
+    Everything here comes from version control, so nothing here is a guess.
+    That is the whole point of the type: a reader deciding how much to trust a
+    finding needs to know which parts of what they are reading were asserted by
+    a model and which were asserted by git.
+
+    A line the working tree has changed but has not committed gets no record at
+    all. Git can name no commit for it, and naming one anyway - the previous
+    author, say - would attribute the developer's own unsaved work to somebody
+    else.
+
+    Raises:
+        ValueError: the record does not identify a real line or a real commit.
+    """
+
+    line: int
+    commit: str
+    author: str
+    changed_on: date
+
+    def __post_init__(self) -> None:
+        if self.line < 1:
+            raise ValueError(f"Line numbers start at 1, got {self.line}.")
+        if not self.commit.strip():
+            raise ValueError("A change record must name the commit it came from.")
+
+
+@dataclass(frozen=True, slots=True)
+class FileHistory:
+    """What version control knows about the file that was analysed.
+
+    Two different things, because they answer two different questions. The
+    records say when each cited line was last touched; ``recent_commits`` says
+    how much the file as a whole has been moving lately. A line last changed a
+    year ago in a file nobody edits is a different risk from the same line in a
+    file that changed nine times this quarter.
+
+    The window is carried alongside the count rather than assumed by the
+    reader, because "4 commits" means nothing without the period it covers.
+
+    Raises:
+        ValueError: the counts describe a period or a total that cannot exist.
+    """
+
+    recent_commits: int
+    window_days: int
+    records: tuple[ChangeRecord, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.recent_commits < 0:
+            raise ValueError(
+                f"A commit count cannot be negative, got {self.recent_commits}."
+            )
+        if self.window_days < 1:
+            raise ValueError(
+                f"A history window must cover at least a day, got {self.window_days}."
+            )
+
+    def at(self, line: int) -> ChangeRecord | None:
+        """The record for ``line``, or ``None`` if git can name no commit.
+
+        ``None`` is a real answer, not a lookup failure: it is what an
+        uncommitted line looks like.
+        """
+        return next((record for record in self.records if record.line == line), None)
+
+
+@dataclass(frozen=True, slots=True)
 class AnalysisResult:
     """Everything one `forge debug` run produced.
 
@@ -148,6 +224,13 @@ class AnalysisResult:
     findings: tuple[Finding, ...]
     model: str
     usage: TokenUsage
+    history: FileHistory | None = None
+    """What version control knows about the cited lines, when it knows anything.
+
+    Optional because it is context around the answer rather than part of it.
+    Outside a repository, or for a file git has never seen, there is nothing to
+    say - and a result with no history is still a complete result.
+    """
 
     @property
     def has_findings(self) -> bool:
@@ -203,8 +286,8 @@ class RepositoryInspector(Protocol):
 
     Deliberately narrow, for the same reason as
     :class:`forge.domain.ai.AIProvider`: it expresses what Forge needs, not
-    what a version control system offers. Blame, log, and branch state are not
-    here because nothing needs them yet.
+    what a version control system offers. Branch state, tags, and remotes are
+    not here because nothing needs them yet.
     """
 
     def changed_lines(self, path: Path) -> frozenset[int]:
@@ -221,5 +304,23 @@ class RepositoryInspector(Protocol):
         Raises:
             NotARepositoryError: there is no repository here.
             NoChangesError: the file has no uncommitted changes.
+        """
+        ...
+
+    def history(self, path: Path, lines: frozenset[int]) -> FileHistory:
+        """Return what version control knows about ``lines`` of ``path``.
+
+        ``lines`` are the lines somebody actually cares about - the ones
+        findings cite. Asking for those rather than for the whole file keeps
+        the cost proportional to the answer being annotated.
+
+        The line numbers are the ones in the file on disk, uncommitted edits
+        included, so they mean the same thing as a finding's location. A line
+        with no commit behind it is simply absent from the result.
+
+        Raises:
+            NotARepositoryError: there is no repository here.
+            NoHistoryError: the file has no history to report - git has never
+                seen it, or it lies outside the repository.
         """
         ...

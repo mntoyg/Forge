@@ -13,7 +13,8 @@ from forge.domain.ai import (
     CompletionResponse,
     TokenUsage,
 )
-from forge.domain.source import SourceFile
+from forge.domain.errors import NoHistoryError
+from forge.domain.source import FileHistory, SourceFile
 
 DEFAULT_RESPONSE = CompletionResponse(
     text="A canned answer.",
@@ -100,14 +101,26 @@ class FakeRepositoryInspector:
         *,
         changed: frozenset[int] | None = None,
         error: Exception | None = None,
+        history: FileHistory | None = None,
+        history_error: Exception | None = None,
     ) -> None:
         if changed is not None and error is not None:
             raise ValueError(
                 "A FakeRepositoryInspector either answers or fails, not both."
             )
+        if history is not None and history_error is not None:
+            raise ValueError(
+                "A FakeRepositoryInspector either has history or fails, not both."
+            )
         self._changed = changed if changed is not None else frozenset({2})
         self._error = error
+        self._history = history
+        # Having no history is the default because it is the honest answer for
+        # a made-up path in a temporary directory, and because it is the answer
+        # every test that is not about history should be exercising.
+        self._history_error = history_error or NoHistoryError("no history here")
         self.paths: list[Path] = []
+        self.history_requests: list[tuple[Path, frozenset[int]]] = []
 
     def changed_lines(self, path: Path) -> frozenset[int]:
         """Implement RepositoryInspector.changed_lines."""
@@ -115,6 +128,13 @@ class FakeRepositoryInspector:
         if self._error is not None:
             raise self._error
         return self._changed
+
+    def history(self, path: Path, lines: frozenset[int]) -> FileHistory:
+        """Implement RepositoryInspector.history."""
+        self.history_requests.append((path, lines))
+        if self._history is None:
+            raise self._history_error
+        return self._history
 
 
 def findings_json(*findings: object, key: str = "findings") -> str:

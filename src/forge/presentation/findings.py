@@ -15,7 +15,13 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from forge.domain.source import AnalysisResult, Confidence, Finding, Severity
+from forge.domain.source import (
+    AnalysisResult,
+    Confidence,
+    FileHistory,
+    Finding,
+    Severity,
+)
 
 _SEVERITY_STYLE = {
     Severity.HIGH: "bold red",
@@ -35,11 +41,14 @@ def render_plain(result: AnalysisResult) -> str:
     if not result.has_findings:
         return f"{result.source_path.name}: no findings.\n{_footer(result)}"
 
-    lines = [f"{result.source_path.name}: {_count(result)}", ""]
+    lines = [f"{result.source_path.name}: {_count(result)}{_churn(result.history)}", ""]
     for finding in result.by_severity():
         lines.append(f"{_prefix(finding)} {finding.summary}")
         lines.append(f"    {finding.detail}")
         lines.append(f"    confidence: {finding.confidence.value}")
+        note = _history_note(result.history, finding)
+        if note is not None:
+            lines.append(f"    {note}")
         lines.append("")
     lines.append(_footer(result))
     return "\n".join(lines)
@@ -73,7 +82,10 @@ def render_rich(result: AnalysisResult, *, width: int | None = None) -> str:
         return buffer.getvalue()
 
     console.print(
-        Text.assemble((result.source_path.name, "bold"), f": {_count(result)}")
+        Text.assemble(
+            (result.source_path.name, "bold"),
+            f": {_count(result)}{_churn(result.history)}",
+        )
     )
     console.print()
 
@@ -89,7 +101,7 @@ def render_rich(result: AnalysisResult, *, width: int | None = None) -> str:
                 style=_SEVERITY_STYLE[finding.severity],
             ),
             str(finding.location.line) if finding.location else "-",
-            _finding_text(finding),
+            _finding_text(finding, result.history),
         )
 
     console.print(table)
@@ -97,8 +109,8 @@ def render_rich(result: AnalysisResult, *, width: int | None = None) -> str:
     return buffer.getvalue()
 
 
-def _finding_text(finding: Finding) -> Text:
-    return Text.assemble(
+def _finding_text(finding: Finding, history: FileHistory | None) -> Text:
+    text = Text.assemble(
         (finding.summary, "bold"),
         "\n",
         finding.detail,
@@ -108,6 +120,50 @@ def _finding_text(finding: Finding) -> Text:
             _confidence_style(finding.confidence),
         ),
     )
+    note = _history_note(history, finding)
+    if note is not None:
+        text.append("\n")
+        text.append(note, style="dim")
+    return text
+
+
+def _history_note(history: FileHistory | None, finding: Finding) -> str | None:
+    """One line of version-control fact about where this finding points.
+
+    ``None`` when there is nothing honest to say: no repository was reachable,
+    or the finding cites no line to look up. A line that exists but has no
+    commit behind it is a different answer, not a missing one - the developer
+    wrote it and has not committed it - so it says so.
+
+    The date is written out rather than rendered as "3 days ago". Relative time
+    needs a clock, which would make this function's output depend on when it
+    ran; a date is the same fact and stays true in a log read next month.
+    """
+    if history is None or finding.location is None:
+        return None
+
+    record = history.at(finding.location.line)
+    if record is None:
+        return "history: not committed yet"
+    return (
+        f"history: last changed {record.changed_on.isoformat()} "
+        f"by {record.author} ({record.commit})"
+    )
+
+
+def _churn(history: FileHistory | None) -> str:
+    """How much the whole file has been moving, as a note on the header.
+
+    Beside the findings rather than inside one, because it is a property of the
+    file: a line last touched a year ago in a file nobody edits is a different
+    risk from the same line in a file that changed nine times this quarter.
+    """
+    if history is None:
+        return ""
+
+    commits = history.recent_commits
+    plural = "" if commits == 1 else "s"
+    return f" ({commits} commit{plural} in the last {history.window_days} days)"
 
 
 def _confidence_style(confidence: Confidence) -> str:

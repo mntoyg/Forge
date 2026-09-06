@@ -91,6 +91,16 @@ class NoChangesError(RepositoryError):
     """
 
 
+class NoHistoryError(RepositoryError):
+    """The file has no history for the repository to report.
+
+    Git has never seen it, or it sits outside the repository. Unlike its
+    siblings this one is not normally shown to a user: history annotates an
+    analysis that has already succeeded, so the caller degrades to showing none
+    rather than failing a run that worked.
+    """
+
+
 class ProviderError(ForgeError):
     """The AI provider could not be used successfully.
 

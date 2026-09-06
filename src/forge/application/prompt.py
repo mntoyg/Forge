@@ -85,10 +85,16 @@ def build_request(
     file is still sent, so the model can see the code around the edit, but the
     edit is marked and the instructions narrow the scope to it. See ADR-0008.
 
-    Temperature is pinned to 0. This is an analysis task, not a creative one:
-    the same file should produce the same answer twice, and a user paying per
-    call should not need to run it three times to see whether a finding was
-    real.
+    Temperature is pinned to 0. This is an analysis task, not a creative one,
+    and a user paying per call should not want the spread a higher temperature
+    buys.
+
+    It does not make the answer reproducible, and this docstring used to say it
+    did. The same file sent twice, prompt identical at 846 input tokens both
+    times, came back with four findings and then three - and cited different
+    lines for the ones it repeated. Temperature 0 narrows the spread; it is not
+    a guarantee any provider makes. Anything that needs the same answer twice
+    needs caching, not a temperature.
     """
     system = SYSTEM_PROMPT + (CHANGE_INSTRUCTION if changed else "")
     return CompletionRequest(

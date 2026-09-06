@@ -10,7 +10,14 @@ from pathlib import Path
 from forge.application.parsing import parse_findings
 from forge.application.prompt import build_request
 from forge.domain.ai import AIProvider
-from forge.domain.source import AnalysisResult, RepositoryInspector, SourceReader
+from forge.domain.errors import RepositoryError
+from forge.domain.source import (
+    AnalysisResult,
+    FileHistory,
+    Finding,
+    RepositoryInspector,
+    SourceReader,
+)
 
 
 class AnalyzeSourceFile:
@@ -49,6 +56,10 @@ class AnalyzeSourceFile:
         into an exit code, and swallowing them to return an empty result would
         report "no problems found" for a run that never happened.
 
+        Findings that cite a line are annotated with what git knows about that
+        line, when there is a repository to ask. That lookup is best effort:
+        see :meth:`_history`.
+
         Raises:
             SourceError: the file cannot be used as input.
             RepositoryError: ``changes_only`` was asked for and cannot be
@@ -68,7 +79,34 @@ class AnalyzeSourceFile:
             findings=findings,
             model=response.model,
             usage=response.usage,
+            history=self._history(path, findings),
         )
+
+    def _history(self, path: Path, findings: tuple[Finding, ...]) -> FileHistory | None:
+        """What version control knows about the lines these findings cite.
+
+        Best effort, deliberately. History is context around an answer that has
+        already been produced and paid for, so a file outside version control -
+        or git failing for any reason of its own - must not turn a completed
+        analysis into an error. Every repository failure here becomes "no
+        history", which is what the renderer is built to expect.
+
+        Nothing is asked when no finding cites a line: the annotation would
+        have nowhere to go, and the call would be spent for nothing.
+        """
+        if self._inspector is None:
+            return None
+
+        lines = frozenset(
+            finding.location.line for finding in findings if finding.location
+        )
+        if not lines:
+            return None
+
+        try:
+            return self._inspector.history(path, lines)
+        except RepositoryError:
+            return None
 
     def _changed_lines(self, path: Path) -> frozenset[int]:
         if self._inspector is None:

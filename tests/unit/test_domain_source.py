@@ -1,5 +1,6 @@
 """The source and finding value objects enforce their own invariants."""
 
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -7,7 +8,9 @@ import pytest
 from forge.domain.ai import TokenUsage
 from forge.domain.source import (
     AnalysisResult,
+    ChangeRecord,
     Confidence,
+    FileHistory,
     Finding,
     Location,
     Severity,
@@ -208,3 +211,74 @@ def test_a_result_carries_the_model_and_what_it_cost() -> None:
 
     assert result.model == "gpt-4o-mini-2024-07-18"
     assert result.usage.total_tokens == 1500
+
+
+# --- history ----------------------------------------------------------------
+
+
+@pytest.mark.unit
+def test_a_change_record_must_name_the_commit_it_came_from() -> None:
+    """A record with no commit is a claim, and claims are what Finding is for."""
+    with pytest.raises(ValueError, match="commit"):
+        ChangeRecord(
+            line=3, commit="   ", author="A U Thor", changed_on=date(2026, 1, 15)
+        )
+
+
+@pytest.mark.unit
+def test_a_change_record_must_point_at_a_real_line() -> None:
+    with pytest.raises(ValueError, match="Line numbers start at 1"):
+        ChangeRecord(
+            line=0, commit="a1b2c3d", author="A U Thor", changed_on=date(2026, 1, 15)
+        )
+
+
+@pytest.mark.unit
+def test_history_finds_the_record_for_a_line() -> None:
+    history = FileHistory(
+        recent_commits=4,
+        window_days=90,
+        records=(
+            ChangeRecord(
+                line=2,
+                commit="a1b2c3d",
+                author="A U Thor",
+                changed_on=date(2026, 1, 15),
+            ),
+        ),
+    )
+
+    record = history.at(2)
+
+    assert record is not None
+    assert record.commit == "a1b2c3d"
+
+
+@pytest.mark.unit
+def test_a_line_with_no_record_is_an_answer_not_a_failure() -> None:
+    """That is what an uncommitted line looks like, and it is normal."""
+    history = FileHistory(recent_commits=1, window_days=90)
+
+    assert history.at(7) is None
+
+
+@pytest.mark.unit
+def test_a_window_must_cover_at_least_a_day() -> None:
+    with pytest.raises(ValueError, match="at least a day"):
+        FileHistory(recent_commits=0, window_days=0)
+
+
+@pytest.mark.unit
+def test_a_commit_count_cannot_be_negative() -> None:
+    with pytest.raises(ValueError, match="negative"):
+        FileHistory(recent_commits=-1, window_days=90)
+
+
+@pytest.mark.unit
+def test_a_result_with_no_history_is_still_a_complete_result() -> None:
+    """Outside a repository there is nothing to say, and that is not a failure."""
+    result = AnalysisResult(
+        source_path=Path("a.py"), findings=(), model="m", usage=USAGE
+    )
+
+    assert result.history is None

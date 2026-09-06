@@ -11,6 +11,15 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Added
 
+- **Line history beside each finding** - when the file is in a repository, a
+  finding that cites a line now says when that line last changed and by whom,
+  and the header says how many commits touched the file in the last 90 days. A
+  line you have edited but not committed says so rather than naming the
+  previous author.
+- ADR-0009: history annotates the answer and is never put in the prompt. It
+  costs no tokens, a git fact stays visibly separate from a model claim, and a
+  repository that cannot answer leaves the findings untouched rather than
+  failing the run.
 - **`forge debug <file> --diff`** - review only the lines changed since the
   last commit. Staged and unstaged both count, and a newly created file counts
   entirely as new.

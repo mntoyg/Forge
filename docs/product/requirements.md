@@ -40,8 +40,6 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 
 ## FR-3 - `forge debug` (MVP capability)
 
-**Not implemented. Design required before any code.**
-
 | ID | Requirement | Status |
 | --- | --- | --- |
 | FR-3.1 | `forge debug <file>` MUST accept a path to a single source file. | Done |
@@ -54,6 +52,7 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 | FR-3.8 | It MUST NOT execute the analysed file. | Done |
 | FR-3.9 | It MUST exit non-zero when analysis could not be completed. | Done |
 | FR-3.10 | It MUST report provider failures (timeout, rate limit, auth) as distinct, actionable messages. | Done |
+| FR-3.11 | Where version control can answer, a finding SHOULD state when its line last changed and by whom. It MUST NOT fail the run when it cannot. | Done |
 
 ## FR-4 - Output
 

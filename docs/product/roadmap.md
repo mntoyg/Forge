@@ -90,7 +90,7 @@ holds that an exit code without a test is an intention, not a contract.
       Deferred deliberately: one provider call per changed file multiplies
       cost, and that deserves its own decision rather than being a silent
       consequence of ADR-0008.
-- [ ] Blame and recent-history context for a finding
+- [x] Blame and recent-history context for a finding (ADR-0009)
 - [x] Graceful behaviour outside a git repository
 
 ---

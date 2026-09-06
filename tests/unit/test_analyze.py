@@ -6,6 +6,7 @@ worth testing exhaustively here rather than end to end.
 """
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -13,13 +14,19 @@ import pytest
 from forge.application.analyze import AnalyzeSourceFile
 from forge.domain.ai import CompletionResponse, Role, TokenUsage
 from forge.domain.errors import (
+    NoHistoryError,
+    NotARepositoryError,
     ProviderRateLimitError,
     ProviderResponseError,
     SourceNotFoundError,
     SourceTooLargeError,
 )
-from forge.domain.source import Severity, SourceFile
-from tests.support.fakes import FakeProvider, FakeSourceReader
+from forge.domain.source import ChangeRecord, FileHistory, Severity, SourceFile
+from tests.support.fakes import (
+    FakeProvider,
+    FakeRepositoryInspector,
+    FakeSourceReader,
+)
 
 SOURCE = SourceFile(path=Path("app.py"), content="a = 1\nb = 2\nc = 3\n")
 
@@ -150,3 +157,97 @@ def test_the_use_case_calls_the_provider_once() -> None:
     AnalyzeSourceFile(FakeSourceReader(source=SOURCE), provider)(Path("app.py"))
 
     assert provider.call_count == 1
+
+
+# --- history annotates an answer that has already been paid for -------------
+
+
+HISTORY = FileHistory(
+    recent_commits=4,
+    window_days=90,
+    records=(
+        ChangeRecord(
+            line=2, commit="a1b2c3d", author="A U Thor", changed_on=date(2026, 1, 15)
+        ),
+    ),
+)
+
+
+@pytest.mark.unit
+def test_a_finding_is_annotated_with_what_git_knows_about_its_line() -> None:
+    inspector = FakeRepositoryInspector(history=HISTORY)
+    analyze = AnalyzeSourceFile(
+        FakeSourceReader(source=SOURCE), _provider(FINDING), inspector
+    )
+
+    result = analyze(Path("app.py"))
+
+    assert result.history is not None
+    assert result.history.at(2) is not None
+
+
+@pytest.mark.unit
+def test_only_the_lines_findings_cite_are_looked_up() -> None:
+    """Asking about the whole file would cost more to say the same thing."""
+    inspector = FakeRepositoryInspector(history=HISTORY)
+    analyze = AnalyzeSourceFile(
+        FakeSourceReader(source=SOURCE), _provider(FINDING), inspector
+    )
+
+    analyze(Path("app.py"))
+
+    assert inspector.history_requests == [(Path("app.py"), frozenset({2}))]
+
+
+@pytest.mark.unit
+def test_nothing_is_asked_when_no_finding_cites_a_line() -> None:
+    """A clean file has nothing to annotate, so the repository is left alone."""
+    inspector = FakeRepositoryInspector(history=HISTORY)
+    analyze = AnalyzeSourceFile(FakeSourceReader(source=SOURCE), _provider(), inspector)
+
+    result = analyze(Path("app.py"))
+
+    assert inspector.history_requests == []
+    assert result.history is None
+
+
+@pytest.mark.unit
+def test_a_finding_with_no_line_is_not_looked_up() -> None:
+    unlocatable = FINDING | {"line": None}
+    inspector = FakeRepositoryInspector(history=HISTORY)
+    analyze = AnalyzeSourceFile(
+        FakeSourceReader(source=SOURCE), _provider(unlocatable), inspector
+    )
+
+    analyze(Path("app.py"))
+
+    assert inspector.history_requests == []
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "error",
+    [NotARepositoryError("no repository"), NoHistoryError("never committed")],
+    ids=["no repository", "no history"],
+)
+def test_a_repository_that_cannot_answer_does_not_fail_the_analysis(
+    error: Exception,
+) -> None:
+    """The findings were produced and paid for before history was asked about."""
+    analyze = AnalyzeSourceFile(
+        FakeSourceReader(source=SOURCE),
+        _provider(FINDING),
+        FakeRepositoryInspector(history_error=error),
+    )
+
+    result = analyze(Path("app.py"))
+
+    assert len(result.findings) == 1
+    assert result.history is None
+
+
+@pytest.mark.unit
+def test_without_a_repository_wired_in_there_is_simply_no_history() -> None:
+    analyze = AnalyzeSourceFile(FakeSourceReader(source=SOURCE), _provider(FINDING))
+
+    assert analyze(Path("app.py")).history is None

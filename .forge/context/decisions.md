@@ -13,6 +13,7 @@
 | [0006](../../docs/architecture/decisions/0006-exit-code-contract.md) | Exit code contract | Accepted | Findings never change the exit code; mapping lives in `cli/` only. |
 | [0007](../../docs/architecture/decisions/0007-structured-findings-by-prompt.md) | Structured findings by prompt | Accepted | Do not widen `AIProvider` with a response format; parse defensively instead. |
 | [0008](../../docs/architecture/decisions/0008-marked-file-for-change-analysis.md) | Marked file for change analysis | Accepted | `--diff` sends the whole file with changed lines marked, never a raw diff. |
+| [0009](../../docs/architecture/decisions/0009-history-annotates-the-answer.md) | History annotates the answer | Accepted | Git history is rendered beside a finding, never put in the prompt. |
 
 ## How to use these
 
