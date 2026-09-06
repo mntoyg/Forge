@@ -3,8 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+  # Every pull request, whatever it targets. Filtering on `branches: [main]`
+  # silently skipped any pull request stacked on another branch - the gate
+  # reported nothing at all, which reads exactly like a gate that passed.
   pull_request:
-    branches: [main]
 
 # A new push to the same branch cancels the previous run.
 concurrency:
@@ -15,8 +17,11 @@ permissions:
   contents: read
 
 jobs:
+  # Formatting, lint, and types are decided by configuration, not by the
+  # operating system. Running them three times would spend three times the
+  # minutes to reach the same answer.
   quality:
-    name: Format, lint, types, tests
+    name: Format, lint, types
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -35,8 +40,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-groups --locked
 
-      # The four checks below mirror scripts/check.py exactly. If you change
-      # one, change the other in the same commit.
+      # These three, plus the tests job below, mirror scripts/check.py exactly.
+      # If you change one, change the other in the same commit.
       - name: Format check (black)
         run: uv run black --check .
 
@@ -46,5 +51,45 @@ jobs:
       - name: Type check (mypy)
         run: uv run mypy
 
-      - name: Unit and end-to-end tests (pytest)
+  # The tests are the part an operating system can change: paths, line
+  # endings, symlink permissions, and what git does with all three. NFR-3.3
+  # says Forge must run on Linux, macOS, and Windows, and a requirement only
+  # one platform ever verifies is an intention rather than a requirement.
+  tests:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    strategy:
+      # One platform failing must not hide the answer on the other two. That
+      # difference is usually the whole diagnosis.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --all-groups --locked
+
+      # Some tests build real repositories and commit to them. A runner has no
+      # git identity by default; GitPython invents one rather than failing, and
+      # a suite that depends on that fallback is a suite that breaks the day it
+      # changes.
+      - name: Give git an identity
+        run: |
+          git config --global user.name "Forge CI"
+          git config --global user.email "ci@example.invalid"
+
+      - name: Unit, integration, and end-to-end tests (pytest)
         run: uv run pytest
