@@ -404,3 +404,39 @@ def test_outside_a_repository_the_findings_still_arrive() -> None:
     assert result.exit_code == ExitCode.OK
     assert "Divides without guarding zero" in result.stdout
     assert "history:" not in result.stdout
+
+
+# --- a result that may not cover the whole file -----------------------------
+
+
+def _analyzing_a_long_file(*findings: object) -> Callable[..., object]:
+    """An analysis whose input was large enough to doubt. See ADR-0011."""
+    return AnalyzeSourceFile(
+        FakeSourceReader(source=SOURCE),
+        FakeProvider(
+            response=CompletionResponse(
+                text=json.dumps({"findings": list(findings)}),
+                model="fake-model",
+                usage=TokenUsage(input_tokens=44_295, output_tokens=8),
+            )
+        ),
+    )
+
+
+@pytest.mark.e2e
+def test_a_long_run_says_the_answer_may_only_cover_the_start() -> None:
+    """Otherwise "no findings" and "stopped reading" are the same output."""
+    result = runner.invoke(_app(_analyzing_a_long_file()), ["app.py", "--plain"])
+
+    assert result.exit_code == ExitCode.OK
+    assert "no findings" in result.output
+    assert "44,295" in result.output
+    assert "end of a file" in result.output
+
+
+@pytest.mark.e2e
+def test_an_ordinary_run_carries_no_caveat() -> None:
+    """Most files are short, and a caveat on all of them would be read by none."""
+    result = runner.invoke(_app(_analyzing(*FINDINGS)), ["app.py", "--plain"])
+
+    assert "end of a file" not in result.output

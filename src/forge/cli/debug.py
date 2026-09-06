@@ -39,6 +39,28 @@ Named rather than inlined so a test can assert on the source string instead of
 on rendered terminal output, which wraps to whatever width happens to be there.
 """
 
+RELIABLE_INPUT_TOKENS = 4_000
+"""Above this, a result may cover only the start of the file. See ADR-0011.
+
+Measured against gpt-4o-mini with one unguarded division appended to the end of
+real files: reported at 3,927 input tokens, and missed at 10,225, 23,359 and
+44,295. The same defect at line 6 of the 10,225-token file was found
+immediately, so this is attention running out rather than a size limit being
+hit - which is why the warning talks about the end of the file.
+
+It is deliberately the last size that was *seen to work*, not the first that
+failed. Somewhere in between the tool stops being trustworthy and nothing says
+where; promising the failing end of that gap would be promising something never
+observed.
+"""
+
+PARTIAL = (
+    "{name} sent {tokens:,} tokens. Above roughly {limit:,} the model has been "
+    "seen to stop reporting defects near the end of a file, so read this as an "
+    "opinion on the start of {name} rather than on all of it."
+)
+"""The caveat printed when a result may not cover the whole file."""
+
 HELP = """\
 Analyse a source file and report likely defects.
 
@@ -87,7 +109,39 @@ def debug(
 
     use_plain = plain or not sys.stdout.isatty()
     print(render_plain(result) if use_plain else render_rich(result), end="")
+
+    partial = _size_warning(result)
+    if partial is not None:
+        # Same stream as the errors, and after the result rather than before
+        # it: a caveat is read last, and a piped stdout still carries results
+        # and nothing else. stdout is flushed first because it is block
+        # buffered when piped, and the caveat would otherwise overtake the
+        # result it qualifies.
+        sys.stdout.flush()
+        print(f"forge: {partial}", file=sys.stderr)
+
     return ExitCode.OK
+
+
+def _size_warning(result: AnalysisResult) -> str | None:
+    """Say so when the result may only cover the start of the file.
+
+    Judged on input tokens rather than on bytes, because tokens are what the
+    model actually had to read, and because the provider counts them for us -
+    the number is measured rather than estimated.
+
+    Not conditional on whether anything was found. The run that missed the
+    injected defect in a 1,922-line file still returned two findings, and a
+    partial review is partial either way. See ADR-0011.
+    """
+    if result.usage.input_tokens <= RELIABLE_INPUT_TOKENS:
+        return None
+
+    return PARTIAL.format(
+        name=result.source_path.name,
+        tokens=result.usage.input_tokens,
+        limit=RELIABLE_INPUT_TOKENS,
+    )
 
 
 def _progress_console(plain: bool) -> Console | None:

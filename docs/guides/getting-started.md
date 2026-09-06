@@ -121,6 +121,28 @@ inventing one would send you to the wrong place. The same rule applies when the
 model cites a line that does not exist in your file - Forge drops the location
 rather than guessing a nearby one.
 
+### When the answer may be partial
+
+On a file above roughly 4,000 input tokens, the run ends with a line like this
+on stderr:
+
+```text
+forge: core.py sent 44,221 tokens. Above roughly 4,000 the model has been seen
+to stop reporting defects near the end of a file, so read this as an opinion on
+the start of core.py rather than on all of it.
+```
+
+It is not an error, and the findings above it are still findings. It is there
+because the failure it warns about is silent: the model reads the beginning of
+a long file and stops, and `no findings` is exactly what a clean file returns.
+The measurement behind the number, and why the number is the last size that
+*worked* rather than the first that failed, is in
+[ADR-0011](../architecture/decisions/0011-warn-when-a-result-may-be-partial.md).
+
+Until Forge reviews a long file in sections, the practical answer is to point
+it at the part you care about - a single module rather than a whole file of
+them.
+
 ### What git adds
 
 Inside a repository, a finding that cites a line carries one more line, and it

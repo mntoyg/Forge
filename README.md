@@ -87,6 +87,12 @@ forge debug src/app.py --diff
 The whole file is still sent, because a change cannot be judged without the
 code around it - so `--diff` narrows the answer, not the bill.
 
+On a long file, Forge says when the answer may only cover its start. The
+model reads the beginning of a long file and stops, and "no findings" is what
+that looks like from outside - so above roughly 4,000 input tokens the run
+carries a caveat rather than an implication that the whole file was read
+([ADR-0011](docs/architecture/decisions/0011-warn-when-a-result-may-be-partial.md)).
+
 Forge never modifies the file and never runs it.
 
 Output drops to plain text automatically when stdout is not a terminal, so a

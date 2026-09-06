@@ -15,6 +15,7 @@
 | [0008](../../docs/architecture/decisions/0008-marked-file-for-change-analysis.md) | Marked file for change analysis | Accepted | `--diff` sends the whole file with changed lines marked, never a raw diff. |
 | [0009](../../docs/architecture/decisions/0009-history-annotates-the-answer.md) | History annotates the answer | Accepted | Git history is rendered beside a finding, never put in the prompt. |
 | [0010](../../docs/architecture/decisions/0010-remove-httpx-dependency.md) | Remove httpx as a declared dependency | Accepted | Forge declares no HTTP dependency. Adding one arrives with the code that calls it. |
+| [0011](../../docs/architecture/decisions/0011-warn-when-a-result-may-be-partial.md) | Warn when a result may be partial | Accepted | Above ~4,000 input tokens the run says so. Do not silence it; fix it by splitting the file. |
 
 ## How to use these
 

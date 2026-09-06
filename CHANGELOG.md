@@ -9,6 +9,16 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## [Unreleased]
 
+### Added
+
+- **A caveat when a result may only cover the start of a file** (ADR-0011).
+  Measured against gpt-4o-mini: one unguarded division is reported when it sits
+  at 3,927 input tokens and missed at 10,225, 23,359 and 44,295 - while the
+  same defect at line 6 of that 10,225-token file is found immediately. The
+  model reads the beginning of a long file and stops, and "no findings" is what
+  that silence looks like. Above roughly 4,000 input tokens Forge now says so,
+  on stderr, after the result.
+
 ### Fixed
 
 - **A file git ignores no longer crashes `forge debug`.** An ignored file is

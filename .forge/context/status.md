@@ -32,6 +32,7 @@ verification - correct it or delete it instead.
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
 | Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
+| A long run says so rather than implying it read everything | ADR-0011: above 4,000 input tokens the result carries a caveat on stderr |
 | A defect at the end of a long file is not reported | Live: one unguarded division, found at line 6 of an 877-line file, is missed when the same function is appended to the end of that same file. Same size, same defect, same model |
 | Findings stop somewhere above ~800 lines | Live, gpt-4o-mini, one injected defect at the end: found at 334 lines (3,927 in), missed at 877 (10,225), 1,922 (23,359) and 3,807 (44,295) |
 | The same file can answer differently twice | Live, same file at temperature 0, identical 846-token prompt: 4 findings (354 out), then 3 (288 out), citing different lines. Temperature 0 is not determinism |
@@ -51,16 +52,17 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Decide what to do about long files, before `0.1.0`.** Measured above:
-   the model reads the start of a long file and stops, and "no findings" is
-   what silence looks like. `FORGE_MAX_FILE_BYTES` defaults to 200,000 - about
-   twenty times past where the tool was last seen working. `SourceTooLargeError`
-   already says why truncation is unacceptable: "analysing the first half of a
-   file and reporting on it as if it were whole produces confident nonsense".
-   That is now what the *model* does, quietly, inside a limit we chose. Refuse,
-   warn, or split the file across calls - each needs an ADR, and shipping none
-   of them ships a tool that under-reports without saying so.
-2. **Decide about the repository-wide sweep** - `forge debug --diff` with no
+1. **Cut `0.1.0`.** Everything the release was waiting on has landed. What
+   remains is mechanical and written down in `.forge/workflows/release.md`:
+   the version in two files, a dated changelog section, `scripts/release.py`,
+   then a tag. The repository is still private, and the README, `pyproject.toml`
+   and the vision all call the project open-source - that gap is a decision for
+   a human, not a step in the release.
+2. **Review a long file in sections.** ADR-0011 warns; it does not fix. The
+   warning must not be allowed to become the permanent answer, and the work
+   that replaces it needs the same decision the sweep is waiting on, because
+   both multiply provider calls.
+3. **Decide about the repository-wide sweep** - `forge debug --diff` with no
    file, the last Phase 3 item. Deferred deliberately: one provider call per
    changed file multiplies cost, and that deserves its own decision rather
    than arriving as a silent consequence of ADR-0008.
@@ -68,9 +70,6 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - **Nothing is blocked right now.**
-- ADR-0009 is recorded as `Accepted` because the choice it records was made in
-  session, not by the agent that wrote it. A reviewer who disagrees should say
-  so before it merges.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
 - Merging is a human decision. Agents open pull requests; a person approves.

@@ -62,6 +62,7 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 | FR-4.2 | Output MUST degrade to plain text when stdout is not a TTY. | Done |
 | FR-4.3 | Errors MUST go to stderr; results MUST go to stdout. | Done |
 | FR-4.4 | A machine-readable output mode SHOULD exist for scripting. | Deferred |
+| FR-4.5 | Output MUST say when a result may not cover the whole file. | Done |
 
 ## NFR-1 - Quality
 
