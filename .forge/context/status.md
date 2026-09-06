@@ -32,6 +32,8 @@ verification - correct it or delete it instead.
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
 | Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
+| A defect at the end of a long file is not reported | Live: one unguarded division, found at line 6 of an 877-line file, is missed when the same function is appended to the end of that same file. Same size, same defect, same model |
+| Findings stop somewhere above ~800 lines | Live, gpt-4o-mini, one injected defect at the end: found at 334 lines (3,927 in), missed at 877 (10,225), 1,922 (23,359) and 3,807 (44,295) |
 | The same file can answer differently twice | Live, same file at temperature 0, identical 846-token prompt: 4 findings (354 out), then 3 (288 out), citing different lines. Temperature 0 is not determinism |
 | `forge debug --diff` reports only changed lines | Appended a bug to a file with two known older bugs; only the new one was reported |
 | `--diff` costs *more* input, less output | 775 in / 88 out, against 660 in / 235 out for the same file whole. ADR-0008 says the saving is focus, not price |
@@ -49,11 +51,15 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **One piece of pre-`0.1.0` evidence is missing: a large file.** The
-   control case and the non-Python file have now been run live and behaved.
-   Nothing has been run that approaches the size limit, where cost,
-   truncation, and a model's attention across a long file all stop being
-   theoretical.
+1. **Decide what to do about long files, before `0.1.0`.** Measured above:
+   the model reads the start of a long file and stops, and "no findings" is
+   what silence looks like. `FORGE_MAX_FILE_BYTES` defaults to 200,000 - about
+   twenty times past where the tool was last seen working. `SourceTooLargeError`
+   already says why truncation is unacceptable: "analysing the first half of a
+   file and reporting on it as if it were whole produces confident nonsense".
+   That is now what the *model* does, quietly, inside a limit we chose. Refuse,
+   warn, or split the file across calls - each needs an ADR, and shipping none
+   of them ships a tool that under-reports without saying so.
 2. **Decide about the repository-wide sweep** - `forge debug --diff` with no
    file, the last Phase 3 item. Deferred deliberately: one provider call per
    changed file multiplies cost, and that deserves its own decision rather
@@ -76,6 +82,11 @@ Each of these cost real time once. They are here so it happens only once.
 - **`git diff` says nothing about an untracked file.** A file the user just
   wrote would look unchanged - the worst possible answer from the command that
   exists to review new work. `repository.py` special-cases it.
+- **A git-ignored file is not in `untracked_files`.** git leaves it out of
+  that list entirely, so a check for "untracked" says tracked, and `git blame`
+  then fails on a path git has never heard of. Generated code, vendored
+  dependencies, and anything inside a virtualenv are all ordinary things to
+  point `forge debug` at. Found by running it on a file under `.venv/`.
 - **Blame the working tree, not `HEAD`.** One uncommitted insertion shifts
   every line below it, so blaming `HEAD` annotates the wrong lines on exactly
   the file this is most often run on. `git blame` with no revision is right.
@@ -101,6 +112,10 @@ Each of these cost real time once. They are here so it happens only once.
   a test that reads `result.stdout` for a flag name passes on a wide terminal
   and fails on CI's 80 columns. Assert on the source string - `debug_cli.HELP`
   - and keep one test that the text reaches the user at all.
+- **A long file is reviewed from the top until the model loses interest.**
+  Not a size limit being hit - the identical defect at line 6 of an 877-line
+  file is found, and missed at the end of the same file. Anything measuring
+  quality must vary *where* the defect is, not only how big the file is.
 - **Temperature 0 is not determinism.** Two runs over one unchanged file
   disagreed on how many findings there were and on which lines they sat.
   Anything that needs a repeatable answer needs caching, not a temperature.

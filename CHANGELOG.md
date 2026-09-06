@@ -9,6 +9,16 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A file git ignores no longer crashes `forge debug`.** An ignored file is
+  absent from git's untracked list, so the adapter treated it as tracked and
+  `git blame` failed on a path git had never heard of - the GitPython
+  exception escaped as a traceback, on a run whose provider call had already
+  been paid for. It is now reported as "no history", which the analysis
+  degrades on, and `--diff` says the file is ignored rather than claiming it
+  has no changes.
+
 ### Added
 
 - **A spinner while the provider is thinking** (NFR-3.2). A provider call takes

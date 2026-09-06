@@ -78,12 +78,16 @@ class GitRepositoryInspector:
             # Every line of it is new.
             return _all_lines(path)
 
-        diff = self._diff(repo, relative)
-        if not diff.strip():
+        try:
+            diff = self._diff(repo, relative)
+        except git.GitCommandError as error:
             raise NoChangesError(
-                f"{path} has no uncommitted changes. Drop --diff to analyse the "
-                "whole file."
-            )
+                f"git could not compare {path} against HEAD. Drop --diff to "
+                "analyse the whole file."
+            ) from error
+
+        if not diff.strip():
+            raise NoChangesError(_nothing_to_compare(repo, relative, path))
 
         lines = _added_lines(diff)
         if not lines:
@@ -102,14 +106,22 @@ class GitRepositoryInspector:
             raise NoHistoryError(
                 f"{path} is not inside this repository, so it has no history here."
             )
-        if not repo.head.is_valid() or _is_untracked(repo, relative):
-            raise NoHistoryError(
-                f"{path} has never been committed, so there is no history for it."
-            )
+        try:
+            if not repo.head.is_valid() or _is_untracked(repo, relative):
+                raise NoHistoryError(
+                    f"{path} has never been committed, so there is no history "
+                    "for it."
+                )
+            blamed = _blame(repo, relative)
+            recent = _commits_since(repo, relative, HISTORY_WINDOW_DAYS)
+        except git.GitCommandError as error:
+            # Nothing from GitPython may escape this module: the use case
+            # degrades on a RepositoryError and would let anything else abort a
+            # run that has already been paid for. See ADR-0009.
+            raise NoHistoryError(_why_git_refused(repo, relative, path)) from error
 
-        blamed = _blame(repo, relative)
         return FileHistory(
-            recent_commits=_commits_since(repo, relative, HISTORY_WINDOW_DAYS),
+            recent_commits=recent,
             window_days=HISTORY_WINDOW_DAYS,
             records=tuple(blamed[line] for line in sorted(lines) if line in blamed),
         )
@@ -156,6 +168,49 @@ def _relative_to(repo: git.Repo, path: Path) -> Path | None:
         return path.resolve().relative_to(Path(repo.working_tree_dir or ""))
     except ValueError:
         return None
+
+
+def _is_ignored(repo: git.Repo, relative: Path) -> bool:
+    """Was git told to ignore this file?
+
+    An ignored file is not in ``untracked_files`` - git leaves it out of that
+    list entirely - so nothing else here notices it, and ``git blame`` then
+    fails on a path it has never heard of. Pointing a debugger at generated
+    code, a vendored dependency, or something inside a virtualenv is an
+    ordinary thing to do, so this is a normal answer rather than a fault.
+    """
+    try:
+        return bool(repo.ignored(relative.as_posix()))
+    except git.GitCommandError:
+        return False
+
+
+def _why_git_refused(repo: git.Repo, relative: Path, path: Path) -> str:
+    """Say why git would not talk about this file, in words a user can act on.
+
+    Asked only after a command has already failed, so the extra process it
+    starts costs nothing on the path where everything works.
+    """
+    if _is_ignored(repo, relative):
+        return f"git ignores {path}, so there is no history to report for it."
+    return f"git could not read the history of {path}."
+
+
+def _nothing_to_compare(repo: git.Repo, relative: Path, path: Path) -> str:
+    """Why an empty diff is empty.
+
+    An ignored file produces no diff and no error, which would otherwise be
+    reported as "no uncommitted changes" - true in the narrowest sense, and
+    useless to somebody looking at a file full of changes they just made.
+    """
+    if _is_ignored(repo, relative):
+        return (
+            f"git ignores {path}, so there is no committed version to compare "
+            "it with. Drop --diff to analyse the whole file."
+        )
+    return (
+        f"{path} has no uncommitted changes. Drop --diff to analyse the whole " "file."
+    )
 
 
 def _blame(repo: git.Repo, relative: Path) -> dict[int, ChangeRecord]:

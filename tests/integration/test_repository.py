@@ -382,3 +382,67 @@ def test_nothing_is_written_while_reading_history(repo: git.Repo) -> None:
     _inspect(repo).history(Path("app.py"), frozenset({1, 2, 3, 4}))
 
     assert (root / "app.py").read_bytes() == before
+
+
+# --- a file git was told to ignore ------------------------------------------
+
+
+@pytest.fixture
+def ignoring_repo(tmp_path: Path) -> git.Repo:
+    """A repository that ignores `vendor/`, holding a file inside it."""
+    repository = git.Repo.init(tmp_path)
+    with repository.config_writer() as config:
+        config.set_value("user", "name", "Test")
+        config.set_value("user", "email", "test@example.invalid")
+
+    (tmp_path / ".gitignore").write_bytes(b"vendor/\n")
+    repository.index.add([".gitignore"])
+    repository.index.commit("ignore vendor")
+
+    (tmp_path / "vendor").mkdir()
+    (tmp_path / "vendor" / "lib.py").write_bytes(b"a = 1\nb = 2\n")
+    return repository
+
+
+@pytest.mark.integration
+def test_an_ignored_file_has_no_history_rather_than_a_traceback(
+    ignoring_repo: git.Repo,
+) -> None:
+    """An ignored file is absent from untracked_files, so nothing else notices.
+
+    git blame then fails on a path it has never heard of, and before this was
+    handled the GitPython exception escaped the adapter and reached the user as
+    a traceback - on a run whose provider call had already been paid for.
+    """
+    with pytest.raises(NoHistoryError, match="ignores"):
+        _inspect(ignoring_repo).history(Path("vendor/lib.py"), frozenset({1}))
+
+
+@pytest.mark.integration
+def test_an_ignored_file_is_not_reported_as_merely_unchanged(
+    ignoring_repo: git.Repo,
+) -> None:
+    """It produces an empty diff and no error, which says nothing useful.
+
+    "No uncommitted changes" is true in the narrowest sense and useless to
+    somebody looking at a file full of edits they just made.
+    """
+    with pytest.raises(NoChangesError) as caught:
+        _inspect(ignoring_repo).changed_lines(Path("vendor/lib.py"))
+
+    message = str(caught.value)
+    assert "ignores" in message
+    assert "--diff" in message
+
+
+@pytest.mark.integration
+def test_no_gitpython_exception_reaches_a_caller(ignoring_repo: git.Repo) -> None:
+    """The boundary rule, pinned: only this module may know GitPython exists."""
+    inspector = _inspect(ignoring_repo)
+
+    for call in (
+        lambda: inspector.history(Path("vendor/lib.py"), frozenset({1})),
+        lambda: inspector.changed_lines(Path("vendor/lib.py")),
+    ):
+        with pytest.raises(RepositoryError):
+            call()
