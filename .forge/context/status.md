@@ -7,7 +7,8 @@
 > Read it after `project.md` and before starting any task.
 
 **Last verified:** 2026-09-06 on `main`, CI green on all three platforms.
-Version `0.1.0` is prepared and unreleased: the tag is a human action.
+Version `0.1.0` is prepared and unreleased: the tag is a human action. The
+repository was recreated on this date - see below.
 
 ---
 
@@ -33,8 +34,7 @@ verification - correct it or delete it instead.
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
 | Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
 | A long run says so rather than implying it read everything | ADR-0011: above 4,000 input tokens the result carries a caveat on stderr |
-| A defect at the end of a long file is not reported | Live: one unguarded division, found at line 6 of an 877-line file, is missed when the same function is appended to the end of that same file. Same size, same defect, same model |
-| Findings stop somewhere above ~800 lines | Live, gpt-4o-mini, one injected defect at the end: found at 334 lines (3,927 in), missed at 877 (10,225), 1,922 (23,359) and 3,807 (44,295) |
+| A defect at the end of a long file is not reported | Live, gpt-4o-mini, one injected division at the end: found at 334 lines (3,927 in), missed at 877, 1,922 and 3,807 - and found at once when moved to line 6 of that same 877-line file. Attention, not size |
 | The same file can answer differently twice | Live, same file at temperature 0, identical 846-token prompt: 4 findings (354 out), then 3 (288 out), citing different lines. Temperature 0 is not determinism |
 | `forge debug --diff` reports only changed lines | Appended a bug to a file with two known older bugs; only the new one was reported |
 | `--diff` costs *more* input, less output | 775 in / 88 out, against 660 in / 235 out for the same file whole. ADR-0008 says the saving is focus, not price |
@@ -54,15 +54,16 @@ order, say why rather than silently reordering.
 
 1. **Tag `v0.1.0`.** The version, the changelog section, and the preflight are
    done and on `main`; `.forge/workflows/release.md` step 6 is the tag, and it
-   is deliberately a human action. Two things a human should settle first: the
-   repository is private while the README, `pyproject.toml` and the vision all
-   call the project open-source, and 17 of its commits carry a personal email
-   address that going public would publish permanently.
-2. **Review a long file in sections.** ADR-0011 warns; it does not fix. The
+   is deliberately a human action.
+2. **Publish the repository, or stop calling it open-source.** It is private,
+   while the README, `pyproject.toml` and the vision all say otherwise and the
+   README tells a reader to clone a URL they cannot reach. The decision is a
+   human's; the repository is ready for either answer.
+3. **Review a long file in sections.** ADR-0011 warns; it does not fix. The
    warning must not be allowed to become the permanent answer, and the work
    that replaces it needs the same decision the sweep is waiting on, because
    both multiply provider calls.
-3. **Decide about the repository-wide sweep** - `forge debug --diff` with no
+4. **Decide about the repository-wide sweep** - `forge debug --diff` with no
    file, the last Phase 3 item. Deferred deliberately: one provider call per
    changed file multiplies cost, and that deserves its own decision rather
    than arriving as a silent consequence of ADR-0008.
@@ -78,6 +79,12 @@ order, say why rather than silently reordering.
 
 Each of these cost real time once. They are here so it happens only once.
 
+- **This repository was recreated on 2026-09-06 and `mntoyg/Forge-archive` must
+  stay private.** Rewriting `main` would have cleaned 5 commits and left 24 more
+  carrying a personal email inside merged pull requests, which GitHub keeps
+  forever - readable by anyone through a PR's Commits tab. The archive holds
+  that history and pull requests #1 to #15; this repository holds the same code
+  with the address rewritten. Audit both places before publishing anything.
 - **`git diff` says nothing about an untracked file.** A file the user just
   wrote would look unchanged - the worst possible answer from the command that
   exists to review new work. `repository.py` special-cases it.
