@@ -68,8 +68,16 @@ Then confirm each of these honestly:
 Use the handoff format in [README.md](README.md). If a check failed, say which
 one and paste the output. Never report success for something that was not run.
 
-## Scope reminder for the current stage
+## Scope reminder
 
-The repository is at the foundation stage. `forge debug` is **not** to be
-implemented until it has been designed, reviewed, and scheduled. A task that
-seems to require implementing it is a task that needs a design first.
+What is in scope right now is deliberately not written here. This section used
+to say the repository was at the foundation stage and that `forge debug` must
+not be implemented - and it went on saying it through every release after that
+command shipped, telling each new session not to do the thing the project is
+built around.
+
+Read [`.forge/context/status.md`](../context/status.md) instead. It is the one
+file that changes between sessions, and it says what is next and why.
+
+The rule that does not change is above: implement approved designs, and when a
+design is missing, ambiguous, or looks wrong, say so and ask.
