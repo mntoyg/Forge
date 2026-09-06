@@ -20,10 +20,14 @@ jobs:
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+      # Pinned to an exact tag, unlike checkout above. astral-sh publishes no
+      # moving major alias past v7, and v7 is three majors behind - so a
+      # floating ref here would be a pin without saying so. v6 and earlier
+      # still declare node20, which is the thing this is getting away from.
+        uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
 
