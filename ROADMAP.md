@@ -36,12 +36,16 @@ parsing; Rich and plain renderers; the command; and a published exit code
 contract (ADR-0006).
 
 **Exit:** met. FR-3.1 to FR-3.10 and FR-4.1 to FR-4.3 are satisfied and
-tested, with one end-to-end test per exit code. **This is `0.1.0`.**
+tested, with one end-to-end test per exit code.
 
-## Phase 3 - Repository awareness *(next)*
+## Phase 3 - Repository awareness *(shipped, one item deferred)*
 
-A `RepositoryInspector` port over GitPython: debug a diff rather than a file,
-blame and history context, and defined behaviour outside a git repository.
+A `RepositoryInspector` port over GitPython: `--diff` to review a change rather
+than a whole file, and each finding annotated with when its line last changed
+and by whom. Sweeping every changed file in one run is deliberately deferred -
+one provider call per file multiplies cost, and that needs its own decision.
+
+**This is `0.1.0`**, together with what Phase 2 shipped.
 
 ## Phase 4 - Explain and review
 

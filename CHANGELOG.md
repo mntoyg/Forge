@@ -9,6 +9,13 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-06
+
+The first release worth installing. `forge debug <file>` reads a source file,
+asks a configured provider about it, and reports what it finds - with a line
+number where there is one, severity and confidence kept apart, and git's own
+account of when each cited line last changed.
+
 ### Added
 
 - **A caveat when a result may only cover the start of a file** (ADR-0011).
@@ -18,34 +25,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   model reads the beginning of a long file and stops, and "no findings" is what
   that silence looks like. Above roughly 4,000 input tokens Forge now says so,
   on stderr, after the result.
-
-### Fixed
-
-- **A file git ignores no longer crashes `forge debug`.** An ignored file is
-  absent from git's untracked list, so the adapter treated it as tracked and
-  `git blame` failed on a path git had never heard of - the GitPython
-  exception escaped as a traceback, on a run whose provider call had already
-  been paid for. It is now reported as "no history", which the analysis
-  degrades on, and `--diff` says the file is ignored rather than claiming it
-  has no changes.
-
-### Added
-
 - **A spinner while the provider is thinking** (NFR-3.2). A provider call takes
   seconds, and a terminal that prints nothing for that long cannot be told from
   one that has hung. It is drawn on stderr, so a piped stdout still carries
   results only, and it is skipped entirely for `--plain` and for a pipe.
-
-### Removed
-
-- **`httpx` is no longer a runtime dependency** (ADR-0010). It was declared in
-  Phase 1 for HTTP work that Phase 3 was expected to bring; Phase 3 brought git
-  instead, and nothing has ever imported it. The `httpx2` that appears in the
-  tests is the copy the OpenAI SDK vendors, and is unaffected. The import ban
-  stays and now covers `httpx2` as well.
-
-### Added
-
 - **Line history beside each finding** - when the file is in a repository, a
   finding that cites a line now says when that line last changed and by whom,
   and the header says how many commits touched the file in the last 90 days. A
@@ -64,7 +47,6 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   never as a raw diff. A model cannot judge an edit without the code around
   it, and file line numbers stay file line numbers so no location has to be
   translated back.
-
 - **`forge debug <file>`** - the first product capability. Reads a source
   file, analyses it with the configured provider, and reports findings with
   severity, confidence, and a line number where one is identifiable.
@@ -96,21 +78,6 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - `tests/unit/test_agent_contract.py` enforces the parts of that contract that
   erode quietly: every entry point exists and points at `AGENTS.md`, and the
   handover file stays inside a 150-line budget.
-
-### Fixed
-
-- A reply Forge cannot parse now quotes what the model actually said,
-  truncated and collapsed to one line. The message previously reported only
-  that parsing failed, which left a user with nothing to act on and nothing to
-  report - and that message is the one met on a first run against a live model.
-- `FORGE_BASE_URL=` (present but blank) is now treated as unset, the same as
-  the variable being absent. Following `.env.example` verbatim - copying it to
-  `.env` and filling in only the key - left every other line present but
-  empty, and the blank base URL reached the OpenAI SDK as an actual endpoint.
-  Every request then failed with a connection error naming nothing the user
-  set. This is the failure a first real run hits by following the setup guide
-  exactly as written.
-
 - Repository foundation: Clean Architecture layer skeleton under `src/forge/`,
   with each layer documenting its own dependency rules.
 - `forge` console entry point with `--version`, and help on a bare invocation.
@@ -139,7 +106,6 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - `.gitattributes` pinning line endings to LF in the repository and the working
   tree, so a commit's line endings no longer depend on the contributor's
   `core.autocrlf` setting.
-
 - Typed configuration in `forge.infrastructure.config`: every `FORGE_*` value
   loaded from the environment or a local `.env`, validated on load, and
   immutable once read.
@@ -158,6 +124,35 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - Logging through Loguru with redaction applied at the sink, so a known secret
   cannot reach the terminal regardless of what a caller logs - tracebacks and
   local variables included.
+
+### Removed
+
+- **`httpx` is no longer a runtime dependency** (ADR-0010). It was declared in
+  Phase 1 for HTTP work that Phase 3 was expected to bring; Phase 3 brought git
+  instead, and nothing has ever imported it. The `httpx2` that appears in the
+  tests is the copy the OpenAI SDK vendors, and is unaffected. The import ban
+  stays and now covers `httpx2` as well.
+
+### Fixed
+
+- **A file git ignores no longer crashes `forge debug`.** An ignored file is
+  absent from git's untracked list, so the adapter treated it as tracked and
+  `git blame` failed on a path git had never heard of - the GitPython
+  exception escaped as a traceback, on a run whose provider call had already
+  been paid for. It is now reported as "no history", which the analysis
+  degrades on, and `--diff` says the file is ignored rather than claiming it
+  has no changes.
+- A reply Forge cannot parse now quotes what the model actually said,
+  truncated and collapsed to one line. The message previously reported only
+  that parsing failed, which left a user with nothing to act on and nothing to
+  report - and that message is the one met on a first run against a live model.
+- `FORGE_BASE_URL=` (present but blank) is now treated as unset, the same as
+  the variable being absent. Following `.env.example` verbatim - copying it to
+  `.env` and filling in only the key - left every other line present but
+  empty, and the blank base URL reached the OpenAI SDK as an actual endpoint.
+  Every request then failed with a connection error naming nothing the user
+  set. This is the failure a first real run hits by following the setup guide
+  exactly as written.
 
 ### Security
 
@@ -184,8 +179,9 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## Release history
 
-No releases yet. The first will be `0.1.0`, when `forge debug` is implemented -
-see [ROADMAP.md](ROADMAP.md).
+| Version | Date | Highlights |
+| --- | --- | --- |
+| [0.1.0](https://github.com/mntoyg/Forge/releases/tag/v0.1.0) | 2026-09-06 | `forge debug`, `--diff`, and line history |
 
 <!--
 Template for a release section - replace X.Y.Z with the real version:

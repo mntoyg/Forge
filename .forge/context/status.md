@@ -6,8 +6,8 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-09-01, on branch `feat/line-history`, CI green on
-[#8](https://github.com/mntoyg/Forge/pull/8). Not merged.
+**Last verified:** 2026-09-06 on `main`, CI green on all three platforms.
+Version `0.1.0` is prepared and unreleased: the tag is a human action.
 
 ---
 
@@ -28,7 +28,7 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| 336 pass locally with 1 skipped | `uv run pytest`. The skipped one is a symlink test Windows cannot run |
+| 356 pass locally with 1 skipped | `uv run pytest`. The skipped one is a symlink test Windows cannot run |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
 | Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
@@ -52,12 +52,12 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Cut `0.1.0`.** Everything the release was waiting on has landed. What
-   remains is mechanical and written down in `.forge/workflows/release.md`:
-   the version in two files, a dated changelog section, `scripts/release.py`,
-   then a tag. The repository is still private, and the README, `pyproject.toml`
-   and the vision all call the project open-source - that gap is a decision for
-   a human, not a step in the release.
+1. **Tag `v0.1.0`.** The version, the changelog section, and the preflight are
+   done and on `main`; `.forge/workflows/release.md` step 6 is the tag, and it
+   is deliberately a human action. Two things a human should settle first: the
+   repository is private while the README, `pyproject.toml` and the vision all
+   call the project open-source, and 17 of its commits carry a personal email
+   address that going public would publish permanently.
 2. **Review a long file in sections.** ADR-0011 warns; it does not fix. The
    warning must not be allowed to become the permanent answer, and the work
    that replaces it needs the same decision the sweep is waiting on, because

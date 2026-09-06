@@ -1,6 +1,6 @@
 [project]
 name = "forge-cli"
-version = "0.0.1"
+version = "0.1.0"
 description = "Forge - an open-source, AI-first coding assistant for the terminal."
 readme = "README.md"
 requires-python = ">=3.13"
@@ -8,7 +8,7 @@ license = { file = "LICENSE" }
 authors = [{ name = "Forge Contributors" }]
 keywords = ["ai", "cli", "developer-tools", "debugging", "code-review"]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
