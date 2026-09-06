@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted - 2026-09-06
+Superseded by [ADR-0012](0012-the-caveat-is-for-whole-file-runs.md)
+
+Accepted - 2026-09-06. The measurement below stands; what it did not test
+was `--diff`, which turns out not to share the problem.
 
 ## Context
 

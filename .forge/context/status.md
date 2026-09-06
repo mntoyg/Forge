@@ -33,8 +33,9 @@ verification - correct it or delete it instead.
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
 | Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
-| A long run says so rather than implying it read everything | ADR-0011: above 4,000 input tokens the result carries a caveat on stderr |
-| A defect at the end of a long file is not reported | Live, gpt-4o-mini, one injected division at the end: found at 334 lines (3,927 in), missed at 877, 1,922 and 3,807 - and found at once when moved to line 6 of that same 877-line file. Attention, not size |
+| A whole-file run above 4,000 tokens says the answer may be partial | ADR-0012. `--diff` stays silent, because it is measured reliable |
+| `--diff` is not affected by that, and is the strongest mode on a long file | Live: the same defect found at line 877 (3 of 3) and at line 3,807 (44,409 in), where a whole-file run misses it every time. ADR-0012 |
+| A defect at the end of a long file is not reported | Live, gpt-4o-mini, one injected division at the end: found at 334 lines (3,927 in), missed at 877, 1,922 and 3,807 - and at once when moved to line 6 of that same file. Three prompt variants telling it to read to the end all failed: marking works, wording does not |
 | The same file can answer differently twice | Live, same file at temperature 0, identical 846-token prompt: 4 findings (354 out), then 3 (288 out), citing different lines. Temperature 0 is not determinism |
 | `forge debug --diff` reports only changed lines | Appended a bug to a file with two known older bugs; only the new one was reported |
 | `--diff` costs *more* input, less output | 775 in / 88 out, against 660 in / 235 out for the same file whole. ADR-0008 says the saving is focus, not price |
@@ -59,10 +60,11 @@ order, say why rather than silently reordering.
    while the README, `pyproject.toml` and the vision all say otherwise and the
    README tells a reader to clone a URL they cannot reach. The decision is a
    human's; the repository is ready for either answer.
-3. **Review a long file in sections.** ADR-0011 warns; it does not fix. The
-   warning must not be allowed to become the permanent answer, and the work
-   that replaces it needs the same decision the sweep is waiting on, because
-   both multiply provider calls.
+3. **Review a whole file as a series of marked windows.** Measured, not
+   guessed: marking lines carries attention and instruction does not, so the
+   fix for the whole-file review is the mechanism `--diff` already uses, run
+   over the file in turn. It still multiplies provider calls, so it needs the
+   same decision the sweep is waiting on.
 4. **Decide about the repository-wide sweep** - `forge debug --diff` with no
    file, the last Phase 3 item. Deferred deliberately: one provider call per
    changed file multiplies cost, and that deserves its own decision rather
@@ -99,9 +101,6 @@ Each of these cost real time once. They are here so it happens only once.
 - **`git blame --porcelain` omits the headers of a commit it has already
   described.** Parsing it means keeping a cache, and the cache is where the bug
   will be. `--line-porcelain` repeats every block; use that.
-- **Removing `httpx` also removed `certifi`, and that is safe.** `httpx2` gets
-  its TLS trust from `truststore` - the operating system's store - not from
-  certifi. Checked after the removal; nothing about the provider call changed.
 - **The OpenAI SDK (v3) vendors its own httpx as `httpx2`.** It is a different
   package from `httpx`, which Forge no longer declares at all (ADR-0010). A
   client passed to the SDK must be an `httpx2` client - see
@@ -126,10 +125,8 @@ Each of these cost real time once. They are here so it happens only once.
   disagreed on how many findings there were and on which lines they sat.
   Anything that needs a repeatable answer needs caching, not a temperature.
 - **A file that documents its own defects can pull the model's line numbers
-  into the comment that describes them.** One run cited the header block of
-  `examples/retry_backoff.js` rather than the code. Every file in `examples/`
-  carries such a header, so they are unusually prone to it - real user code is
-  not, and this is not evidence that locations are broken generally.
+  into the comment describing them**, as `examples/retry_backoff.js` did once.
+  Every file in `examples/` has such a header; real user code does not.
 - **`forge debug` on a clean file still exits 0.** ADR-0006, deliberate. Do not
   "fix" it.
 
