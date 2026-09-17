@@ -1,6 +1,6 @@
 # Forge - the prompt that starts the next chat
 
-Generation 1 · written 2026-09-17 · by the chat that accepted ADR-0013.
+Generation 2 · written 2026-09-17 · by the chat that suspended ADR-0013.
 The user pastes this whole file into a new chat.
 
 You are continuing work on **Forge**, an AI-first coding assistant CLI (Python
@@ -16,7 +16,8 @@ documents stay in English.
 2. `.forge/context/project.md`, then `.forge/context/status.md`. **`status.md`
    wins whenever it disagrees with this prompt**: it is updated in every pull
    request, and this prompt is a snapshot.
-3. `.forge/context/decisions.md`, then the ADR the task below names.
+3. `.forge/context/decisions.md`, then ADR-0011, ADR-0012 and ADR-0013 - read
+   the measurement tables, not only the decisions.
 4. Check reality before trusting any snapshot: `git fetch`,
    `git log --oneline -5 origin/main`, `gh pr list`, and
    `gh repo view mntoyg/Forge --json visibility`.
@@ -26,31 +27,42 @@ documents stay in English.
 
 ## 2. The snapshot this prompt was written against
 
-- `main` includes ADR-0013 (accepted, not implemented) and this file. CI runs
-  on ubuntu, macOS and Windows, and was green.
-- `0.1.0` is prepared and **not tagged**, and the repository is **private**.
-  Both are the user's calls; do neither unasked.
-- `mntoyg/Forge-archive` holds the old history and pull requests #1-#15, and it
-  carries the user's personal email address. **It must never be made public.**
-- Weekly plan usage was 83% on 2026-09-17, resetting 2026-09-19.
+- `main`: 368 tests pass (1 skipped on Windows); CI green on ubuntu, macOS and
+  Windows. No open pull requests.
+- **ADR-0013 is suspended.** It chose marked windows (Option A, at most 8 calls
+  per file); its own required measurement then showed a 300- or 800-line marked
+  window is not read to its end. Nothing was built.
+- `0.1.0` is prepared and **not tagged**; the repository is **private**. Both are
+  the user's calls - do neither unasked.
+- `mntoyg/Forge-archive` carries the user's personal email address in its
+  history. **It must never be made public.**
+- Weekly plan 84% on 2026-09-17, resetting 2026-09-19. Handed off at 64% context.
 
 ## 3. The task
 
-**Implement ADR-0013: review a long file as a series of marked windows.** The
-user decided: Option A - the whole file on every call with one window of lines
-marked, never split content - and `FORGE_MAX_REVIEW_CALLS` defaulting to 8.
+**Re-decide how a long file is reviewed in full.** The user chose Option A on a
+recommendation the measurement then undercut; say that plainly when you bring
+the new numbers.
 
-1. **Measure the window size first.** Ask before spending, and say the cost
-   (1-3 US cents). Mark a 300-line and an 800-line window in a file of about
-   44,000 tokens, with the defect on the window's last line, and run each at
-   least twice. Record the result in ADR-0013 and `status.md`.
-2. **State the plan before writing code**: which layer each piece lives in and
-   which tests prove it. Windowing is application-layer; the setting belongs in
-   `infrastructure/config.py`; the caveat lives in `cli/debug.py`; the marked
-   prompt path already exists in `application/prompt.py`.
-3. **Build it with tests at the right level**, then verify live once on a file
-   that needs windowing - asking first.
-4. Pull request, CI green on all three platforms, merge only as section 4 allows.
+1. **Measure first, then ask** - approval for the spend, with the cost stated:
+   - marked windows of **25, 50 and 100 lines** at ~44,000 tokens, defect on the
+     window's last line, twice each (~6 calls, ~4 US cents): the largest window
+     that is read to its end;
+   - a **~300-line chunk sent alone**, defect last, twice (cents): whether
+     Option B's premise holds, as ADR-0011's 334-line file suggests.
+2. **How to measure** (the probe from the last chat was in a scratchpad and is
+   gone): build `SourceFile(path, content)` from text, which skips the workspace
+   check; mark with `build_request(source, changed=frozenset(window))`; call
+   `OpenAIProvider` built from `load_settings()`; read results with
+   `parse_findings`. The file is `.venv/Lib/site-packages/click/core.py` (3,806
+   lines, ~44k tokens). The defect is a `summarize_option_lengths` function whose
+   last line is an unguarded `total / len(options)`, appended as the last
+   function. Commit the probe as `scripts/probe_attention.py` so the ADRs'
+   evidence can be re-run by anyone.
+3. **Put a cost table in front of the user** - A at the window size that works,
+   against B - and get a decision.
+4. **Write ADR-0014 superseding ADR-0013**, then build, with tests at the right
+   level, then verify live once (asking first).
 
 If the user asks for something else, do that. This is the recommended next
 step, not an order that outranks them.
@@ -62,32 +74,31 @@ step, not an order that outranks them.
 - **Never call a real provider without asking**, and state the cost first. The
   key is in `.env`: never print, copy, or commit it.
 - `uv run python scripts/check.py` before claiming anything is done, and report
-  what it actually said.
+  what it said. Chain it with `set -o pipefail`, or a failing gate piped through
+  `tail` still lets the next command run.
 - Commits: Conventional Commits, a body that says *why*, and the
-  `Co-Authored-By` trailer. Pass the message with `-F` or a quoted heredoc -
-  backticks inside `-m "..."` are eaten by the shell.
+  `Co-Authored-By` trailer. Pass the message with `-F` or a quoted heredoc.
 - Update `status.md` in the same pull request as the work. A test holds it to
   150 lines; prune what is stale rather than raising the number.
-- Measure before asserting. Every live result that changed a decision here was
-  run at least twice, because temperature 0 is not determinism.
+- An accepted ADR is superseded, never rewritten. Measurement results and a
+  status change may be added to it; the decision text stays.
 
 ## 5. Lessons carried forward
 
 Each cost real time once. Keep only what is still true and not already enforced
 by a test or written in `status.md`.
 
+- **Run the measurement a decision depends on before asking the user to
+  decide.** ADR-0013 was accepted on Option A and suspended hours later by the
+  window-size measurement it had deferred. The user was asked the wrong question
+  first.
 - A Python heredoc containing triple-quoted strings can break bash quoting.
-  Write the patch script to the scratchpad with the Write tool, then run it.
+  Write the script to the scratchpad with the Write tool, then run it.
 - `gh pr merge --delete-branch` closes any pull request stacked on that branch,
-  and it cannot be reopened. Rebase the stacked branch onto `main` and retarget
-  it before deleting its base.
+  and it cannot be reopened. Do not stack; or rebase onto `main` and retarget
+  before deleting the base.
 - `gh pr checks --watch` straight after a push prints "no checks reported" and
   exits. Wait until `gh run list` shows the run.
-- A release number is not a tag: `astral-sh/setup-uv` publishes `v10.0.1` but
-  no moving `v10`. Check `gh api repos/OWNER/REPO/git/ref/tags/TAG` before
-  bumping an action.
-- The sandbox refuses `git filter-branch`; `uvx --from git-filter-repo
-  git-filter-repo --mailmap FILE` does the same job.
 - `forge` run outside the repository finds no `.env` and exits 3. For a probe
   repository elsewhere, load the key without echoing it:
   `set -a; . D:/code-project/Forge/.env; set +a`.
@@ -99,7 +110,10 @@ of this file**, and change it only where the chat that is ending found a real
 flaw in it. A test fails the build if it disappears.
 
 **When.** Call `get_usage` at the start, after each merged pull request, and
-before anything large. At **about 70% of the context window**:
+before anything large. **Before starting a task, judge whether it can reach a
+clean state before 70%; if it cannot, do its largest step that can - a
+measurement, an ADR, a failing test - and hand off.** At **about 70% of the
+context window**:
 
 - if a task is in progress, finish it to a clean state - gate green, committed,
   pushed, its pull request merged or clearly left open - then hand off;
@@ -114,7 +128,8 @@ the version you started from - never a copy carried forward:
 1. Increment the generation and update the date.
 2. Rebuild section 2 from `git`, `gh` and `get_usage`, never from memory.
 3. Replace section 3 with the true next task, including every decision the user
-   made in this chat, so the next chat does not ask again.
+   made in this chat, and anything the next chat would otherwise rediscover -
+   a probe, a command, a file path.
 4. In section 5, add at most three lessons from this chat - only what cost real
    time and one sentence would have prevented - and delete any lesson that is
    obsolete, now enforced by a test, or already in `status.md`.
@@ -123,7 +138,8 @@ the version you started from - never a copy carried forward:
 
 **Improvement check**, against the chat that is ending:
 
-- Did it ask the user anything this file could have answered?
+- Did it ask the user anything this file could have answered - or ask before it
+  had the evidence the answer depended on?
 - Did any instruction here prove wrong, stale, or rightly ignored?
 - Did anything cost more than a few minutes that a sentence would have saved?
 - Is the new version no longer than the old one while carrying more?

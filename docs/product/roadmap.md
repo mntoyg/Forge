@@ -108,9 +108,10 @@ holds that an exit code without a test is an intention, not a contract.
 
 ## Phase 5 - Polish and reach
 
-- [ ] **Review a long file as marked windows** (ADR-0013, accepted). The whole
-      file on every call with one window of lines marked, at most 8 calls per
-      file. It makes the ADR-0012 caveat unnecessary for any file it covers.
+- [ ] **Review a long file in full.** ADR-0013 chose marked windows and its own
+      measurement suspended it: a 300-line marked window is not read to its end.
+      Needs the smallest window that works, and a test of chunks sent alone,
+      before a new decision.
 - [ ] Configurable model and provider selection
 - [ ] Cost and token reporting per invocation
 - [ ] Caching of identical requests, if measurement justifies it
