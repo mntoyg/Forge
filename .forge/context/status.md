@@ -35,6 +35,7 @@ verification - correct it or delete it instead.
 | Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
 | A whole-file run above 4,000 tokens says the answer may be partial | ADR-0012. `--diff` stays silent, because it is measured reliable |
 | `--diff` is not affected by that, and is the strongest mode on a long file | Live: the same defect found at line 877 (3 of 3) and at line 3,807 (44,409 in), where a whole-file run misses it every time. ADR-0012 |
+| Marking only works for a small region | Live, 3,806-line file: 8 marked lines found the defect; 300 and 800 marked lines missed it on the window's last line, twice each. ADR-0013 |
 | A defect at the end of a long file is not reported | Live, gpt-4o-mini, one injected division at the end: found at 334 lines (3,927 in), missed at 877, 1,922 and 3,807 - and at once when moved to line 6 of that same file. Three prompt variants telling it to read to the end all failed: marking works, wording does not |
 | The same file can answer differently twice | Live, same file at temperature 0, identical 846-token prompt: 4 findings (354 out), then 3 (288 out), citing different lines. Temperature 0 is not determinism |
 | `forge debug --diff` reports only changed lines | Appended a bug to a file with two known older bugs; only the new one was reported |
@@ -60,10 +61,10 @@ order, say why rather than silently reordering.
    while the README, `pyproject.toml` and the vision all say otherwise and the
    README tells a reader to clone a URL they cannot reach. The decision is a
    human's; the repository is ready for either answer.
-3. **Implement ADR-0013: review a long file as marked windows.** Decided:
-   whole file every call, one window marked, at most 8 calls per file. First,
-   with approval, measure the window size (mark 300 and 800 lines at ~44k
-   tokens, defect on the window's last line; 1-3 cents), then build it.
+3. **Re-decide how a long file is reviewed in full.** ADR-0013 is suspended:
+   300- and 800-line marked windows were each missed twice. With approval,
+   measure the largest marked window that is read to its end (8 to 300 lines)
+   and a ~300-line chunk sent alone; then a new ADR, then code.
 4. **Decide about the repository-wide sweep** - `forge debug --diff` with no
    file, the last Phase 3 item. Deferred deliberately: one provider call per
    changed file multiplies cost, and that deserves its own decision rather

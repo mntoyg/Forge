@@ -20,7 +20,7 @@ the decision will be obvious from the code, but the trade-off will not be.
 | [0010](0010-remove-httpx-dependency.md) | Remove httpx as a declared dependency | Accepted |
 | [0011](0011-warn-when-a-result-may-be-partial.md) | Warn when a result may be partial | Superseded by 0012 |
 | [0012](0012-the-caveat-is-for-whole-file-runs.md) | The caveat is for whole-file runs only | Accepted |
-| [0013](0013-review-a-long-file-as-marked-windows.md) | Review a long file as marked windows | Accepted |
+| [0013](0013-review-a-long-file-as-marked-windows.md) | Review a long file as marked windows | Suspended |
 
 ## When to write one
 

@@ -3,8 +3,13 @@
 ## Status
 
 Accepted - 2026-09-17: **Option A**, with `FORGE_MAX_REVIEW_CALLS`
-defaulting to **8** (a file of about 2,400 lines at a 300-line window).
-Not yet implemented; the window-size measurement below comes first.
+defaulting to **8**.
+
+**Suspended the same day by its own measurement** - see "Measure before
+building". Marking 300 or 800 lines does not carry attention to their end, so A
+at the planned window size would reproduce the silent failure inside every
+window. Nothing was built. A new decision, informed by the measurement still
+missing, must supersede this record before any code is written.
 
 ## Context
 
@@ -81,6 +86,25 @@ review; `--diff` has only been measured marking eight lines. How many marked
 lines a model attends to is a separate question, and one measurement answers
 it: mark a window of 300 lines and one of 800, each with the defect on its last
 line, at about 44,000 tokens. Two to four calls, one to three US cents.
+
+**Measured 2026-09-17**, through the production path (`build_request` with the
+window as `changed`), defect as the last function of a 3,806-line file:
+
+| lines marked | runs | defect on the window's last line |
+| --- | --- | --- |
+| 8 (`--diff`, ADR-0012) | 1 | found |
+| 300 | 2 | **missed both** - 4 and 2 other findings reported |
+| 800 | 2 | **missed both** - 1 other finding each |
+
+Attention decays inside a marked window as well as outside one. The 300-line
+runs reported other findings, so the model read part of the window and did not
+reach its end. Marking works when the marked region is small, and 300 lines is
+not small.
+
+Still unmeasured, and needed before a new decision: the largest window that is
+read to its end (somewhere between 8 and 300 lines), and whether a ~300-line
+chunk sent **alone** is read to its end - the 334-line file of ADR-0011 suggests
+it is, which would favour Option B over A.
 
 ## Consequences
 
