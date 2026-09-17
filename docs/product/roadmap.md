@@ -108,10 +108,9 @@ holds that an exit code without a test is an intention, not a contract.
 
 ## Phase 5 - Polish and reach
 
-- [ ] **Review a long file in sections.** ADR-0011 warns that a result may only
-      cover the start of a long file; this is the work that makes the warning
-      unnecessary. It multiplies provider calls per file, so it needs the same
-      decision the repository-wide sweep is waiting on.
+- [ ] **Review a long file as marked windows** (ADR-0013, accepted). The whole
+      file on every call with one window of lines marked, at most 8 calls per
+      file. It makes the ADR-0012 caveat unnecessary for any file it covers.
 - [ ] Configurable model and provider selection
 - [ ] Cost and token reporting per invocation
 - [ ] Caching of identical requests, if measurement justifies it

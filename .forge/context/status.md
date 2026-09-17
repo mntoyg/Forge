@@ -6,9 +6,9 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-09-06 on `main`, CI green on all three platforms.
+**Last verified:** 2026-09-17 on `main`, CI green on all three platforms.
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
-repository was recreated on this date - see below.
+repository was recreated on 2026-09-06 - see below.
 
 ---
 
@@ -60,11 +60,10 @@ order, say why rather than silently reordering.
    while the README, `pyproject.toml` and the vision all say otherwise and the
    README tells a reader to clone a URL they cannot reach. The decision is a
    human's; the repository is ready for either answer.
-3. **Review a whole file as a series of marked windows.** Measured, not
-   guessed: marking lines carries attention and instruction does not, so the
-   fix for the whole-file review is the mechanism `--diff` already uses, run
-   over the file in turn. It still multiplies provider calls, so it needs the
-   same decision the sweep is waiting on.
+3. **Implement ADR-0013: review a long file as marked windows.** Decided:
+   whole file every call, one window marked, at most 8 calls per file. First,
+   with approval, measure the window size (mark 300 and 800 lines at ~44k
+   tokens, defect on the window's last line; 1-3 cents), then build it.
 4. **Decide about the repository-wide sweep** - `forge debug --diff` with no
    file, the last Phase 3 item. Deferred deliberately: one provider call per
    changed file multiplies cost, and that deserves its own decision rather

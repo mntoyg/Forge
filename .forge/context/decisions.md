@@ -17,6 +17,7 @@
 | [0010](../../docs/architecture/decisions/0010-remove-httpx-dependency.md) | Remove httpx as a declared dependency | Accepted | Forge declares no HTTP dependency. Adding one arrives with the code that calls it. |
 | [0011](../../docs/architecture/decisions/0011-warn-when-a-result-may-be-partial.md) | Warn when a result may be partial | Superseded by 0012 | - |
 | [0012](../../docs/architecture/decisions/0012-the-caveat-is-for-whole-file-runs.md) | The caveat is for whole-file runs only | Accepted | Above ~4,000 input tokens a *whole-file* run says so. `--diff` is measured reliable and stays silent. |
+| [0013](../../docs/architecture/decisions/0013-review-a-long-file-as-marked-windows.md) | Review a long file as marked windows | Accepted | Whole file every call, one window marked; never split the content. At most `FORGE_MAX_REVIEW_CALLS` (8) calls per file. |
 
 ## How to use these
 
