@@ -91,6 +91,11 @@ you did and what is now true.
 Keep it short. It describes the present, not the past; history lives in
 `git log`. **Length in that file is a defect, not thoroughness.**
 
+If the chat is nearing its context limit, follow the handoff loop in
+[`.forge/NEXT_PROMPT.md`](.forge/NEXT_PROMPT.md): finish or stop cleanly,
+rewrite that file so the next chat starts better than this one did, and give
+it to the user.
+
 Then hand off in this shape:
 
 ```text

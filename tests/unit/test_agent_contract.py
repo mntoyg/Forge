@@ -19,6 +19,7 @@ ROOT = Path(forge.__file__).resolve().parents[2]
 
 STATUS = ROOT / ".forge" / "context" / "status.md"
 AGENTS = ROOT / "AGENTS.md"
+NEXT_PROMPT = ROOT / ".forge" / "NEXT_PROMPT.md"
 
 STATUS_LINE_BUDGET = 150
 """The limit `status.md` sets for itself.
@@ -27,6 +28,14 @@ A sibling project accumulated a 13,000-line progress log. No agent could read
 it without exhausting its context window, which made it worse than having no
 notes at all. Length here is a defect, not thoroughness.
 """
+
+NEXT_PROMPT_LINE_BUDGET = 200
+"""The limit the next-chat prompt sets for itself, for the same reason as
+status.md: each chat rewrites it, and a file every generation adds to is a
+file no generation can read."""
+
+HANDOFF_LOOP_MARKERS = ("The handoff loop", "70%", "get_usage", "NEXT_PROMPT.md")
+"""What the prompt must still say for the next chat to write the one after it."""
 
 ENTRY_POINTS = [
     "CLAUDE.md",
@@ -84,3 +93,43 @@ def test_the_handover_file_records_when_it_was_verified() -> None:
 def test_the_reading_order_names_the_handover_file() -> None:
     """An agent that never opens status.md starts from stale assumptions."""
     assert "status.md" in AGENTS.read_text(encoding="utf-8")
+
+
+@pytest.mark.unit
+def test_the_next_chat_prompt_exists() -> None:
+    assert NEXT_PROMPT.is_file()
+
+
+@pytest.mark.unit
+def test_the_next_chat_prompt_stays_readable() -> None:
+    """Every chat rewrites it. Compress rather than raise this number."""
+    lines = len(NEXT_PROMPT.read_text(encoding="utf-8").splitlines())
+
+    assert lines <= NEXT_PROMPT_LINE_BUDGET, (
+        f"NEXT_PROMPT.md is {lines} lines, over its {NEXT_PROMPT_LINE_BUDGET}-line "
+        "budget. Delete lessons that are obsolete or enforced elsewhere."
+    )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("marker", HANDOFF_LOOP_MARKERS)
+def test_the_next_chat_prompt_still_carries_the_handoff_loop(marker: str) -> None:
+    """The loop is what gets the next prompt written at all.
+
+    A generation that drops it ends the chain without anyone noticing: the chat
+    that reads it simply never hands off. Its absence fails the build instead.
+    """
+    assert marker in NEXT_PROMPT.read_text(encoding="utf-8")
+
+
+@pytest.mark.unit
+def test_the_next_chat_prompt_says_which_generation_it_is() -> None:
+    """Without it, two versions of the prompt cannot be told apart."""
+    assert "Generation" in NEXT_PROMPT.read_text(encoding="utf-8")
+
+
+@pytest.mark.unit
+def test_the_entry_point_names_the_handoff_loop() -> None:
+    """An agent that starts from AGENTS.md, not from a pasted prompt, still
+    needs to know the loop exists."""
+    assert "NEXT_PROMPT.md" in AGENTS.read_text(encoding="utf-8")
