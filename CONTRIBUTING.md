@@ -31,17 +31,17 @@ uv run python scripts/check.py
 
 ## The workflow
 
-The full path from a requirement to merged code is
+The full path from a requirement to code pushed to `main` is
 [.forge/workflows/development.md](.forge/workflows/development.md). In short:
 
 ```text
 Requirement -> Clarification -> Architecture -> Architecture Review
   -> Implementation Plan -> Implementation -> Tests -> Lint -> Type Check
-  -> Code Review -> Security Review -> Merge
+  -> Code Review -> Security Review -> Commit and Push
 ```
 
 A trivial change (a typo, a comment, a docstring) may use the simplified path:
-change, check, review, merge. Say in the pull request that you took it.
+change, check, review, commit, push to `main`.
 
 A change that alters the architecture, the dependency set, or the CLI contract
 needs an **ADR first**. See
@@ -72,7 +72,7 @@ fit the scope.
 - Every behavioural change ships with a test at the appropriate level.
 - No new dependency without an architectural reason and an ADR.
 
-## Commits and pull requests
+## Commits and pushing to main
 
 Conventional Commits:
 
@@ -84,17 +84,18 @@ test(debug): add analyzer tests
 docs: update architecture documentation
 ```
 
-Before opening a pull request:
+Before committing and pushing:
 
 ```bash
 uv run python scripts/check.py
 ```
 
-Then fill in the template honestly - including the architecture and security
-sections - and self-review the whole diff. Every pull request needs one
-approving review from someone other than the author, and green CI.
+Then self-review the whole diff, commit the completed change to `main`, and
+push it to `origin/main`. Run the quality gate before pushing and check CI
+afterward. If branch protection rejects the push, stop; do not bypass it.
 
-An AI agent may perform the first review pass. **A human approves the merge.**
+Request a second human review before pushing when a change is high risk or
+broad in scope.
 
 ## Reporting honestly
 

@@ -56,10 +56,11 @@ looks like:
 Build inward-out: domain first, command last. The command should be the
 smallest file in the change.
 
-## 4. Branch and commit
+## 4. Commit and push
 
 ```bash
-git switch -c feat/<short-slug>
+git switch main
+git pull --ff-only
 ```
 
 Commit in the order above, one logical step per commit:
@@ -90,7 +91,8 @@ A feature is not done until:
 - `CHANGELOG.md` has an `Added` entry under `Unreleased`.
 - `examples/` has a sample input, if the feature reads files.
 
-## 7. Pull request
+## 7. Push to main
 
-Fill in the template honestly, including the architecture and security
-sections. Request review. Do not merge your own PR without a second reader.
+Run the quality gate, review the full diff, make a focused Conventional Commit,
+and push it to `origin/main`. Never force-push or bypass branch protection. If
+the push is rejected, stop and report the rejection.

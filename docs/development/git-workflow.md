@@ -2,15 +2,11 @@
 
 ## Branching model
 
-`main` is always releasable. Every change arrives through a pull request from a
-short-lived branch.
+`main` is the shared working branch. Commit each completed, checked change
+directly to `main` and push it to `origin/main` after reviewing the diff.
 
 ```text
-main
-  |
-  +-- feat/debug-source-reader
-  +-- fix/missing-file-exit-code
-  +-- docs/architecture-overview
+main -> checked commit -> origin/main
 ```
 
 Branch names:
@@ -24,13 +20,13 @@ docs/<short-slug>       documentation only
 chore/<short-slug>      tooling, dependencies, CI
 ```
 
-Keep branches short-lived. A branch open for two weeks is a merge conflict
-waiting to be discovered.
+Pull the latest `main` with `git pull --ff-only` before starting work. Do not
+create a branch for routine changes.
 
 ```bash
 git switch main
 git pull
-git switch -c feat/debug-source-reader
+git pull --ff-only
 ```
 
 ## Commit messages
@@ -86,9 +82,9 @@ formatting pass is its own commit, never mixed with logic.
 Each commit should build and pass its own tests. That is what makes `git
 bisect` useful when something breaks in three months.
 
-## Pull requests
+## Checks before pushing
 
-Before opening one:
+Before committing and pushing:
 
 ```bash
 uv run python scripts/check.py
@@ -96,22 +92,20 @@ uv run python scripts/check.py
 
 Then:
 
-1. Push the branch and open a pull request against `main`.
-2. Fill in the template honestly, including the architecture and security
-   sections.
-3. Self-review the whole diff first. Most review comments are things the author
+1. Self-review the whole diff first. Most review comments are things the author
    would have caught by reading their own change once.
-4. Link the issue and the requirement ID it satisfies.
+2. Link the requirement ID it satisfies in the commit body when relevant.
+3. Commit to `main` and push to `origin/main`.
 
-### Review requirements
+### Review expectations
 
-- At least one approving review from someone other than the author.
-- Every conversation resolved - fixed, or answered with a reason.
-- CI green. A red build is never merged, and never "fixed after merge".
+- Review the diff before pushing. Request a second review for high-risk changes
+  when practical.
+- CI must pass after a push; fix any failure promptly with a new commit.
 - An architectural change references its accepted ADR.
 
-An AI agent may perform the first review pass, but **a human approves**. An
-agent produces findings; it does not approve a merge.
+An AI agent may perform a review pass. The author remains responsible for the
+change and for resolving CI failures.
 
 ### CI requirements
 
@@ -127,19 +121,12 @@ Every pull request runs, and must pass:
 These are the same four `scripts/check.py` runs locally, in the same order, so
 local and CI results cannot drift.
 
-### Merging
+### Shared history
 
-Squash and merge. The squashed commit message follows Conventional Commits and
-becomes the changelog source.
-
-Delete the branch after merging.
-
-## History rules
-
-- **Never force-push to `main`.**
-- Never rewrite history on a branch someone else is reviewing; add commits and
-  squash on merge instead.
-- Rebasing your own unshared branch onto `main` is fine and encouraged.
+- Never force-push to `main` or rewrite shared history.
+- If a push is rejected by branch protection, stop and report it. Do not
+  disable or bypass the protection.
+- Keep each commit logically focused and use Conventional Commit messages.
 - Never commit `.env`, a key, a token, or anything git-ignored.
 
 If a secret is ever committed: **treat it as compromised and rotate it

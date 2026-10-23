@@ -131,4 +131,4 @@ over.
 - `CONTRIBUTING.md` - how to propose a change
 - `docs/development/coding-standard.md` - how the code should look
 - `docs/development/testing.md` - how to test it
-- `docs/development/git-workflow.md` - branches, commits, pull requests
+- `docs/development/git-workflow.md` - commits and direct pushes to `main`

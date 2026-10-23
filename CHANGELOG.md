@@ -9,6 +9,11 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## [Unreleased]
 
+### Documentation
+
+- Add a proposed architecture and product boundary for controlled,
+  repository-aware software engineering assistance.
+
 ### Fixed
 
 - **The partial-result caveat no longer fires on `--diff`** (ADR-0012,

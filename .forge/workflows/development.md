@@ -1,6 +1,6 @@
 # Development Workflow
 
-The standard path from a requirement to merged code. Every non-trivial change
+The standard path from a requirement to code pushed on `main`. Every non-trivial change
 follows it.
 
 ```text
@@ -55,10 +55,10 @@ Merge
 | 9 | Type Check | Automated | `uv run mypy` clean |
 | 10 | Code Review | Human + agent | Approved diff |
 | 11 | Security Review | Human + agent | No secret, no unsafe path, no exec |
-| 12 | Merge | Human | Squash-merged into `main` |
+| 12 | Commit and push | Implementing agent | Checked commit pushed to `origin/main` |
 
 Steps 8 and 9 run together locally through `uv run python scripts/check.py`,
-and again in CI. They are gates, not suggestions: a red gate is not merged.
+and again in CI. They are gates, not suggestions: do not push a failing change.
 
 ## Choosing the right weight
 
@@ -70,7 +70,7 @@ A typo, a comment, a docstring, a version bump, a test-only addition that
 covers existing behaviour.
 
 ```text
-Change -> Tests/Checks -> Code Review -> Merge
+Change -> Tests/Checks -> Review -> Commit and push to main
 ```
 
 Steps 3, 4, 5, and 11 are skipped. Say in the PR that you took the simplified
@@ -115,4 +115,5 @@ Good questions at this stage:
 - Documentation touched by the change is updated.
 - `CHANGELOG.md` has an entry under `Unreleased`, if user-visible.
 - The commit history is clean and conventional.
-- A human has read the whole diff.
+- The implementing agent has read the whole diff; request a second review for
+  high-risk changes.

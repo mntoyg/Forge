@@ -57,10 +57,11 @@ uv run python scripts/check.py
 - No existing test was weakened, skipped, or deleted to make it pass.
 - The whole suite is green.
 
-## 6. Branch and commit
+## 6. Commit and push
 
 ```bash
-git switch -c fix/<short-slug>
+git switch main
+git pull --ff-only
 ```
 
 ```text
@@ -74,10 +75,10 @@ Closes #42
 
 The body of a bugfix commit is worth writing: what was wrong, what it does now.
 
-## 7. Pull request
+## 7. Push to main
 
-Link the issue. Include the before and after output. Add a `Fixed` entry to
-`CHANGELOG.md` under `Unreleased`.
+Include the before and after output. Add a `Fixed` entry to `CHANGELOG.md`
+under `Unreleased`, then push the checked commit to `origin/main`.
 
 ## Severity and the simplified path
 
@@ -85,7 +86,7 @@ Link the issue. Include the before and after output. Add a `Fixed` entry to
 | --- | --- |
 | Crash, data loss, secret exposure | Full workflow, security review mandatory |
 | Wrong output | Full workflow |
-| Cosmetic (spacing, wording) | Simplified: change, test if practical, review, merge |
+| Cosmetic (spacing, wording) | Simplified: change, check, review, commit, push |
 
 A secret-exposure bug is never handled in a public issue thread. Report it
 privately; see the security section of `CONTRIBUTING.md`.

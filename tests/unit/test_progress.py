@@ -8,7 +8,9 @@ the first one be checked without a terminal.
 
 import io
 import sys
+from contextlib import nullcontext
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from rich.console import Console
@@ -64,14 +66,17 @@ def test_the_spinner_is_drawn_on_stderr(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 @pytest.mark.unit
-def test_the_spinner_names_the_file_being_analysed() -> None:
-    buffer = io.StringIO()
-    console = Console(file=buffer, force_terminal=True, width=80)
+def test_the_spinner_names_the_file_being_analysed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    console = Console(file=io.StringIO(), force_terminal=True, width=80)
+    status = Mock(return_value=nullcontext())
+    monkeypatch.setattr(console, "status", status)
 
     with debug_cli._waiting(console, Path("/work/app.py")):
         pass
 
-    assert "app.py" in buffer.getvalue()
+    status.assert_called_once_with("Analysing app.py", spinner="dots")
 
 
 @pytest.mark.unit

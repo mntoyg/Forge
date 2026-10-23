@@ -69,6 +69,10 @@ Subject line: imperative mood, lowercase, no trailing period, <= 72 characters.
 
 ## Branches
 
+Routine work is committed directly to `main` and pushed to `origin/main` after
+the quality gate and diff review. Never force-push. Use a separate branch only
+when explicitly requested or required by repository protection.
+
 ```text
 feat/<short-slug>      fix/<short-slug>      refactor/<short-slug>
 docs/<short-slug>      chore/<short-slug>

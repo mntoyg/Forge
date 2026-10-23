@@ -6,7 +6,9 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-09-17 on `main`, CI green on all three platforms.
+**Last verified:** 2026-10-23 locally on `main` (`d111a65`); quality gate passes.
+Last recorded
+three-platform CI green: 2026-09-17, not rechecked.
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
 repository was recreated on 2026-09-06 - see below.
 
@@ -29,7 +31,7 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| 356 pass locally with 1 skipped | `uv run pytest`. The skipped one is a symlink test Windows cannot run |
+| Local gate: 368 passed, 1 skipped; format, lint and types pass | `uv run python scripts/check.py`, 2026-10-23; Windows symlink test skips locally |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
 | Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
@@ -54,10 +56,13 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
+0. **Review the controlled-assistant proposal** at
+   `docs/architecture/proposals/agent-assisted-workflow.md` before feature work.
 1. **Tag `v0.1.0`.** The version, the changelog section, and the preflight are
    done and on `main`; `.forge/workflows/release.md` step 6 is the tag, and it
    is deliberately a human action.
-2. **Publish the repository, or stop calling it open-source.** It is private,
+2. **Publish the repository, or stop calling it open-source.** Last recorded private
+   on 2026-09-17; current visibility has not been rechecked. Meanwhile,
    while the README, `pyproject.toml` and the vision all say otherwise and the
    README tells a reader to clone a URL they cannot reach. The decision is a
    human's; the repository is ready for either answer.
@@ -72,10 +77,10 @@ order, say why rather than silently reordering.
 
 ## Blocked, or needs a human
 
-- **Nothing is blocked right now.**
+- Direct pushes to `main` are now the project workflow; verify GitHub branch rules allow them.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
-- Merging is a human decision. Agents open pull requests; a person approves.
+- Never force-push or bypass GitHub branch protection.
 
 ## Things that would otherwise be rediscovered the hard way
 
@@ -137,7 +142,7 @@ This file describes the **present**. It is not a log.
 - History belongs in `git log` and `CHANGELOG.md`. Do not append to this file.
 - When something here stops being true, **delete or rewrite the line**. Do not
   add a note saying it changed.
-- Update it in the same pull request as the work it describes.
+- Update it in the same commit as the work it describes.
 - **A test enforces a 150-line budget.** If it fails, remove what is stale
   rather than raising the number. A sibling project grew a 13,000-line progress
   log that no agent could read without exhausting its context window, which
