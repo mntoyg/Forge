@@ -60,15 +60,15 @@ If the user asks for something else, do that instead.
 
 ## 4. Rules that bite
 
-- Branch, pull request, CI green on three platforms. **Merging needs the user's
-  say-so in this chat**; an earlier chat's authorisation does not carry over.
+- Work directly on `main`; run checks, review the diff, commit, and push to
+  `origin/main`. Never force-push or bypass branch protection; stop if rejected.
 - **Never call a real provider without asking**, cost stated first. The key is
   in `.env`: never print, copy, or commit it.
 - `uv run python scripts/check.py` before claiming done, with `set -o pipefail`
   so a failing gate piped through `tail` cannot let a commit through.
 - Conventional Commits with a *why* body and the `Co-Authored-By` trailer, passed
   with `-F` or a quoted heredoc. **Check every number a message claims.**
-- Update `status.md` in the same pull request; a test holds it to 150 lines.
+- Update `status.md` in the same commit; a test holds it to 150 lines.
 - An accepted ADR is superseded, never rewritten; results and status may be added.
 
 ## 5. Lessons carried forward
@@ -126,7 +126,7 @@ version you started from - never a copy carried forward:
 - Did anything cost more than a few minutes that a sentence would have saved?
 - Is the new version no longer than the old while carrying more? **Count it.**
 
-**Then.** Commit it through a pull request with the `status.md` update, merging
-only as section 4 allows. Paste the **complete** file to the user in **one** code
+**Then.** Commit it directly to `main` with the `status.md` update and push.
+Paste the **complete** file to the user in **one** code
 block, and under it three lines: what changed, why this version is better, and
 the context and weekly plan percentages at hand-off.

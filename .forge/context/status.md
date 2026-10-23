@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-10-23 locally on `main` (`d111a65`); quality gate passes.
+**Last verified:** 2026-10-23 on `main` (`a4e9809`); quality gate passes.
 Last recorded
 three-platform CI green: 2026-09-17, not rechecked.
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
