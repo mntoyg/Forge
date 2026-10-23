@@ -23,6 +23,11 @@ of the requirement that needs it.
 | Analyse use case | `src/forge/application/analyze.py` | Read, ask, parse | Done |
 | Renderers | `src/forge/presentation/findings.py` | Rich and plain output | Done |
 | Debug command | `src/forge/cli/debug.py` | `forge debug <file>` | Done |
+| Project evidence port | `src/forge/domain/project.py` | Bounded project snapshot contract | Done |
+| Project evidence reader | `src/forge/infrastructure/project.py` | Safe, bounded local project discovery | Done |
+| Inspect use case | `src/forge/application/inspect.py` | Derive factual overview from project evidence | Done |
+| Overview renderer | `src/forge/presentation/project.py` | Render facts, evidence paths, and limits | Done |
+| Inspect command | `src/forge/cli/inspect.py` | `forge inspect [directory]` | Done |
 | Exit codes | `src/forge/cli/exit_codes.py` | The ADR-0006 contract, mapped once | Done |
 
 Each layer package carries its dependency rules in its module docstring, so the
@@ -142,6 +147,17 @@ Exit code allocation, binding per
 | 4 | Provider error (timeout, rate limit, auth) |
 
 *Satisfies FR-3.9, FR-4.3.*
+
+### Project inspection
+
+`forge inspect [directory]` collects a bounded snapshot through a narrow
+project-evidence port, derives only facts supported by known project files and
+visible structure, and renders those facts with their paths. Filesystem
+discovery stays in infrastructure; interpretation stays in the use case;
+rendering stays in presentation. It makes no provider calls and runs no
+commands.
+
+*Satisfies FR-5.1 to FR-5.6.*
 
 ### Repository inspector (Phase 3)
 

@@ -46,6 +46,22 @@ uv run forge --version
 
 ## Usage
 
+Get a local project overview before choosing what to work on. This command
+does not need an API key:
+
+```bash
+forge inspect
+```
+
+It reports guidance files, languages inferred from source-file extensions,
+recognized project tooling, available check commands, and a shallow directory
+outline. Each fact names the files that support it. The scan skips symlinks,
+paths matched by project `.gitignore` rules, sensitive paths, virtual
+environments, generated output, and known binary file types; it does not print
+guidance contents, call a provider, or run commands. Any missing
+evidence or scan limit is shown in the report. Git info and global exclude
+rules are outside the scan.
+
 Set a key first - Forge uses your own:
 
 ```bash

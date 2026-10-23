@@ -13,11 +13,14 @@ from rich.console import Console
 
 from forge import __version__
 from forge.application.analyze import AnalyzeSourceFile
+from forge.application.inspect import InspectProject
 from forge.cli import debug as debug_cli
+from forge.cli import inspect as inspect_cli
 from forge.domain.source import AnalysisResult
 from forge.infrastructure.config import Settings, load_settings
 from forge.infrastructure.logging import configure_logging
 from forge.infrastructure.openai_provider import OpenAIProvider
+from forge.infrastructure.project import FilesystemProjectEvidenceReader
 from forge.infrastructure.repository import GitRepositoryInspector
 from forge.infrastructure.source import FilesystemSourceReader
 
@@ -96,6 +99,7 @@ def _analyze(path: Path, *, changes_only: bool = False) -> AnalysisResult:
 
 
 debug_cli.register(app, _analyze)
+inspect_cli.register(app, InspectProject(FilesystemProjectEvidenceReader()))
 
 
 if __name__ == "__main__":  # pragma: no cover - manual entry point

@@ -9,6 +9,14 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## [Unreleased]
 
+### Added
+
+- **`forge inspect [directory]`** - a local, deterministic overview of
+  project guidance, observed languages, recognized tooling, available checks,
+  and shallow structure. The report cites evidence paths and states when
+  metadata is missing or a bounded scan is incomplete. It does not call a
+  provider, execute commands, or modify the project.
+
 ### Documentation
 
 - Add a proposed architecture and product boundary for controlled,

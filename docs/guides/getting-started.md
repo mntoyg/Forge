@@ -1,6 +1,7 @@
 # Getting Started
 
-Install Forge, point it at a file, and read what comes back.
+Install Forge, inspect a project locally, then point it at a file and read
+what comes back.
 
 Takes about five minutes, and you need an API key from an OpenAI-compatible
 provider. Forge uses **your** key and calls **your** account - there is no
@@ -29,7 +30,24 @@ forge 0.0.1
 
 That command needs no key. If it works, the install is fine.
 
-## 2. Configure
+## 2. Inspect a project
+
+Before configuring a provider, get a local overview of the repository:
+
+```bash
+uv run forge inspect
+```
+
+The report identifies guidance files, languages inferred from file extensions,
+recognized project tooling, available checks, and a shallow directory outline.
+It cites the paths behind each fact, and calls out missing evidence or scan
+limits. It reads only selected project metadata, skips symlinks, paths matched
+by project `.gitignore` rules, sensitive files, virtual environments, generated
+output, and known binary types, and never prints guidance contents or executes
+repository commands. It does not need an API key.
+Git info and global exclude rules are outside the scan.
+
+## 3. Configure
 
 ```bash
 cp .env.example .env
@@ -60,7 +78,7 @@ FORGE_BASE_URL=http://localhost:8000/v1  # any OpenAI-compatible server
 The second line is why Forge works against a self-hosted model as well as a
 hosted one. Nothing in the tool is specific to one provider.
 
-## 3. Analyse a file
+## 4. Analyse a file
 
 The repository ships a deliberately broken example:
 
@@ -88,7 +106,7 @@ Then try it on something of your own:
 uv run forge debug src/whatever.py
 ```
 
-## 4. Read the output
+## 5. Read the output
 
 Each finding carries two separate judgements, and conflating them is the most
 common way to misread the report.
@@ -180,7 +198,7 @@ The footer names the model that answered and what the call cost. Both are
 there because you paid for it, and because "which model said this" is the first
 question worth asking about a surprising finding.
 
-## 5. Review just what you changed
+## 6. Review just what you changed
 
 Before committing, you usually want an opinion on the lines you just wrote -
 not on the whole file:
@@ -208,7 +226,7 @@ against. Drop --diff to analyse the whole file.
 
 Both exit `2`. Everything else about `forge debug` works fine outside git.
 
-## 6. Use it in a script
+## 7. Use it in a script
 
 Findings do **not** change the exit code:
 

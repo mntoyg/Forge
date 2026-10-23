@@ -1,8 +1,7 @@
 # Data Flow
 
-How a request travels through the layers. The flow below describes the planned
-`forge debug` command; **it is a design, not a description of existing code.**
-Today only the version flag and the help output exist.
+How requests travel through the layers. The version flag, `forge debug`, and
+`forge inspect` are implemented; the diagrams below show the command paths.
 
 ## Current flow
 
@@ -21,7 +20,7 @@ $ forge --version
   stdout             "forge 0.0.1"   exit 0
 ```
 
-That is the whole of it. Everything below is Phase 1 and Phase 2 design.
+The remaining diagrams show the command paths through the layers.
 
 ## Planned flow: `forge debug <file>`
 
@@ -69,6 +68,35 @@ That is the whole of it. Everything below is Phase 1 and Phase 2 design.
                         v
                     stdout / stderr, exit code
 ```
+
+## Implemented flow: `forge inspect [directory]`
+
+```text
+  User
+    | forge inspect [directory]
+    v
+  CLI (cli/inspect.py)
+    | InspectProject(directory)
+    v
+  Application (application/inspect.py)
+    | ProjectEvidenceReader port
+    v
+  Infrastructure (infrastructure/project.py)
+    | bounded snapshot: known metadata, guidance paths, shallow tree
+    v
+  Application derives evidence-backed facts
+    v
+  Presentation renders overview and any omissions
+    v
+  stdout / stderr, exit code
+```
+
+This path is local and deterministic. It does not call the provider, execute
+commands, or modify the selected project. Discovery resolves the selected root,
+does not follow symlinks, filters ignored and sensitive paths, and stops at
+the declared file and byte limits. The output identifies the files that
+support each reported fact and states when evidence is missing or the scan is
+incomplete.
 
 ## Reading the diagram
 

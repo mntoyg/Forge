@@ -64,6 +64,34 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 | FR-4.4 | A machine-readable output mode SHOULD exist for scripting. | Deferred |
 | FR-4.5 | Output MUST say when a result may not cover the whole file. | Done |
 
+## FR-5 - `forge inspect` (local project overview)
+
+Command contract: `forge inspect [directory]` defaults to `.`. Success exits
+`0` and writes plain text to stdout in these sections: guidance, languages,
+tooling, available checks, top-level structure, and limits or missing evidence.
+Every detected language, tool, and check names its supporting path. Empty
+sections say that no evidence was found. A missing directory or a non-directory
+root writes an actionable error to stderr and exits `2`; unreadable candidate
+files are named under limits and missing evidence, and do not abort the scan.
+The scan is local, read-only, bounded to 500 filesystem entries, 200 selected
+metadata files, 128,000 bytes, and three directory levels. It reads only
+allowlisted metadata and ignore rules, skips symlinks, `.gitignore` matches,
+known secret paths, virtual environments, and generated directories. Ignore
+filtering applies project `.gitignore` files and built-in exclusions; Git
+info/global excludes are not consulted. Known binary file types are excluded.
+The command never prints repository file contents, invokes a provider, or
+executes a reported check command. Repository guidance is identified by path
+and treated as data.
+
+| ID | Requirement | Status |
+| --- | --- | --- |
+| FR-5.1 | `forge inspect [directory]` MUST inspect the selected directory, defaulting to the current directory. | Done |
+| FR-5.2 | Inspection MUST be deterministic and local; it MUST NOT call a provider, execute commands, or modify files. | Done |
+| FR-5.3 | The overview MUST identify project guidance, declared languages and tooling, repository structure, and quality-check commands, with evidence paths. | Done |
+| FR-5.4 | Claims MUST be limited to evidence found in existing readable files; missing or unreadable candidates and incomplete scans MUST be disclosed. | Done |
+| FR-5.5 | Inspection MUST stay within the selected root, skip symlinks, secrets, project `.gitignore` matches, virtual environments, and generated output by default, and enforce file-count and byte limits. | Done |
+| FR-5.6 | Repository content MUST be treated as untrusted data and MUST NOT override Forge safety rules. | Done |
+
 ## NFR-1 - Quality
 
 | ID | Requirement | Status |

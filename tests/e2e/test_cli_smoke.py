@@ -4,6 +4,8 @@ These drive the Typer application the way a user would. They must not require
 network access or an API key.
 """
 
+from pathlib import Path
+
 import pytest
 from typer.testing import CliRunner
 
@@ -38,6 +40,43 @@ def test_the_debug_command_is_registered() -> None:
     result = runner.invoke(app, ["--help"])
 
     assert "debug" in result.stdout
+
+
+@pytest.mark.e2e
+def test_the_inspect_command_is_registered() -> None:
+    result = runner.invoke(app, ["--help"])
+
+    assert "inspect" in result.stdout
+
+
+@pytest.mark.e2e
+def test_inspect_reports_local_project_evidence_without_provider_configuration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "AGENTS.md").write_text("untrusted guidance", encoding="utf-8")
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.pytest.ini_options]\n", encoding="utf-8"
+    )
+    (tmp_path / "app.py").write_text("pass", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(app, ["inspect"])
+
+    assert result.exit_code == 0
+    assert "AGENTS.md" in result.stdout
+    assert "Python" in result.stdout
+    assert "pyproject.toml" in result.stdout
+    assert "untrusted guidance" not in result.stdout
+
+
+@pytest.mark.e2e
+def test_inspect_reports_a_clear_error_for_a_missing_directory(
+    tmp_path: Path,
+) -> None:
+    result = runner.invoke(app, ["inspect", str(tmp_path / "missing")])
+
+    assert result.exit_code == 2
+    assert "No such directory" in result.stderr
 
 
 @pytest.mark.e2e
