@@ -26,6 +26,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 - Add a proposed architecture and product boundary for controlled,
   repository-aware software engineering assistance.
+- Draft the `forge review` MVP scope, safety rules, cost preview, and acceptance
+  criteria for product and architecture review.
 
 ### Fixed
 

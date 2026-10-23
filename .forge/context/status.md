@@ -7,8 +7,6 @@
 > Read it after `project.md` and before starting any task.
 
 **Last verified:** 2026-10-24 on `main`; quality gate passes.
-Last recorded
-three-platform CI green: 2026-09-17, not rechecked.
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
 repository was recreated on 2026-09-06 - see below.
 
@@ -22,7 +20,9 @@ been run live. A finding that cites a line now carries what git knows about
 that line - who last changed it, when, and how much the file has been moving.
 
 Phases 0 to 2 of `docs/product/roadmap.md` are complete. Phase 3 has one item
-left, and it is the one that was deferred on purpose - see below.
+left, and it is the one that was deferred on purpose - see below. A draft
+`forge review` MVP is in `docs/architecture/proposals/review-command.md` and
+needs owner review and a new ADR before implementation.
 
 ## What is true right now
 
