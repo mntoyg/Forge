@@ -9,6 +9,11 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## [Unreleased]
 
+### Changed
+
+- Set a shared AI usage budget of at most 14 percentage points of a weekly plan
+  per local calendar day.
+
 ### Added
 
 - **`forge inspect [directory]`** - a local, deterministic overview of

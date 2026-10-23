@@ -76,7 +76,11 @@ Silently working around a constraint is worse than not doing the task.
    command.
 10. **Push checked work directly to `origin/main`.** Review the diff first.
     Never force-push or bypass branch protection; stop if GitHub rejects a push.
-11. **Report honestly.** If something is broken, unfinished, or you are
+11. **Limit AI usage to 14 percentage points of its weekly plan per local
+    calendar day.** The cap is shared across chats using that plan. Check the
+    provider's usage meter before substantial work; if usage cannot be measured,
+    keep work small and stop before a likely overrun. Never invent a reading.
+12. **Report honestly.** If something is broken, unfinished, or you are
     unsure - say so plainly in the summary.
 
 ## Role summary

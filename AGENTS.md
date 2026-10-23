@@ -70,6 +70,12 @@ Two consequences, and they are the point:
 10. **Work directly on `main` and push checked changes to `origin/main`.** Run
     the quality gate and review the diff first. Never force-push or bypass
     branch protection. If GitHub rejects a push, stop and report why.
+11. **Limit AI usage to 14 percentage points of its weekly plan per local
+    calendar day.** This is a shared daily cap for conversations using the same
+    plan, not 14% per task or chat. Check the provider's usage meter before
+    substantial work and again before continuing near the cap. If usage cannot
+    be measured, keep work small and stop before a likely overrun; never invent
+    a usage reading. Report the measured usage and any uncertainty.
 
 ## If a rule blocks the task
 

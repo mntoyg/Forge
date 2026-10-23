@@ -76,7 +76,8 @@ order, say why rather than silently reordering.
 
 ## Blocked, or needs a human
 
-- Direct pushes to `main` are now the project workflow; verify GitHub branch rules allow them.
+- AI usage cap: at most 14 percentage points of the weekly plan per local day.
+  Codex's current 7-day meter: 10% used; it does not report daily use.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
 - Never force-push or bypass GitHub branch protection.
