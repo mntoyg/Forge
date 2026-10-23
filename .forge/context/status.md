@@ -60,8 +60,8 @@ order, say why rather than silently reordering.
 0. **Tag `v0.1.0`.** The version, the changelog section, and the preflight are
    done and on `main`; `.forge/workflows/release.md` step 6 is the tag, and it
    is deliberately a human action.
-1. **Publish the repository, or stop calling it open-source.** Last recorded private
-   on 2026-09-17; current visibility has not been rechecked. Meanwhile,
+1. **Publish the repository, or stop calling it open-source.** GitHub API
+   confirmed it is private on 2026-10-23. Meanwhile,
    while the README, `pyproject.toml` and the vision all say otherwise and the
    README tells a reader to clone a URL they cannot reach. The decision is a
    human's; the repository is ready for either answer.
