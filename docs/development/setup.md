@@ -34,8 +34,11 @@ creates a `.env` from `.env.example`.
 cp .env.example .env
 ```
 
-Then edit `.env`. Every key is optional today - Forge does not make AI calls
-yet - but the file is where your API key will go when it does.
+The version and help commands, along with `forge inspect`, work without an API
+key. `forge debug` and `forge debug --diff` call the configured provider and
+require `FORGE_API_KEY`. See the
+[Getting Started guide](../guides/getting-started.md) for provider configuration
+and the first analysis.
 
 `.env` is git-ignored. **Never commit it.** Never paste a key into an issue, a
 pull request, a test fixture, or a chat with an AI agent.

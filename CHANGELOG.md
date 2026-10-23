@@ -29,6 +29,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Fixed
 
+- Clarify API key requirements in the development setup guide and link to the
+  Getting Started guide for provider configuration.
 - **The partial-result caveat no longer fires on `--diff`** (ADR-0012,
   superseding ADR-0011). Marking the changed lines carries the model's
   attention to them wherever they sit: the same defect a whole-file review

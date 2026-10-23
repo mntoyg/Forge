@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-10-23 on `main`; quality gate passes.
+**Last verified:** 2026-10-24 on `main`; quality gate passes.
 Last recorded
 three-platform CI green: 2026-09-17, not rechecked.
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
@@ -31,8 +31,9 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 380 passed, 1 skipped; format, lint and types pass | `uv run python scripts/check.py`, 2026-10-23; Windows symlink test skips locally |
+| Local gate: 380 passed, 1 skipped; format, lint and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
+| Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
 | Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
