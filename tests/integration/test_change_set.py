@@ -128,6 +128,45 @@ def test_file_growth_after_preflight_is_refused_without_truncation(
 
 
 @pytest.mark.integration
+def test_oversized_git_base_is_refused_before_source_read_or_diff(
+    repository: git.Repo,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = Path(str(repository.working_tree_dir))
+    tracked = root / "app.py"
+    tracked.write_bytes(b"x" * (MAX_REVIEW_REQUEST_BYTES + 1))
+    repository.index.add(["app.py"])
+    repository.index.commit("large base")
+    tracked.write_bytes(b"small current source\n")
+
+    read_attempts: list[Path] = []
+    diff_attempts: list[Path] = []
+    original_open = Path.open
+
+    def reject_read(path: Path, *args: Any, **kwargs: Any) -> Any:
+        if path == tracked:
+            read_attempts.append(path)
+            raise AssertionError("over-budget source must not be read")
+        return original_open(path, *args, **kwargs)
+
+    def reject_diff(repo: git.Repo, path: Path, previous: Path | None) -> str:
+        diff_attempts.append(path)
+        raise AssertionError("over-budget base must not create a diff")
+
+    monkeypatch.setattr(Path, "open", reject_read)
+    monkeypatch.setattr(change_set_module, "_diff_for_path", reject_diff)
+    provider = FakeProvider()
+    review = ReviewChanges(_reader(repository), provider, model="fake-model")
+
+    with pytest.raises(ReviewTooLargeError, match="preflight budget"):
+        review.prepare()
+
+    assert read_attempts == []
+    assert diff_attempts == []
+    assert provider.call_count == 0
+
+
+@pytest.mark.integration
 def test_review_snapshot_includes_non_ignored_untracked_files(
     repository: git.Repo,
 ) -> None:

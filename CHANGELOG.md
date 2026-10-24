@@ -37,9 +37,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - Clarify API key requirements in the development setup guide and link to the
   Getting Started guide for provider configuration.
 
-- Bound `forge review` source reads to the accepted 16,000-byte request budget.
-  The change set is preflighted before file reads or patch generation, and
-  over-budget scopes are refused without truncation or a provider call.
+- Bound `forge review` change-set work to the accepted 16,000-byte request
+  budget. Current and Git-base blob sizes are checked before file reads or
+  patch generation; over-budget scopes are refused without truncation or a
+  provider call.
 - **The partial-result caveat no longer fires on `--diff`** (ADR-0012,
   superseding ADR-0011). Marking the changed lines carries the model's
   attention to them wherever they sit: the same defect a whole-file review

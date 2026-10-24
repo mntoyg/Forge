@@ -56,7 +56,7 @@ class GitChangeSetReader:
         if not selected:
             raise NoChangesError("No changed files match the requested review scope.")
 
-        _preflight_source_bytes(root, selected)
+        _preflight_change_bytes(repo, root, selected)
 
         files: list[ReviewFile] = []
         omissions: list[ChangeOmission] = []
@@ -210,12 +210,12 @@ def _diff_for_path(repo: git.Repo, path: Path, previous: Path | None) -> str:
         raise NoChangesError(f"Git could not compare changed file {path}.") from error
 
 
-def _preflight_source_bytes(
-    root: Path, changes: list[tuple[str, str, str | None]]
+def _preflight_change_bytes(
+    repo: git.Repo, root: Path, changes: list[tuple[str, str, str | None]]
 ) -> None:
-    """Refuse an over-budget scope before reading sources or building patches."""
+    """Refuse oversized current and base blobs before reads or patch generation."""
     total_bytes = 0
-    for status, current_name, _ in changes:
+    for status, current_name, previous_name in changes:
         if status in {"D", "T", "I"}:
             continue
         current = Path(current_name)
@@ -234,6 +234,21 @@ def _preflight_source_bytes(
                 f"Selected changed files exceed the {MAX_REVIEW_REQUEST_BYTES:,}-byte "
                 "review preflight budget. Narrow the paths and retry."
             )
+        if status != "A":
+            base_name = Path(previous_name or current_name).as_posix()
+            try:
+                base_size = int(str(repo.git.cat_file("-s", f"HEAD:{base_name}")))
+            except (git.GitCommandError, ValueError) as error:
+                raise NoChangesError(
+                    f"Cannot inspect the committed version of {current.as_posix()}."
+                ) from error
+            total_bytes += base_size
+            if total_bytes > MAX_REVIEW_REQUEST_BYTES:
+                raise ReviewTooLargeError(
+                    f"Selected changed files and their Git base exceed the "
+                    f"{MAX_REVIEW_REQUEST_BYTES:,}-byte review preflight budget. "
+                    "Narrow the paths and retry."
+                )
 
 
 def _ignored_untracked(repo: git.Repo, scopes: tuple[Path, ...]) -> tuple[str, ...]:
