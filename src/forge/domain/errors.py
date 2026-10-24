@@ -95,6 +95,10 @@ class ReviewTooLargeError(RepositoryError):
     """A review request or source scope exceeds the accepted byte limit."""
 
 
+class ReviewSnapshotChangedError(RepositoryError):
+    """A changed file no longer matches the snapshot being prepared for review."""
+
+
 class SensitiveContentError(RepositoryError):
     """Review was refused because selected source matched a secret rule."""
 

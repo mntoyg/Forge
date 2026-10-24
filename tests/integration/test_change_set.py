@@ -8,7 +8,11 @@ import git
 import pytest
 
 from forge.application.review import ReviewChanges
-from forge.domain.errors import NoChangesError, ReviewTooLargeError
+from forge.domain.errors import (
+    NoChangesError,
+    ReviewSnapshotChangedError,
+    ReviewTooLargeError,
+)
 from forge.domain.review import MAX_REVIEW_REQUEST_BYTES, ChangeKind, OmissionReason
 from forge.infrastructure import change_set as change_set_module
 from forge.infrastructure.change_set import GitChangeSetReader
@@ -162,6 +166,50 @@ def test_oversized_git_base_is_refused_before_source_read_or_diff(
         review.prepare()
 
     assert read_attempts == []
+    assert diff_attempts == []
+    assert provider.call_count == 0
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "replacement",
+    [b"one = changed\ntwo = 2\n", b"x" * (MAX_REVIEW_REQUEST_BYTES + 1)],
+)
+def test_changed_snapshot_is_refused_before_diff_or_provider_call(
+    repository: git.Repo,
+    monkeypatch: pytest.MonkeyPatch,
+    replacement: bytes,
+) -> None:
+    root = Path(str(repository.working_tree_dir))
+    tracked = root / "app.py"
+    tracked.write_bytes(b"one = updated\ntwo = 2\nthree = 3\n")
+    original_read = change_set_module._read_bounded_source
+    read_count = 0
+    diff_attempts: list[Path] = []
+
+    def change_file_after_snapshot(path: Path, max_bytes: int) -> bytes:
+        nonlocal read_count
+        snapshot = original_read(path, max_bytes)
+        if path == tracked and read_count == 0:
+            read_count += 1
+            tracked.write_bytes(replacement)
+        return snapshot
+
+    def reject_diff(repo: git.Repo, path: Path, previous: Path | None) -> str:
+        diff_attempts.append(path)
+        raise AssertionError("a changed snapshot must not be diffed")
+
+    monkeypatch.setattr(
+        change_set_module, "_read_bounded_source", change_file_after_snapshot
+    )
+    monkeypatch.setattr(change_set_module, "_diff_for_path", reject_diff)
+    provider = FakeProvider()
+    review = ReviewChanges(_reader(repository), provider, model="fake-model")
+
+    with pytest.raises(ReviewSnapshotChangedError, match="moved while preparing"):
+        review.prepare()
+
+    assert read_count == 1
     assert diff_attempts == []
     assert provider.call_count == 0
 

@@ -5,7 +5,12 @@ from pathlib import Path
 
 import git
 
-from forge.domain.errors import NoChangesError, NotARepositoryError, ReviewTooLargeError
+from forge.domain.errors import (
+    NoChangesError,
+    NotARepositoryError,
+    ReviewSnapshotChangedError,
+    ReviewTooLargeError,
+)
 from forge.domain.review import (
     MAX_REVIEW_REQUEST_BYTES,
     ChangeKind,
@@ -86,8 +91,9 @@ class GitChangeSetReader:
                 continue
 
             try:
-                with source_path.open("rb") as source:
-                    raw = source.read(MAX_REVIEW_REQUEST_BYTES - bytes_read + 1)
+                raw = _read_bounded_source(
+                    source_path, MAX_REVIEW_REQUEST_BYTES - bytes_read
+                )
             except OSError as error:
                 raise NoChangesError(
                     f"Cannot read changed file {current.as_posix()}: {error}"
@@ -103,7 +109,9 @@ class GitChangeSetReader:
             line_set = (
                 None
                 if status == "A"
-                else _added_lines(_diff_for_path(repo, current, previous))
+                else _changed_lines_for_snapshot(
+                    repo, source_path, current, previous, raw
+                )
             )
             if line_set == frozenset():
                 omissions.append(
@@ -208,6 +216,42 @@ def _diff_for_path(repo: git.Repo, path: Path, previous: Path | None) -> str:
         )
     except git.GitCommandError as error:
         raise NoChangesError(f"Git could not compare changed file {path}.") from error
+
+
+def _changed_lines_for_snapshot(
+    repo: git.Repo,
+    source_path: Path,
+    path: Path,
+    previous: Path | None,
+    snapshot: bytes,
+) -> frozenset[int]:
+    """Use Git's line map only while the bounded source snapshot stays stable."""
+    _verify_snapshot(source_path, path, snapshot)
+    added_lines = _added_lines(_diff_for_path(repo, path, previous))
+    _verify_snapshot(source_path, path, snapshot)
+    return added_lines
+
+
+def _verify_snapshot(source_path: Path, path: Path, snapshot: bytes) -> None:
+    """Reject a changed or grown file rather than pairing mismatched evidence."""
+    try:
+        current = _read_bounded_source(source_path, len(snapshot))
+    except OSError as error:
+        raise ReviewSnapshotChangedError(
+            f"Changed file {path.as_posix()} moved while preparing the review. "
+            "Retry after edits stop."
+        ) from error
+    if current != snapshot:
+        raise ReviewSnapshotChangedError(
+            f"Changed file {path.as_posix()} moved while preparing the review. "
+            "Retry after edits stop."
+        )
+
+
+def _read_bounded_source(path: Path, max_bytes: int) -> bytes:
+    """Read at most a limit plus one sentinel byte to detect overflow."""
+    with path.open("rb") as source:
+        return source.read(max_bytes + 1)
 
 
 def _preflight_change_bytes(
