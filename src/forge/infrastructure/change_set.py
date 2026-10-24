@@ -81,6 +81,19 @@ class GitChangeSetReader:
                 )
                 continue
 
+            line_set = (
+                None
+                if status == "A"
+                else _added_lines(_diff_for_path(repo, current, previous))
+            )
+            if line_set == frozenset():
+                omissions.append(
+                    ChangeOmission(
+                        current, OmissionReason.NO_REVIEWABLE_LINES, previous
+                    )
+                )
+                continue
+
             try:
                 raw = source_path.read_bytes()
             except OSError as error:
@@ -101,11 +114,13 @@ class GitChangeSetReader:
                 )
                 continue
 
-            line_set = (
-                frozenset(range(1, len(content.splitlines()) + 1))
-                if status == "A"
-                else _added_lines(_diff_for_path(repo, current, previous))
-            )
+            if line_set is None:
+                line_set = frozenset(range(1, len(content.splitlines()) + 1))
+            if not line_set:
+                omissions.append(
+                    ChangeOmission(current, OmissionReason.NO_REVIEWABLE_LINES)
+                )
+                continue
             files.append(
                 ReviewFile(
                     path=current,

@@ -24,6 +24,7 @@ class OmissionReason(StrEnum):
     BINARY = "binary"
     INVALID_TEXT = "invalid-text"
     IGNORED = "ignored-untracked"
+    NO_REVIEWABLE_LINES = "no-reviewable-lines"
     UNSUPPORTED = "unsupported-change"
 
 

@@ -32,7 +32,7 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 405 passed, 1 skipped; format, lint and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
+| Local gate: 406 passed, 1 skipped; format, lint and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |

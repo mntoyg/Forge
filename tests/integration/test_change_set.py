@@ -94,6 +94,20 @@ def test_review_snapshot_reports_deleted_files_without_reading_old_contents(
 
 
 @pytest.mark.integration
+def test_review_snapshot_omits_a_tracked_file_with_only_deleted_lines(
+    repository: git.Repo,
+) -> None:
+    (Path(str(repository.working_tree_dir)) / "app.py").write_bytes(b"one = 1\n")
+
+    change_set = _reader(repository).read()
+
+    assert change_set.files == ()
+    assert len(change_set.omissions) == 1
+    assert change_set.omissions[0].path == Path("app.py")
+    assert change_set.omissions[0].reason is OmissionReason.NO_REVIEWABLE_LINES
+
+
+@pytest.mark.integration
 def test_review_snapshot_omits_binary_files(repository: git.Repo) -> None:
     binary_path = Path(str(repository.working_tree_dir)) / "image.bin"
     binary_path.write_bytes(b"header\x00payload")
