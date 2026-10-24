@@ -1,11 +1,10 @@
 """Asking git what changed.
 
-This module is the only place in Forge that imports GitPython, so a future
-worktree, submodule, or non-git backend is an adapter change and nothing more.
-
-The work is deliberately small: which lines of a file have uncommitted changes,
-and what history stands behind a line somebody is asking about. Branches, tags,
-and remotes stay out until something needs them.
+This is the existing GitPython adapter for single-file changes and history.
+The separate multi-file review adapter lives in ``change_set.py``; both keep
+GitPython outside the inner layers. A future worktree, submodule, or non-git
+backend remains an adapter concern. Branches, tags, and remotes stay out until
+something needs them.
 """
 
 import re
