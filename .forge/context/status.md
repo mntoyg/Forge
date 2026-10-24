@@ -20,9 +20,8 @@ been run live. A finding that cites a line now carries what git knows about
 that line - who last changed it, when, and how much the file has been moving.
 
 Phases 0 to 2 of `docs/product/roadmap.md` are complete. Phase 3 has one item
-left, and it is the one that was deferred on purpose - see below. A draft
-`forge review` MVP is in `docs/architecture/proposals/review-command.md` and
-needs owner review and a new ADR before implementation.
+left, and it is the one that was deferred on purpose - see below. `forge review`
+is planned under FR-6 and ADR-0014; implementation has not started.
 
 ## What is true right now
 
@@ -70,15 +69,14 @@ order, say why rather than silently reordering.
    300- and 800-line marked windows were each missed twice. With approval,
    measure the largest marked window that is read to its end (8 to 300 lines)
    and a ~300-line chunk sent alone; then a new ADR, then code.
-3. **Decide about the repository-wide sweep** - `forge debug --diff` with no
-   file, the last Phase 3 item. Deferred deliberately: one provider call per
-   changed file multiplies cost, and that deserves its own decision rather
-   than arriving as a silent consequence of ADR-0008.
+3. **Implement `forge review` under ADR-0014.** Its one-call budget, context
+   cap, confirmation, secret handling, and omission reporting are accepted;
+   implementation has not started.
 
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Codex's current 7-day meter: 10% used; it does not report daily use.
+  Codex's current 7-day meter: 1% used; daily use is unavailable.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
 - Never force-push or bypass GitHub branch protection.

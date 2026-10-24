@@ -21,6 +21,7 @@ the decision will be obvious from the code, but the trade-off will not be.
 | [0011](0011-warn-when-a-result-may-be-partial.md) | Warn when a result may be partial | Superseded by 0012 |
 | [0012](0012-the-caveat-is-for-whole-file-runs.md) | The caveat is for whole-file runs only | Accepted |
 | [0013](0013-review-a-long-file-as-marked-windows.md) | Review a long file as marked windows | Suspended |
+| [0014](0014-bounded-multi-file-change-review.md) | Bounded multi-file change review | Accepted |
 
 ## When to write one
 

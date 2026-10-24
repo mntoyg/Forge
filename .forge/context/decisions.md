@@ -18,6 +18,7 @@
 | [0011](../../docs/architecture/decisions/0011-warn-when-a-result-may-be-partial.md) | Warn when a result may be partial | Superseded by 0012 | - |
 | [0012](../../docs/architecture/decisions/0012-the-caveat-is-for-whole-file-runs.md) | The caveat is for whole-file runs only | Accepted | Above ~4,000 input tokens a *whole-file* run says so. `--diff` is measured reliable and stays silent. |
 | [0013](../../docs/architecture/decisions/0013-review-a-long-file-as-marked-windows.md) | Review a long file as marked windows | Suspended | Measured the same day: a 300- or 800-line marked window is not read to its end. Build nothing until a new ADR supersedes it. |
+| [0014](../../docs/architecture/decisions/0014-bounded-multi-file-change-review.md) | Bounded multi-file change review | Accepted | Separate `forge review`; one confirmed call, 16,000-byte prompt cap, no ADR-0013 windows. |
 
 ## How to use these
 

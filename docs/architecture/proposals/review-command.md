@@ -1,7 +1,7 @@
 # Proposal: `forge review`
 
-**Status:** Draft for product and architecture review. This proposal does not
-change requirements or approve implementation.
+**Status:** Accepted for implementation by [ADR-0014](../decisions/0014-bounded-multi-file-change-review.md).
+Implementation has not started.
 
 ## User outcome and existing behavior
 
@@ -33,7 +33,8 @@ either command's purpose.
   Show the configured model, file count, changed-line count, and an explicitly
   approximate input-token estimate before confirmation; do not claim a dollar
   price without reliable provider pricing data.
-- Set a deterministic aggregate context limit before implementation. If the
+- Set a deterministic aggregate context limit of 16,000 UTF-8 bytes across
+  completion message contents and cap output at 1,000 tokens. If the
   requested set exceeds it, do not truncate, split into more calls, or call the
   provider; list the scope and ask the user to narrow paths. Report files
   excluded for known limits in the result. A submitted file list is evidence
@@ -42,12 +43,10 @@ either command's purpose.
   has changed lines. Deletion-only paths have no current source and are listed
   as not analyzed. Skip binary files and Git-ignored files, and identify these
   exclusions in the plan/result. Do not read ignored files just to report them.
-- Exclude known sensitive paths (including environment and key files) and
-  redact recognized inline credential values before provider submission and
-  terminal rendering. Never log prompts or credential values. Report that
-  secret detection is heuristic; ask the owner to decide whether a suspected
-  secret should instead abort the whole run. Tests must prove known patterns
-  are not sent or rendered.
+- Abort the entire invocation before provider submission when a selected path
+  matches a known sensitive-path rule or supported inline-secret pattern.
+  Never print or log matched values. Detection is heuristic and cannot promise
+  to find arbitrary secrets; tests must prove recognized patterns abort.
 - Require each finding to identify a submitted path and a real line in that
   path's current snapshot, on a changed line, with a concise evidence excerpt
   or a direct explanation of the observed change. Validate path and line
@@ -80,13 +79,10 @@ untrusted data. Existing path containment, size checks, provider error
 translation, and exit-code ownership remain applicable; the proposed secret
 filtering must be designed and tested for this use case.
 
-The multi-file sweep was deliberately deferred because its call scope and cost
-need a separate decision. This proposal caps it at one call, but still needs a
-new accepted ADR before implementation to define the change-set port, aggregate
-context limit, and multi-file use of marked context. ADR-0008 remains binding
-for `debug --diff`; its whole-file/marked-lines rule is preserved here. Do not
-use the suspended ADR-0013 windows or claim long-file completeness. An
-over-limit review stops before the provider call rather than windowing files.
+ADR-0014 accepts a new Git change-set port for this separate command; it does
+not alter the one-file `debug --diff` contract in ADR-0008. Do not use the
+suspended ADR-0013 windows or claim long-file completeness. An over-limit
+review stops before the provider call rather than windowing files.
 
 ## Acceptance criteria and deterministic tests
 
@@ -107,10 +103,9 @@ over-limit review stops before the provider call rather than windowing files.
 
 ## Decisions to make before implementation
 
-**Product owner:** Is a heuristic secret detector sufficient or must a
-suspected secret abort review? What aggregate context limit and confirmation
-experience are acceptable? Should deleted-file contents be reviewable with
-base-revision locations, or remain explicitly out of scope?
+**Accepted defaults:** a detected secret aborts the invocation; scope and
+budget are previewed for confirmation, with non-TTY invocations making no
+provider call; deleted-file contents remain out of scope.
 
 **Engineering:** Which GitPython status/diff representation reliably captures
 staged plus unstaged state and renames across supported platforms? How will the
