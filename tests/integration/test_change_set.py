@@ -71,7 +71,6 @@ def test_over_budget_scope_is_refused_before_source_reads_or_diff(
         paths.append(path)
 
     read_attempts: list[Path] = []
-    diff_attempts: list[Path] = []
 
     def reject_read(path: Path, *args: Any, **kwargs: Any) -> Any:
         if path in paths:
@@ -79,13 +78,14 @@ def test_over_budget_scope_is_refused_before_source_reads_or_diff(
             raise AssertionError("over-budget source must not be read")
         return original_open(path, *args, **kwargs)
 
-    def reject_diff(repo: git.Repo, path: Path, previous: Path | None) -> str:
-        diff_attempts.append(path)
-        raise AssertionError("over-budget scope must not create a diff")
+    def reject_mapping(*args: Any, **kwargs: Any) -> frozenset[int]:
+        raise AssertionError("over-budget scope must not map changed lines")
 
     original_open = Path.open
     monkeypatch.setattr(Path, "open", reject_read)
-    monkeypatch.setattr(change_set_module, "_diff_for_path", reject_diff)
+    monkeypatch.setattr(
+        change_set_module, "_changed_lines_for_snapshot", reject_mapping
+    )
     provider = FakeProvider()
     review = ReviewChanges(_reader(repository), provider, model="fake-model")
 
@@ -93,7 +93,6 @@ def test_over_budget_scope_is_refused_before_source_reads_or_diff(
         review.prepare()
 
     assert read_attempts == []
-    assert diff_attempts == []
     assert provider.call_count == 0
 
 
@@ -105,29 +104,33 @@ def test_file_growth_after_preflight_is_refused_without_truncation(
     tracked = root / "app.py"
     tracked.write_bytes(b"x" * (MAX_REVIEW_REQUEST_BYTES + 1))
     original_stat = Path.stat
-    diff_attempts: list[Path] = []
 
     def report_small_size(path: Path, *args: Any, **kwargs: Any) -> Any:
         if path == tracked:
+            metadata = original_stat(path, *args, **kwargs)
             return SimpleNamespace(
                 st_size=1,
-                st_mode=original_stat(path, *args, **kwargs).st_mode,
+                st_mode=metadata.st_mode,
+                st_dev=metadata.st_dev,
+                st_ino=metadata.st_ino,
+                st_mtime_ns=metadata.st_mtime_ns,
+                st_ctime_ns=metadata.st_ctime_ns,
             )
         return original_stat(path, *args, **kwargs)
 
-    def reject_diff(repo: git.Repo, path: Path, previous: Path | None) -> str:
-        diff_attempts.append(path)
-        raise AssertionError("oversized source must not create a diff")
+    def reject_mapping(*args: Any, **kwargs: Any) -> frozenset[int]:
+        raise AssertionError("oversized source must not map changed lines")
 
     monkeypatch.setattr(Path, "stat", report_small_size)
-    monkeypatch.setattr(change_set_module, "_diff_for_path", reject_diff)
+    monkeypatch.setattr(
+        change_set_module, "_changed_lines_for_snapshot", reject_mapping
+    )
     provider = FakeProvider()
     review = ReviewChanges(_reader(repository), provider, model="fake-model")
 
     with pytest.raises(ReviewTooLargeError, match="preflight budget"):
         review.prepare()
 
-    assert diff_attempts == []
     assert provider.call_count == 0
 
 
@@ -144,7 +147,6 @@ def test_oversized_git_base_is_refused_before_source_read_or_diff(
     tracked.write_bytes(b"small current source\n")
 
     read_attempts: list[Path] = []
-    diff_attempts: list[Path] = []
     original_open = Path.open
 
     def reject_read(path: Path, *args: Any, **kwargs: Any) -> Any:
@@ -153,12 +155,13 @@ def test_oversized_git_base_is_refused_before_source_read_or_diff(
             raise AssertionError("over-budget source must not be read")
         return original_open(path, *args, **kwargs)
 
-    def reject_diff(repo: git.Repo, path: Path, previous: Path | None) -> str:
-        diff_attempts.append(path)
-        raise AssertionError("over-budget base must not create a diff")
+    def reject_mapping(*args: Any, **kwargs: Any) -> frozenset[int]:
+        raise AssertionError("over-budget base must not map changed lines")
 
     monkeypatch.setattr(Path, "open", reject_read)
-    monkeypatch.setattr(change_set_module, "_diff_for_path", reject_diff)
+    monkeypatch.setattr(
+        change_set_module, "_changed_lines_for_snapshot", reject_mapping
+    )
     provider = FakeProvider()
     review = ReviewChanges(_reader(repository), provider, model="fake-model")
 
@@ -166,7 +169,6 @@ def test_oversized_git_base_is_refused_before_source_read_or_diff(
         review.prepare()
 
     assert read_attempts == []
-    assert diff_attempts == []
     assert provider.call_count == 0
 
 
@@ -185,7 +187,7 @@ def test_changed_snapshot_is_refused_before_diff_or_provider_call(
     tracked.write_bytes(b"one = updated\ntwo = 2\nthree = 3\n")
     original_read = change_set_module._read_bounded_source
     read_count = 0
-    diff_attempts: list[Path] = []
+    mapping_attempts = 0
 
     def change_file_after_snapshot(path: Path, max_bytes: int) -> bytes:
         nonlocal read_count
@@ -195,14 +197,17 @@ def test_changed_snapshot_is_refused_before_diff_or_provider_call(
             tracked.write_bytes(replacement)
         return snapshot
 
-    def reject_diff(repo: git.Repo, path: Path, previous: Path | None) -> str:
-        diff_attempts.append(path)
-        raise AssertionError("a changed snapshot must not be diffed")
+    original_mapping = change_set_module._changed_lines_for_snapshot
+
+    def count_mapping(*args: Any, **kwargs: Any) -> frozenset[int]:
+        nonlocal mapping_attempts
+        mapping_attempts += 1
+        return original_mapping(*args, **kwargs)
 
     monkeypatch.setattr(
         change_set_module, "_read_bounded_source", change_file_after_snapshot
     )
-    monkeypatch.setattr(change_set_module, "_diff_for_path", reject_diff)
+    monkeypatch.setattr(change_set_module, "_changed_lines_for_snapshot", count_mapping)
     provider = FakeProvider()
     review = ReviewChanges(_reader(repository), provider, model="fake-model")
 
@@ -210,8 +215,30 @@ def test_changed_snapshot_is_refused_before_diff_or_provider_call(
         review.prepare()
 
     assert read_count == 1
-    assert diff_attempts == []
+    assert mapping_attempts == 1
     assert provider.call_count == 0
+
+
+@pytest.mark.integration
+def test_changed_line_mapping_does_not_reread_the_working_tree(
+    repository: git.Repo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tracked = Path(str(repository.working_tree_dir)) / "app.py"
+    tracked.write_bytes(b"one = changed\ntwo = 2\nthree = 3\n")
+    original_read = change_set_module._read_bounded_source
+    read_attempts: list[Path] = []
+
+    def count_reads(path: Path, max_bytes: int) -> bytes:
+        if path == tracked:
+            read_attempts.append(path)
+        return original_read(path, max_bytes)
+
+    monkeypatch.setattr(change_set_module, "_read_bounded_source", count_reads)
+
+    change_set = _reader(repository).read()
+
+    assert read_attempts == [tracked]
+    assert change_set.files[0].changed_lines == frozenset({1})
 
 
 @pytest.mark.integration

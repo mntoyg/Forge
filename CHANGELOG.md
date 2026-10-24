@@ -38,10 +38,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   Getting Started guide for provider configuration.
 
 - Bound `forge review` change-set work to the accepted 16,000-byte request
-  budget. Current and Git-base blob sizes are checked before file reads or
-  patch generation. The bounded source snapshot is verified before and after
-  Git line mapping; changed or grown files are refused without truncation or a
-  provider call.
+  budget. Current and Git-base blob sizes are checked before source reads.
+  Changed lines are mapped from the bounded source snapshot and its Git base
+  blob without rereading the working tree; files that change during preparation
+  are refused without truncation or a provider call.
 - **The partial-result caveat no longer fires on `--diff`** (ADR-0012,
   superseding ADR-0011). Marking the changed lines carries the model's
   attention to them wherever they sit: the same defect a whole-file review

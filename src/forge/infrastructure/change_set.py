@@ -1,5 +1,6 @@
 """Read a bounded command's current change set through GitPython."""
 
+from difflib import SequenceMatcher
 from os.path import normpath
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from forge.domain.review import (
     OmissionReason,
     ReviewFile,
 )
-from forge.infrastructure.repository import EMPTY_TREE, _added_lines
+from forge.infrastructure.repository import EMPTY_TREE
 
 
 class GitChangeSetReader:
@@ -91,6 +92,7 @@ class GitChangeSetReader:
                 continue
 
             try:
+                signature = _source_signature(source_path)
                 raw = _read_bounded_source(
                     source_path, MAX_REVIEW_REQUEST_BYTES - bytes_read
                 )
@@ -109,10 +111,9 @@ class GitChangeSetReader:
             line_set = (
                 None
                 if status == "A"
-                else _changed_lines_for_snapshot(
-                    repo, source_path, current, previous, raw
-                )
+                else _changed_lines_for_snapshot(repo, current, previous, raw)
             )
+            _ensure_snapshot_unchanged(source_path, current, signature)
             if line_set == frozenset():
                 omissions.append(
                     ChangeOmission(
@@ -204,44 +205,78 @@ class GitChangeSetReader:
         return changes
 
 
-def _diff_for_path(repo: git.Repo, path: Path, previous: Path | None) -> str:
-    """Get current-side line changes, including staged and unstaged edits."""
-    against = "HEAD" if repo.head.is_valid() else EMPTY_TREE
-    paths = [path.as_posix()]
-    if previous is not None:
-        paths.append(previous.as_posix())
-    try:
-        return str(
-            repo.git.diff(against, "--unified=0", "--find-renames", "--", *paths)
-        )
-    except git.GitCommandError as error:
-        raise NoChangesError(f"Git could not compare changed file {path}.") from error
-
-
 def _changed_lines_for_snapshot(
     repo: git.Repo,
-    source_path: Path,
     path: Path,
     previous: Path | None,
     snapshot: bytes,
 ) -> frozenset[int]:
-    """Use Git's line map only while the bounded source snapshot stays stable."""
-    _verify_snapshot(source_path, path, snapshot)
-    added_lines = _added_lines(_diff_for_path(repo, path, previous))
-    _verify_snapshot(source_path, path, snapshot)
-    return added_lines
-
-
-def _verify_snapshot(source_path: Path, path: Path, snapshot: bytes) -> None:
-    """Reject a changed or grown file rather than pairing mismatched evidence."""
+    """Map changed lines from the bounded snapshot and its immutable Git base."""
+    base_path = previous or path
     try:
-        current = _read_bounded_source(source_path, len(snapshot))
+        base_blob = repo.commit("HEAD").tree / base_path.as_posix()
+        if not isinstance(base_blob, git.Blob):
+            raise KeyError(base_path)
+        base = base_blob.data_stream.read(MAX_REVIEW_REQUEST_BYTES + 1)
+    except (git.BadName, git.GitCommandError, KeyError) as error:
+        raise NoChangesError(
+            f"Cannot read the committed version of {path.as_posix()}."
+        ) from error
+    if len(base) > MAX_REVIEW_REQUEST_BYTES:
+        raise ReviewTooLargeError(
+            f"The committed version of {path.as_posix()} exceeds the "
+            f"{MAX_REVIEW_REQUEST_BYTES:,}-byte review preflight budget. "
+            "Narrow the paths and retry."
+        )
+    if b"\0" in base or b"\0" in snapshot:
+        return frozenset()
+    old_lines = _git_lines(base)
+    new_lines = _git_lines(snapshot)
+    changed: set[int] = set()
+    matcher = SequenceMatcher(None, old_lines, new_lines)
+    for tag, _old_start, _old_end, new_start, new_end in matcher.get_opcodes():
+        if tag in {"insert", "replace"}:
+            changed.update(range(new_start + 1, new_end + 1))
+    return frozenset(changed)
+
+
+def _git_lines(content: bytes) -> list[bytes]:
+    """Split like Git text diffs do: LF delimits lines and EOF is significant."""
+    if not content:
+        return []
+    lines = content.split(b"\n")
+    terminated = lines[-1] == b""
+    if terminated:
+        lines.pop()
+    return [line + b"\n" for line in lines[:-1]] + [
+        lines[-1] + (b"\n" if terminated else b"")
+    ]
+
+
+def _source_signature(path: Path) -> tuple[int, int, int, int, int]:
+    """Capture metadata without rereading a source payload."""
+    metadata = path.stat()
+    return (
+        metadata.st_dev,
+        metadata.st_ino,
+        metadata.st_size,
+        metadata.st_mtime_ns,
+        metadata.st_ctime_ns,
+    )
+
+
+def _ensure_snapshot_unchanged(
+    source_path: Path, path: Path, expected: tuple[int, int, int, int, int]
+) -> None:
+    """Reject edits during preparation without reopening the source contents."""
+    try:
+        current = _source_signature(source_path)
     except OSError as error:
         raise ReviewSnapshotChangedError(
             f"Changed file {path.as_posix()} moved while preparing the review. "
             "Retry after edits stop."
         ) from error
-    if current != snapshot:
+    if current != expected:
         raise ReviewSnapshotChangedError(
             f"Changed file {path.as_posix()} moved while preparing the review. "
             "Retry after edits stop."
