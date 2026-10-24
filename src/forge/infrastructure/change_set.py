@@ -5,8 +5,9 @@ from pathlib import Path
 
 import git
 
-from forge.domain.errors import NoChangesError, NotARepositoryError
+from forge.domain.errors import NoChangesError, NotARepositoryError, ReviewTooLargeError
 from forge.domain.review import (
+    MAX_REVIEW_REQUEST_BYTES,
     ChangeKind,
     ChangeOmission,
     ChangeSet,
@@ -55,8 +56,11 @@ class GitChangeSetReader:
         if not selected:
             raise NoChangesError("No changed files match the requested review scope.")
 
+        _preflight_source_bytes(root, selected)
+
         files: list[ReviewFile] = []
         omissions: list[ChangeOmission] = []
+        bytes_read = 0
         for status, current_name, previous_name in selected:
             current = Path(current_name)
             previous = Path(previous_name) if previous_name else None
@@ -81,6 +85,21 @@ class GitChangeSetReader:
                 )
                 continue
 
+            try:
+                with source_path.open("rb") as source:
+                    raw = source.read(MAX_REVIEW_REQUEST_BYTES - bytes_read + 1)
+            except OSError as error:
+                raise NoChangesError(
+                    f"Cannot read changed file {current.as_posix()}: {error}"
+                ) from error
+            if bytes_read + len(raw) > MAX_REVIEW_REQUEST_BYTES:
+                raise ReviewTooLargeError(
+                    f"Changed source files exceed the "
+                    f"{MAX_REVIEW_REQUEST_BYTES:,}-byte preflight budget. "
+                    "Narrow the paths and retry."
+                )
+            bytes_read += len(raw)
+
             line_set = (
                 None
                 if status == "A"
@@ -93,13 +112,6 @@ class GitChangeSetReader:
                     )
                 )
                 continue
-
-            try:
-                raw = source_path.read_bytes()
-            except OSError as error:
-                raise NoChangesError(
-                    f"Cannot read changed file {current.as_posix()}: {error}"
-                ) from error
 
             if b"\0" in raw:
                 omissions.append(
@@ -196,6 +208,32 @@ def _diff_for_path(repo: git.Repo, path: Path, previous: Path | None) -> str:
         )
     except git.GitCommandError as error:
         raise NoChangesError(f"Git could not compare changed file {path}.") from error
+
+
+def _preflight_source_bytes(
+    root: Path, changes: list[tuple[str, str, str | None]]
+) -> None:
+    """Refuse an over-budget scope before reading sources or building patches."""
+    total_bytes = 0
+    for status, current_name, _ in changes:
+        if status in {"D", "T", "I"}:
+            continue
+        current = Path(current_name)
+        if _has_symlink_component(root, current):
+            continue
+        source_path = root / current
+        try:
+            size = source_path.stat().st_size
+        except OSError as error:
+            raise NoChangesError(
+                f"Cannot inspect changed file {current.as_posix()}: {error}"
+            ) from error
+        total_bytes += size
+        if total_bytes > MAX_REVIEW_REQUEST_BYTES:
+            raise ReviewTooLargeError(
+                f"Selected changed files exceed the {MAX_REVIEW_REQUEST_BYTES:,}-byte "
+                "review preflight budget. Narrow the paths and retry."
+            )
 
 
 def _ignored_untracked(repo: git.Repo, scopes: tuple[Path, ...]) -> tuple[str, ...]:

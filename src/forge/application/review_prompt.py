@@ -2,9 +2,13 @@
 
 from forge.domain.ai import CompletionRequest, Message, Role
 from forge.domain.errors import NoChangesError, ReviewTooLargeError
-from forge.domain.review import ChangeSet
+from forge.domain.review import (
+    MAX_REVIEW_REQUEST_BYTES as MAX_REVIEW_REQUEST_BYTES,
+)
+from forge.domain.review import (
+    ChangeSet,
+)
 
-MAX_REVIEW_REQUEST_BYTES = 16_000
 MAX_REVIEW_OUTPUT_TOKENS = 1_000
 
 REVIEW_SYSTEM_PROMPT = """\

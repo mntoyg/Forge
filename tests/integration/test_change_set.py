@@ -1,13 +1,18 @@
 """The review change-set adapter against isolated temporary Git repositories."""
 
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import git
 import pytest
 
-from forge.domain.errors import NoChangesError
-from forge.domain.review import ChangeKind, OmissionReason
+from forge.application.review import ReviewChanges
+from forge.domain.errors import NoChangesError, ReviewTooLargeError
+from forge.domain.review import MAX_REVIEW_REQUEST_BYTES, ChangeKind, OmissionReason
+from forge.infrastructure import change_set as change_set_module
 from forge.infrastructure.change_set import GitChangeSetReader
+from tests.support.fakes import FakeProvider
 
 
 @pytest.fixture
@@ -43,6 +48,83 @@ def test_review_snapshot_combines_staged_and_unstaged_lines(
     assert source.content == "one = staged\ntwo = 2\nthree = unstaged\n"
     assert source.changed_lines == frozenset({1, 3})
     assert source.kind is ChangeKind.MODIFIED
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("sizes", [(MAX_REVIEW_REQUEST_BYTES + 1,), (8_001, 8_000)])
+def test_over_budget_scope_is_refused_before_source_reads_or_diff(
+    repository: git.Repo,
+    monkeypatch: pytest.MonkeyPatch,
+    sizes: tuple[int, ...],
+) -> None:
+    root = Path(str(repository.working_tree_dir))
+    tracked = root / "app.py"
+    tracked.write_bytes(b"x" * sizes[0])
+    paths = [tracked]
+    for index, size in enumerate(sizes[1:]):
+        path = root / f"extra-{index}.py"
+        path.write_bytes(b"x" * size)
+        paths.append(path)
+
+    read_attempts: list[Path] = []
+    diff_attempts: list[Path] = []
+
+    def reject_read(path: Path, *args: Any, **kwargs: Any) -> Any:
+        if path in paths:
+            read_attempts.append(path)
+            raise AssertionError("over-budget source must not be read")
+        return original_open(path, *args, **kwargs)
+
+    def reject_diff(repo: git.Repo, path: Path, previous: Path | None) -> str:
+        diff_attempts.append(path)
+        raise AssertionError("over-budget scope must not create a diff")
+
+    original_open = Path.open
+    monkeypatch.setattr(Path, "open", reject_read)
+    monkeypatch.setattr(change_set_module, "_diff_for_path", reject_diff)
+    provider = FakeProvider()
+    review = ReviewChanges(_reader(repository), provider, model="fake-model")
+
+    with pytest.raises(ReviewTooLargeError, match="preflight budget"):
+        review.prepare()
+
+    assert read_attempts == []
+    assert diff_attempts == []
+    assert provider.call_count == 0
+
+
+@pytest.mark.integration
+def test_file_growth_after_preflight_is_refused_without_truncation(
+    repository: git.Repo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = Path(str(repository.working_tree_dir))
+    tracked = root / "app.py"
+    tracked.write_bytes(b"x" * (MAX_REVIEW_REQUEST_BYTES + 1))
+    original_stat = Path.stat
+    diff_attempts: list[Path] = []
+
+    def report_small_size(path: Path, *args: Any, **kwargs: Any) -> Any:
+        if path == tracked:
+            return SimpleNamespace(
+                st_size=1,
+                st_mode=original_stat(path, *args, **kwargs).st_mode,
+            )
+        return original_stat(path, *args, **kwargs)
+
+    def reject_diff(repo: git.Repo, path: Path, previous: Path | None) -> str:
+        diff_attempts.append(path)
+        raise AssertionError("oversized source must not create a diff")
+
+    monkeypatch.setattr(Path, "stat", report_small_size)
+    monkeypatch.setattr(change_set_module, "_diff_for_path", reject_diff)
+    provider = FakeProvider()
+    review = ReviewChanges(_reader(repository), provider, model="fake-model")
+
+    with pytest.raises(ReviewTooLargeError, match="preflight budget"):
+        review.prepare()
+
+    assert diff_attempts == []
+    assert provider.call_count == 0
 
 
 @pytest.mark.integration

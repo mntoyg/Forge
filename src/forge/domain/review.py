@@ -8,6 +8,9 @@ from typing import Protocol
 from forge.domain.ai import TokenUsage
 from forge.domain.source import Confidence, Location, Severity
 
+# ADR-0014 bounds the complete provider request, including prompt instructions.
+MAX_REVIEW_REQUEST_BYTES = 16_000
+
 
 class ChangeKind(StrEnum):
     """Git's relevant change categories, independent of GitPython."""

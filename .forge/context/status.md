@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-10-24 on `main`; quality gate passes.
+**Last verified:** 2026-10-24 on `main`; quality gate passes (425 passed, 1 skipped).
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
 repository was recreated on 2026-09-06 - see below.
 
@@ -32,8 +32,9 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 422 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
+| Local gate: 425 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
+| `forge review` refuses source scopes over the accepted 16,000-byte request budget before reading files or generating patches | Integration tests cover individual and aggregate limits, growth after metadata preflight, and zero provider calls |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
@@ -77,7 +78,7 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Codex's current 7-day meter: 1% used; daily use is unavailable.
+  Codex's current 7-day meter: 4% used; daily use is unavailable.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
 - Never force-push or bypass GitHub branch protection.
