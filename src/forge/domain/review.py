@@ -5,6 +5,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
+from forge.domain.source import Confidence, Location, Severity
+
 
 class ChangeKind(StrEnum):
     """Git's relevant change categories, independent of GitPython."""
@@ -60,3 +62,24 @@ class ChangeSetReader(Protocol):
     def read(self, paths: tuple[Path, ...] = ()) -> ChangeSet:
         """Return changed files narrowed to ``paths`` when supplied."""
         ...
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewFinding:
+    """A model claim bound to a verified changed line and local evidence."""
+
+    path: Path
+    location: Location
+    summary: str
+    detail: str
+    severity: Severity
+    confidence: Confidence
+    evidence: str
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedReview:
+    """Validated findings and whether any untrusted findings were discarded."""
+
+    findings: tuple[ReviewFinding, ...]
+    complete: bool

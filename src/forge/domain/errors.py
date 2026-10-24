@@ -91,6 +91,10 @@ class NoChangesError(RepositoryError):
     """
 
 
+class ReviewTooLargeError(RepositoryError):
+    """The planned multi-file request exceeds its accepted byte limit."""
+
+
 class NoHistoryError(RepositoryError):
     """The file has no history for the repository to report.
 

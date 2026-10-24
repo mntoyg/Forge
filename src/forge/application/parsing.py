@@ -13,9 +13,12 @@ reviewer at all.
 """
 
 import json
+from collections.abc import Mapping
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from forge.domain.errors import ProviderResponseError
+from forge.domain.review import ChangeSet, ParsedReview, ReviewFile, ReviewFinding
 from forge.domain.source import (
     Confidence,
     Finding,
@@ -65,6 +68,78 @@ def parse_findings(text: str, source: SourceFile) -> tuple[Finding, ...]:
         if (finding := _to_finding(item, source)) is not None
     ]
     return tuple(findings)
+
+
+def parse_review_findings(text: str, changes: ChangeSet) -> ParsedReview:
+    """Accept only findings tied to a submitted path and a changed snapshot line."""
+    try:
+        payload = _decode(text)
+    except ProviderResponseError:
+        # A review response may echo repository content. Never include it in
+        # an error message that the CLI will print.
+        raise ProviderResponseError(
+            "The model's review reply was not usable JSON."
+        ) from None
+    raw_findings = payload.get("findings")
+    if raw_findings is None:
+        raise ProviderResponseError("The model's review reply has no 'findings' key.")
+    if not isinstance(raw_findings, list):
+        raise ProviderResponseError(
+            f"The model's reply has 'findings' as {type(raw_findings).__name__}, "
+            "not a list."
+        )
+
+    by_path = {source.path.as_posix(): source for source in changes.files}
+    findings: list[ReviewFinding] = []
+    complete = True
+    for item in raw_findings:
+        finding = _to_review_finding(item, by_path)
+        if finding is None:
+            complete = False
+        else:
+            findings.append(finding)
+    return ParsedReview(findings=tuple(findings), complete=complete)
+
+
+def _to_review_finding(
+    item: object, sources: Mapping[str, ReviewFile]
+) -> ReviewFinding | None:
+    """Validate model path and line before constructing evidence from source."""
+    if not isinstance(item, dict):
+        return None
+    raw_path = _text(item.get("path"))
+    if not raw_path or "\\" in raw_path or "\x00" in raw_path:
+        return None
+    normalized = PurePosixPath(raw_path)
+    if normalized.is_absolute() or normalized.as_posix() != raw_path:
+        return None
+    if any(part in {".", ".."} for part in normalized.parts):
+        return None
+    source = sources.get(raw_path)
+    if source is None:
+        return None
+
+    line = item.get("line")
+    if isinstance(line, bool) or not isinstance(line, int):
+        return None
+    if line < 1 or line not in source.changed_lines:
+        return None
+    summary = _text(item.get("summary"))
+    detail = _text(item.get("detail"))
+    if not summary or not detail:
+        return None
+    text_lines = source.content.splitlines()
+    if line > len(text_lines):
+        return None
+    return ReviewFinding(
+        path=Path(raw_path),
+        location=Location(line=line),
+        summary=summary,
+        detail=detail,
+        severity=_severity(item.get("severity")),
+        confidence=_confidence(item.get("confidence")),
+        evidence=text_lines[line - 1],
+    )
 
 
 def _decode(text: str) -> dict[str, Any]:

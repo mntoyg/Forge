@@ -1,7 +1,8 @@
 # Proposal: `forge review`
 
-**Status:** Accepted for implementation by [ADR-0014](../decisions/0014-bounded-multi-file-change-review.md).
-Implementation has not started.
+**Status:** Implementation is in progress under [ADR-0014](../decisions/0014-bounded-multi-file-change-review.md).
+The Git change-set adapter, bounded request builder, and path/line validation
+are implemented; the command is not available yet.
 
 ## User outcome and existing behavior
 
@@ -107,8 +108,10 @@ review stops before the provider call rather than windowing files.
 budget are previewed for confirmation, with non-TTY invocations making no
 provider call; deleted-file contents remain out of scope.
 
-**Engineering:** Which GitPython status/diff representation reliably captures
-staged plus unstaged state and renames across supported platforms? How will the
-provider-independent token estimate be calibrated and labeled? Can the
-existing finding/parser model carry a validated path without weakening current
-single-file location guarantees?
+**Engineering:** GitPython's `diff HEAD --name-status --find-renames -z`,
+`untracked_files`, and ignored-path listing currently form the change-set
+snapshot; temporary-repository tests cover staged/unstaged changes, renames,
+deletions, ignored files, binaries, and symlinks. The review parser is separate
+from single-file parsing and validates its path/line manifest. The token
+estimate uses a labeled UTF-8-bytes-per-four heuristic; it is not a provider
+tokenizer and should remain clearly approximate.

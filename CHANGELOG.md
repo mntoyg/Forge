@@ -18,6 +18,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 - Add a Git change-set port and read-only adapter for the planned `forge review`
   command, including staged, unstaged, untracked, renamed, and omitted files.
+- Add a UTF-8-bounded multi-file review prompt and validation that binds each
+  accepted finding to a changed line in its submitted snapshot.
 - **`forge inspect [directory]`** - a local, deterministic overview of
   project guidance, observed languages, recognized tooling, available checks,
   and shallow structure. The report cites evidence paths and states when
