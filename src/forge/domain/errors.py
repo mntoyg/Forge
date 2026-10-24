@@ -95,6 +95,10 @@ class ReviewTooLargeError(RepositoryError):
     """The planned multi-file request exceeds its accepted byte limit."""
 
 
+class SensitiveContentError(RepositoryError):
+    """Review was refused because selected source matched a secret rule."""
+
+
 class NoHistoryError(RepositoryError):
     """The file has no history for the repository to report.
 

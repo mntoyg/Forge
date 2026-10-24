@@ -1,8 +1,8 @@
 # Proposal: `forge review`
 
 **Status:** Implementation is in progress under [ADR-0014](../decisions/0014-bounded-multi-file-change-review.md).
-The Git change-set adapter, bounded request builder, and path/line validation
-are implemented; the command is not available yet.
+Change-set collection, local planning, bounded request construction, secret
+checks, and path/line validation are implemented; the command is not available.
 
 ## User outcome and existing behavior
 

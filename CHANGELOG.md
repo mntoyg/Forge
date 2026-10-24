@@ -20,6 +20,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   command, including staged, unstaged, untracked, renamed, and omitted files.
 - Add a UTF-8-bounded multi-file review prompt and validation that binds each
   accepted finding to a changed line in its submitted snapshot.
+- Add review planning that stops on recognized sensitive paths or inline
+  secrets before a single provider call can be made.
 - **`forge inspect [directory]`** - a local, deterministic overview of
   project guidance, observed languages, recognized tooling, available checks,
   and shallow structure. The report cites evidence paths and states when

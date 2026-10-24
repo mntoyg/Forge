@@ -22,8 +22,8 @@ that line - who last changed it, when, and how much the file has been moving.
 Phases 0 to 2 of `docs/product/roadmap.md` are complete. Phase 3 retains its
 deferred repository-wide `debug --diff` sweep. Separately, `forge review` is
 planned under FR-6 and ADR-0014. Its change-set port, read-only adapter,
-bounded request builder, and path/line validation are implemented; provider
-orchestration, secret checks, confirmation, and CLI are not.
+bounded request builder, secret checks, and single-call application use case
+are implemented; confirmation flow, rendering, and CLI are not.
 
 ## What is true right now
 
@@ -32,7 +32,7 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 406 passed, 1 skipped; format, lint and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
+| Local gate: 416 passed, 1 skipped; format, lint and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
@@ -72,8 +72,8 @@ order, say why rather than silently reordering.
    measure the largest marked window that is read to its end (8 to 300 lines)
    and a ~300-line chunk sent alone; then a new ADR, then code.
 3. **Complete `forge review` under ADR-0014.** Change-set collection, bounded
-   prompt construction, and finding validation exist; next add fail-closed
-   secret checks, provider orchestration, confirmation, and CLI rendering.
+   planning, secret checks, one-call application orchestration, and finding
+   validation exist; next add confirmation, rendering, CLI, and user docs.
 
 ## Blocked, or needs a human
 

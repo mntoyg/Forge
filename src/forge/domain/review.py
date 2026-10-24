@@ -5,6 +5,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
+from forge.domain.ai import TokenUsage
 from forge.domain.source import Confidence, Location, Severity
 
 
@@ -84,3 +85,14 @@ class ParsedReview:
 
     findings: tuple[ReviewFinding, ...]
     complete: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ReviewResult:
+    """One bounded model result and known omissions from its Git scope."""
+
+    findings: tuple[ReviewFinding, ...]
+    omissions: tuple[ChangeOmission, ...]
+    model: str
+    usage: TokenUsage
+    incomplete: bool
