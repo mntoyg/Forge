@@ -16,12 +16,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Added
 
-- Add a Git change-set port and read-only adapter for the planned `forge review`
-  command, including staged, unstaged, untracked, renamed, and omitted files.
-- Add a UTF-8-bounded multi-file review prompt and validation that binds each
-  accepted finding to a changed line in its submitted snapshot.
-- Add review planning that stops on recognized sensitive paths or inline
-  secrets before a single provider call can be made.
+- **`forge review [PATH ...]`** - preview a bounded working-tree change set and
+  request confirmation before one provider call. It reports included and
+  omitted paths, validates findings against changed lines, and states when
+  coverage is incomplete. A non-interactive run makes no provider call.
 - **`forge inspect [directory]`** - a local, deterministic overview of
   project guidance, observed languages, recognized tooling, available checks,
   and shallow structure. The report cites evidence paths and states when
@@ -32,8 +30,7 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 - Add a proposed architecture and product boundary for controlled,
   repository-aware software engineering assistance.
-- Accept the bounded `forge review` MVP design in ADR-0014; implementation has
-  not started.
+- Accept the bounded `forge review` MVP design in ADR-0014.
 
 ### Fixed
 

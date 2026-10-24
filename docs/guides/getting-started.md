@@ -226,7 +226,39 @@ against. Drop --diff to analyse the whole file.
 
 Both exit `2`. Everything else about `forge debug` works fine outside git.
 
-## 7. Use it in a script
+## 7. Review the current changes
+
+`forge debug --diff` is for one file. To review multiple changed files in one
+request, run:
+
+```bash
+uv run forge review
+```
+
+This plans a review of staged and unstaged tracked changes plus non-ignored
+untracked files. Pass one or more paths to narrow the scope:
+
+```bash
+uv run forge review src tests
+```
+
+Forge prints included and omitted paths, the configured model, request size,
+and an approximate token count. In an interactive terminal, it asks before
+sending source to the configured provider. Declining makes no call. Without a
+terminal, it prints the plan and makes no call. Each run makes at most one
+provider call; the request is limited to 16,000 UTF-8 bytes and is never split
+or truncated. If it is too large, narrow the paths and try again.
+
+Known sensitive paths or recognized secret patterns stop the review before
+submission. Secret detection is heuristic and cannot find every secret.
+Deleted-only files, binary files, symlinks, ignored untracked files, and other
+unsupported inputs are shown as omissions. Findings cite a changed line in
+the submitted current snapshot, with evidence taken from that snapshot. The
+model can still miss defects; submitted files are not guaranteed to have been
+fully reviewed. Forge never changes files, runs project commands, or continues
+autonomously.
+
+## 8. Use it in a script
 
 Findings do **not** change the exit code:
 

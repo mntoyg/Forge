@@ -92,17 +92,17 @@ and treated as data.
 | FR-5.5 | Inspection MUST stay within the selected root, skip symlinks, secrets, project `.gitignore` matches, virtual environments, and generated output by default, and enforce file-count and byte limits. | Done |
 | FR-5.6 | Repository content MUST be treated as untrusted data and MUST NOT override Forge safety rules. | Done |
 
-## FR-6 - `forge review` (planned)
+## FR-6 - `forge review` (bounded multi-file change review)
 
 | ID | Requirement | Status |
 | --- | --- | --- |
-| FR-6.1 | `forge review [PATH ...]` MUST review eligible changes in the Git worktree against `HEAD`, combining staged and unstaged tracked changes and including non-ignored untracked files; supplied paths MUST narrow the scope. | Planned |
-| FR-6.2 | Review MUST show the exact path scope, omissions, configured model, request byte count, approximate token count, and one-call maximum before asking for confirmation. A non-interactive invocation MUST make no provider call. | Planned |
-| FR-6.3 | A confirmed invocation MUST make at most one provider call, using full current file contents with real line numbers and changed lines marked. It MUST NOT truncate or split requests; the combined UTF-8 byte length of completion message contents MUST be at most 16,000 bytes, and output MUST be capped at 1,000 tokens. | Planned |
-| FR-6.4 | Review MUST abort before provider submission for a known sensitive path or supported inline-secret pattern, and MUST NOT print or log secret values. Secret detection is heuristic and MUST NOT be described as exhaustive. | Planned |
-| FR-6.5 | Review MUST disclose deletions, binary files, symlinks, and ignored untracked files as omissions; tracked files remain eligible despite ignore rules. A Git-detected rename MUST be identified and reviewed at its current destination. | Planned |
-| FR-6.6 | Every accepted finding MUST cite a submitted repository-relative path and one-based changed line from the planned current snapshot. Invalid model paths or locations MUST be discarded and the response marked incomplete. Evidence excerpts MUST come from that snapshot. | Planned |
-| FR-6.7 | Review MUST be read-only, MUST NOT run project commands or checks, and MUST NOT continue an autonomous loop. Repository content and provider output MUST be treated as untrusted data. | Planned |
+| FR-6.1 | `forge review [PATH ...]` MUST review eligible changes in the Git worktree against `HEAD`, combining staged and unstaged tracked changes and including non-ignored untracked files; supplied paths MUST narrow the scope. | Done |
+| FR-6.2 | Review MUST show the exact path scope, omissions, configured model, request byte count, approximate token count, and one-call maximum before asking for confirmation. A non-interactive invocation MUST make no provider call. | Done |
+| FR-6.3 | A confirmed invocation MUST make at most one provider call, using full current file contents with real line numbers and changed lines marked. It MUST NOT truncate or split requests; the combined UTF-8 byte length of completion message contents MUST be at most 16,000 bytes, and output MUST be capped at 1,000 tokens. | Done |
+| FR-6.4 | Review MUST abort before provider submission for a known sensitive path or supported inline-secret pattern, and MUST NOT print or log secret values. Secret detection is heuristic and MUST NOT be described as exhaustive. | Done |
+| FR-6.5 | Review MUST disclose deletions, binary files, symlinks, and ignored untracked files as omissions; tracked files remain eligible despite ignore rules. A Git-detected rename MUST be identified and reviewed at its current destination. | Done |
+| FR-6.6 | Every accepted finding MUST cite a submitted repository-relative path and one-based changed line from the planned current snapshot. Invalid model paths or locations MUST be discarded and the response marked incomplete. Evidence excerpts MUST come from that snapshot. | Done |
+| FR-6.7 | Review MUST be read-only, MUST NOT run project commands or checks, and MUST NOT continue an autonomous loop. Repository content and provider output MUST be treated as untrusted data. | Done |
 
 ## NFR-1 - Quality
 

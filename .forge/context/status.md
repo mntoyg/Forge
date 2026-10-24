@@ -21,9 +21,9 @@ that line - who last changed it, when, and how much the file has been moving.
 
 Phases 0 to 2 of `docs/product/roadmap.md` are complete. Phase 3 retains its
 deferred repository-wide `debug --diff` sweep. Separately, `forge review` is
-planned under FR-6 and ADR-0014. Its change-set port, read-only adapter,
-bounded request builder, secret checks, and single-call application use case
-are implemented; confirmation flow, rendering, and CLI are not.
+implemented under FR-6 and ADR-0014: it previews a bounded change set, asks
+for TTY confirmation, and makes at most one provider call. It remains an AI
+opinion and reports omissions and incomplete coverage.
 
 ## What is true right now
 
@@ -32,12 +32,11 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 416 passed, 1 skipped; format, lint and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
+| Local gate: 422 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
-| Nothing in Forge is Python-specific | The `.js` run above. It sends text and reads a reply; the language is the model's problem |
 | A whole-file run above 4,000 tokens says the answer may be partial | ADR-0012. `--diff` stays silent, because it is measured reliable |
 | `--diff` is not affected by that, and is the strongest mode on a long file | Live: the same defect found at line 877 (3 of 3) and at line 3,807 (44,409 in), where a whole-file run misses it every time. ADR-0012 |
 | Marking only works for a small region | Live, 3,806-line file: 8 marked lines found the defect; 300 and 800 marked lines missed it on the window's last line, twice each. ADR-0013 |
@@ -71,9 +70,9 @@ order, say why rather than silently reordering.
    300- and 800-line marked windows were each missed twice. With approval,
    measure the largest marked window that is read to its end (8 to 300 lines)
    and a ~300-line chunk sent alone; then a new ADR, then code.
-3. **Complete `forge review` under ADR-0014.** Change-set collection, bounded
-   planning, secret checks, one-call application orchestration, and finding
-   validation exist; next add confirmation, rendering, CLI, and user docs.
+3. **Recheck release readiness.** `forge review` is implemented under FR-6 and
+   ADR-0014; installation and publication choices still need their own audit
+   and human decisions.
 
 ## Blocked, or needs a human
 

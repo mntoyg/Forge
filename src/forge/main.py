@@ -14,9 +14,12 @@ from rich.console import Console
 from forge import __version__
 from forge.application.analyze import AnalyzeSourceFile
 from forge.application.inspect import InspectProject
+from forge.application.review import ReviewChanges
 from forge.cli import debug as debug_cli
 from forge.cli import inspect as inspect_cli
+from forge.cli import review as review_cli
 from forge.domain.source import AnalysisResult
+from forge.infrastructure.change_set import GitChangeSetReader
 from forge.infrastructure.config import Settings, load_settings
 from forge.infrastructure.logging import configure_logging
 from forge.infrastructure.openai_provider import OpenAIProvider
@@ -98,8 +101,26 @@ def _analyze(path: Path, *, changes_only: bool = False) -> AnalysisResult:
     return build_analyzer(settings)(path, changes_only=changes_only)
 
 
+def _review_factory() -> ReviewChanges:
+    """Build review adapters on command invocation, never during help output."""
+    settings = load_settings()
+    configure_logging(
+        settings.log_level,
+        secrets=[settings.api_key.get_secret_value()] if settings.api_key else [],
+    )
+    workspace = Path.cwd()
+    provider = OpenAIProvider(
+        api_key=settings.require_api_key(),
+        model=settings.model,
+        base_url=settings.base_url,
+        timeout_seconds=settings.timeout_seconds,
+    )
+    return ReviewChanges(GitChangeSetReader(workspace), provider, model=settings.model)
+
+
 debug_cli.register(app, _analyze)
 inspect_cli.register(app, InspectProject(FilesystemProjectEvidenceReader()))
+review_cli.register(app, _review_factory)
 
 
 if __name__ == "__main__":  # pragma: no cover - manual entry point

@@ -5,9 +5,9 @@
 Forge helps developers understand, debug, review, generate, and improve
 software without leaving the shell.
 
-> **Status: MVP.** `forge debug` works. It reads a source file, analyses it
-> with an AI provider, and reports what it finds. See [ROADMAP.md](ROADMAP.md)
-> for what comes next.
+> **Status: MVP.** `forge debug` analyses one source file, and `forge review`
+> reviews a bounded set of current Git changes with one confirmed provider call.
+> See [ROADMAP.md](ROADMAP.md) for what comes next.
 
 ---
 
@@ -99,6 +99,16 @@ Or review only what you changed since the last commit:
 ```bash
 forge debug src/app.py --diff
 ```
+
+To review the current worktree's staged, unstaged, and non-ignored untracked
+changes together, use `forge review`. It shows the exact scope and request
+estimate first and requires confirmation in an interactive terminal. Narrow
+the scope by passing paths, for example `forge review src tests`. It makes at
+most one provider call; deleted files and other unsupported inputs are listed
+as omissions. The request is limited to 16,000 UTF-8 bytes, so larger changes
+must be narrowed. The AI may miss defects; this is not a completeness check.
+See the [Getting Started guide](docs/guides/getting-started.md#review-the-current-changes)
+for details.
 
 The whole file is still sent, because a change cannot be judged without the
 code around it - so `--diff` narrows the answer, not the bill.
