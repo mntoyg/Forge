@@ -30,6 +30,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Documentation
 
+- Draft the proposed FR-7 and minimum `forge explain <FILE>` contract for
+  project-owner review; implementation is not approved.
 - Add `docs/development/task.md` to record delivered capabilities and the
   staged plan for `forge explain` and subsequent features.
 - Add a proposed architecture and product boundary for controlled,

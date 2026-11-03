@@ -61,15 +61,15 @@ order, say why rather than silently reordering.
 
 0. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
    tagging remains a deliberate owner action after green CI.
-1. **Design `forge explain <file>`.** Start with FR-7 and an accepted command
-   contract; do not implement until the owner approves it.
+1. **Review the draft `forge explain` proposal.** Approve or revise proposed
+   FR-7 and the command contract before any implementation.
 2. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
    measurement and accept a new ADR before implementation.
 
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Codex's current 7-day meter: 5% used; daily use is unavailable.
+  Codex's current 7-day meter: 69% used; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
