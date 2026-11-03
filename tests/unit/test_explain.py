@@ -43,6 +43,12 @@ def test_prompt_includes_only_the_complete_numbered_source_snapshot() -> None:
     assert len(request.messages) == 2
     assert request.messages[0].role is Role.SYSTEM
     assert "untrusted DATA" in request.messages[0].content
+    assert "not its step-by-step" in request.messages[0].content
+    assert "distinct responsibility" in request.messages[0].content
+    assert (
+        '"certain" only for a literal fact directly established'
+        in request.messages[0].content
+    )
     assert request.messages[1].content.endswith("   1 | value = 1\n   2 | print(value)")
     assert request.temperature == 0.0
 

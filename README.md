@@ -94,6 +94,9 @@ sent to your configured provider in at most one call; Forge cites validated
 line ranges and shows excerpts from that exact snapshot. Claims without valid
 evidence are omitted and the result is marked incomplete. It does not inspect
 other files, run commands, or modify files.
+Purpose, operation flow, and symbol responsibilities are kept distinct;
+repeated summaries and name-only symbol entries are omitted. Confidence is
+conservative: provider claims labeled `certain` are presented as `likely`.
 
 ```bash
 forge explain src/app.py

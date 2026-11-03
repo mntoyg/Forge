@@ -175,3 +175,85 @@ def test_unsupported_claim_is_omitted_and_result_is_visibly_incomplete() -> None
     assert "Unsupported claim." not in result.stdout
     assert "Incomplete:" in result.stdout
     assert provider.call_count == 1
+
+
+@pytest.mark.e2e
+def test_observed_repetition_and_name_only_symbols_render_as_distinct_roles() -> None:
+    source = SourceFile(
+        Path("explain.py"),
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        source = self._reader.read(path)\n"
+        "        response = self._provider.complete(source)\n"
+        "        return parse_explanation(response, source)\n",
+    )
+    provider = FakeProvider(
+        response=CompletionResponse(
+            text=json.dumps(
+                {
+                    "purpose": [
+                        {
+                            "claim": "Explains one selected source file.",
+                            "confidence": "certain",
+                            "evidence": [{"start_line": 1, "end_line": 5}],
+                        }
+                    ],
+                    "flow": [
+                        {
+                            "claim": "Explains one selected source file.",
+                            "confidence": "certain",
+                            "evidence": [{"start_line": 1, "end_line": 5}],
+                        },
+                        {
+                            "claim": "Reads the source, requests one provider response, then validates it.",
+                            "confidence": "certain",
+                            "evidence": [{"start_line": 3, "end_line": 5}],
+                        },
+                    ],
+                    "symbols": [
+                        {
+                            "claim": "ExplainSource class",
+                            "confidence": "certain",
+                            "evidence": [{"start_line": 1, "end_line": 1}],
+                        },
+                        {
+                            "claim": "__call__ method",
+                            "confidence": "certain",
+                            "evidence": [{"start_line": 2, "end_line": 2}],
+                        },
+                        {
+                            "claim": "Coordinates source reading and the provider request.",
+                            "confidence": "certain",
+                            "evidence": [{"start_line": 2, "end_line": 4}],
+                        },
+                        {
+                            "claim": "Validates the provider response against source lines.",
+                            "confidence": "certain",
+                            "evidence": [{"start_line": 5, "end_line": 5}],
+                        },
+                    ],
+                    "limitations": [],
+                    "context_insufficient": False,
+                }
+            ),
+            model="fake-model",
+            usage=TokenUsage(input_tokens=45, output_tokens=30),
+        )
+    )
+    app = _app(lambda: ExplainSource(FakeSourceReader(source=source), provider))
+
+    result = runner.invoke(app, ["explain.py", "--plain"])
+
+    assert result.exit_code == ExitCode.OK
+    assert result.stdout.count("Explains one selected source file.") == 1
+    assert "No distinct claims beyond earlier sections." not in result.stdout
+    assert (
+        "Reads the source, requests one provider response, then validates it."
+        in result.stdout
+    )
+    assert "Coordinates source reading and the provider request." in result.stdout
+    assert "Validates the provider response against source lines." in result.stdout
+    assert "ExplainSource class" not in result.stdout
+    assert "__call__ method" not in result.stdout
+    assert "[certain]" not in result.stdout
+    assert provider.call_count == 1

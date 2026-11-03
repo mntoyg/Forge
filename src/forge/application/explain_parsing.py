@@ -1,6 +1,7 @@
 """Validate evidence ranges and limitations in an explanation response."""
 
 import json
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -29,7 +30,7 @@ def parse_explanation(
             continue
         claims: list[ExplanationClaim] = []
         for item in raw_claims:
-            claim, invalid = _claim(item, source)
+            claim, invalid = _claim(item, source, section=name)
             incomplete = incomplete or invalid
             if claim is not None:
                 claims.append(claim)
@@ -88,7 +89,9 @@ def _decode(text: str) -> Mapping[str, Any]:
     return payload
 
 
-def _claim(item: object, source: SourceFile) -> tuple[ExplanationClaim | None, bool]:
+def _claim(
+    item: object, source: SourceFile, *, section: str
+) -> tuple[ExplanationClaim | None, bool]:
     if not isinstance(item, dict):
         return None, True
     text = item.get("claim")
@@ -114,12 +117,20 @@ def _claim(item: object, source: SourceFile) -> tuple[ExplanationClaim | None, b
             return None, True
         evidence.append(EvidenceRange(start_line, end_line))
 
+    if section == "symbols" and _is_name_only(text, tuple(evidence), source):
+        return None, True
+
     confidence = item.get("confidence")
     try:
         level = Confidence(confidence) if isinstance(confidence, str) else None
     except ValueError:
         level = None
     invalid_confidence = level is None
+    # The model cannot reliably establish that a broad interpretation is
+    # certain. Cap its strongest label because entailment is not mechanically
+    # verifiable; source citations identify evidence but do not prove a claim.
+    if level is Confidence.CERTAIN:
+        level = Confidence.LIKELY
     return (
         ExplanationClaim(
             text=text.strip(),
@@ -128,6 +139,43 @@ def _claim(item: object, source: SourceFile) -> tuple[ExplanationClaim | None, b
         ),
         invalid_confidence,
     )
+
+
+_SYMBOL_FILLER = frozenset(
+    {
+        "a",
+        "an",
+        "the",
+        "class",
+        "method",
+        "function",
+        "symbol",
+        "named",
+        "called",
+        "is",
+        "of",
+    }
+)
+
+
+def _is_name_only(
+    text: str, evidence: tuple[EvidenceRange, ...], source: SourceFile
+) -> bool:
+    """Reject symbol entries that only repeat identifiers or declaration kinds."""
+    source_lines = source.content.splitlines()
+    cited_text = " ".join(
+        source_lines[line - 1]
+        for span in evidence
+        for line in range(span.start_line, span.end_line + 1)
+    )
+    source_identifiers = {word.casefold() for word in re.findall(r"[\w$]+", cited_text)}
+    claim_words = [word.casefold() for word in re.findall(r"[\w$]+", text)]
+    useful_words = [
+        word
+        for word in claim_words
+        if word not in source_identifiers and word not in _SYMBOL_FILLER
+    ]
+    return not useful_words
 
 
 def _limitations(value: object) -> tuple[tuple[str, ...], bool]:

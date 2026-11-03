@@ -78,6 +78,48 @@ def test_valid_one_based_range_is_preserved() -> None:
     assert not result.incomplete
 
 
+def test_model_certain_confidence_is_capped_at_likely() -> None:
+    source = SourceFile(Path("app.py"), "total = sum(values)\n")
+    claim = _claim(1, 1)
+    claim["confidence"] = "certain"
+
+    result = parse_explanation(
+        json.dumps(_payload(claim)),
+        source,
+        model="fake-model",
+        usage=TokenUsage(1, 1),
+    )
+
+    assert result.purpose[0].confidence.value == "likely"
+
+
+def test_symbol_that_only_repeats_its_name_is_discarded() -> None:
+    source = SourceFile(
+        Path("app.py"), "class ExplainSource:\n    def __call__(self):\n        pass\n"
+    )
+    payload = _payload()
+    payload["symbols"] = [
+        {
+            "claim": "ExplainSource class",
+            "confidence": "certain",
+            "evidence": [{"start_line": 1, "end_line": 1}],
+        },
+        {
+            "claim": "Coordinates the source read and provider request",
+            "confidence": "likely",
+            "evidence": [{"start_line": 2, "end_line": 3}],
+        },
+    ]
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert len(result.symbols) == 1
+    assert "Coordinates" in result.symbols[0].text
+    assert result.incomplete
+
+
 def test_response_without_claims_or_limits_is_rejected() -> None:
     source = SourceFile(Path("app.py"), "a = 1\n")
 

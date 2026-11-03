@@ -121,7 +121,10 @@ excerpts taken from the submitted snapshot. Claims without valid evidence are
 omitted and the output is marked incomplete. Forge does not inspect adjacent
 files, run repository commands, or modify files. A file over the configured
 `FORGE_MAX_FILE_BYTES` limit is refused without truncation. Use `--plain` to
-disable the progress spinner.
+disable the progress spinner. Purpose, operation flow, and symbol
+responsibilities are kept distinct; repeated summaries and name-only symbol
+entries are omitted. Confidence is conservative: a provider `certain` label is
+presented as `likely`.
 
 ## 5. Read the output
 

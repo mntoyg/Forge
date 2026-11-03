@@ -1,4 +1,6 @@
-"""Render source explanations with excerpts from the submitted snapshot."""
+"""Render concise explanations with excerpts from the submitted snapshot."""
+
+import re
 
 from forge.domain.explanation import ExplanationClaim, ExplanationResult
 
@@ -6,9 +8,10 @@ from forge.domain.explanation import ExplanationClaim, ExplanationResult
 def render_explanation(result: ExplanationResult) -> str:
     """Render a plain, auditable explanation without trusting model excerpts."""
     lines = [f"{_safe(result.source.path.name)}: explanation", ""]
-    _section(lines, "Purpose", result.purpose, result)
-    _section(lines, "Main flow", result.flow, result)
-    _section(lines, "Important symbols", result.symbols, result)
+    seen: set[str] = set()
+    _section(lines, "Purpose", result.purpose, result, seen)
+    _section(lines, "Main flow", result.flow, result, seen)
+    _section(lines, "Important symbols", result.symbols, result, seen)
 
     if result.limitations:
         lines.extend(["Limitations:"])
@@ -35,14 +38,21 @@ def _section(
     title: str,
     claims: tuple[ExplanationClaim, ...],
     result: ExplanationResult,
+    seen: set[str],
 ) -> None:
     lines.append(f"{title}:")
     if not claims:
-        lines.append("  No grounded claims supplied.")
+        lines.append("  None identified.")
         return
 
     source_lines = result.source.content.splitlines()
+    rendered = False
     for claim in claims:
+        key = _claim_key(claim.text)
+        if key in seen:
+            continue
+        seen.add(key)
+        rendered = True
         lines.append(f"  - [{claim.confidence.value}] {_safe(claim.text)}")
         for evidence in claim.evidence:
             lines.append(
@@ -50,6 +60,13 @@ def _section(
             )
             for number in range(evidence.start_line, evidence.end_line + 1):
                 lines.append(f"      {number:>4} | {_safe(source_lines[number - 1])}")
+    if not rendered:
+        lines.append("  No distinct claims beyond earlier sections.")
+
+
+def _claim_key(text: str) -> str:
+    """Normalize wording so repeated summaries render only once."""
+    return " ".join(word.casefold() for word in re.findall(r"[\w$]+", text))
 
 
 def _safe(value: str) -> str:

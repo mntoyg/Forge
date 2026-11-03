@@ -11,6 +11,9 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Changed
 
+- Improve `forge explain` by separating purpose from operation flow, omitting
+  repeated summaries and name-only symbol entries, and capping provider
+  `certain` confidence labels at `likely`.
 - Set a shared AI usage budget of at most 14 percentage points of a weekly plan
   per local calendar day.
 - Publish the `mntoyg/Forge` repository for public access; keep the archived
