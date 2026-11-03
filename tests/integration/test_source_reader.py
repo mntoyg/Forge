@@ -6,7 +6,9 @@ the workspace is an exfiltration route, not merely a bug.
 """
 
 import sys
+from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -20,6 +22,18 @@ from forge.domain.errors import (
 from forge.infrastructure.source import DEFAULT_MAX_BYTES, FilesystemSourceReader
 
 LF_CONTENT = "a = 1\nb = 2\n"
+
+
+class _RecordingBytesIO(BytesIO):
+    """Record the largest read requested from a growing file snapshot."""
+
+    def __init__(self, content: bytes, read_sizes: list[int | None]) -> None:
+        super().__init__(content)
+        self._read_sizes = read_sizes
+
+    def read(self, size: int | None = -1) -> bytes:
+        self._read_sizes.append(size)
+        return super().read(size)
 
 
 @pytest.fixture
@@ -203,6 +217,37 @@ def test_a_file_exactly_at_the_limit_is_accepted(workspace: Path) -> None:
     (workspace / "edge.py").write_bytes(b"x" * 50)
 
     assert FilesystemSourceReader(workspace, max_bytes=50).read(Path("edge.py"))
+
+
+@pytest.mark.integration
+def test_growth_after_size_check_is_refused_after_a_bounded_read(
+    workspace: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source_path = workspace / "growing.py"
+    source_path.write_bytes(b"x = 1\n")
+    max_bytes = 16
+    original_open = Path.open
+    read_sizes: list[int | None] = []
+    grew = False
+
+    def grow_before_read(path: Path, mode: str = "r", *args: Any, **kwargs: Any) -> Any:
+        nonlocal grew
+        if path == source_path and mode == "rb":
+            grown_content = b"x" * (max_bytes * 10)
+            with original_open(path, "wb") as stream:
+                stream.write(grown_content)
+            grew = True
+            return _RecordingBytesIO(grown_content, read_sizes)
+        return original_open(path, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", grow_before_read)
+
+    with pytest.raises(SourceTooLargeError, match="grew beyond"):
+        FilesystemSourceReader(workspace, max_bytes=max_bytes).read(Path("growing.py"))
+
+    assert grew
+    assert read_sizes == [max_bytes + 1]
+    assert source_path.stat().st_size == max_bytes * 10
 
 
 # --- the contract ----------------------------------------------------------

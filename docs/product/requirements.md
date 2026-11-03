@@ -104,6 +104,18 @@ and treated as data.
 | FR-6.6 | Every accepted finding MUST cite a submitted repository-relative path and one-based changed line from the planned current snapshot. Invalid model paths or locations MUST be discarded and the response marked incomplete. Evidence excerpts MUST come from that snapshot. | Done |
 | FR-6.7 | Review MUST be read-only, MUST NOT run project commands or checks, and MUST NOT continue an autonomous loop. Repository content and provider output MUST be treated as untrusted data. | Done |
 
+## FR-7 - `forge explain` (single-file explanation)
+
+Approved contract: [explain-command.md](../architecture/proposals/explain-command.md).
+
+| ID | Requirement | Status |
+| --- | --- | --- |
+| FR-7.1 | `forge explain <FILE>` MUST explain only the explicitly selected source file; it MUST NOT scan adjacent files, Git history, or run project commands. | Done |
+| FR-7.2 | The command MUST read through `SourceReader`, require a regular, non-empty UTF-8 file inside the workspace, enforce `FORGE_MAX_FILE_BYTES` (default 200,000 bytes), and refuse rather than truncate over-limit input. The actual read MUST remain bounded if a file grows after its size check. | Done |
+| FR-7.3 | An invocation MUST make at most one call to the configured `AIProvider`. Help and user documentation MUST disclose that the selected source is sent to that provider. Source and full prompts MUST NOT be logged. | Done |
+| FR-7.4 | Substantive explanation claims MUST cite one-based line ranges in the submitted snapshot. Invalid or unsupported claims MUST be discarded and the result marked visibly incomplete; uncertainty and missing context MUST be stated. | Done |
+| FR-7.5 | The command MUST be read-only, MUST NOT execute source or repository commands, discover adjacent files, retry with more context, or start an autonomous loop. Source and provider output MUST be treated as untrusted data. | Done |
+
 ## NFR-1 - Quality
 
 | ID | Requirement | Status |

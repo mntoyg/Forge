@@ -13,9 +13,11 @@ from rich.console import Console
 
 from forge import __version__
 from forge.application.analyze import AnalyzeSourceFile
+from forge.application.explain import ExplainSource
 from forge.application.inspect import InspectProject
 from forge.application.review import ReviewChanges
 from forge.cli import debug as debug_cli
+from forge.cli import explain as explain_cli
 from forge.cli import inspect as inspect_cli
 from forge.cli import review as review_cli
 from forge.domain.source import AnalysisResult
@@ -118,7 +120,26 @@ def _review_factory() -> ReviewChanges:
     return ReviewChanges(GitChangeSetReader(workspace), provider, model=settings.model)
 
 
+def _explain_factory() -> ExplainSource:
+    """Build the single-file explanation use case only when invoked."""
+    settings = load_settings()
+    configure_logging(
+        settings.log_level,
+        secrets=[settings.api_key.get_secret_value()] if settings.api_key else [],
+    )
+    workspace = Path.cwd()
+    reader = FilesystemSourceReader(workspace, max_bytes=settings.max_file_bytes)
+    provider = OpenAIProvider(
+        api_key=settings.require_api_key(),
+        model=settings.model,
+        base_url=settings.base_url,
+        timeout_seconds=settings.timeout_seconds,
+    )
+    return ExplainSource(reader, provider)
+
+
 debug_cli.register(app, _analyze)
+explain_cli.register(app, _explain_factory)
 inspect_cli.register(app, InspectProject(FilesystemProjectEvidenceReader()))
 review_cli.register(app, _review_factory)
 

@@ -22,24 +22,15 @@ terminal without requiring an IDE.
 - `forge review [PATH ...]` reviews a bounded working-tree change set after
   confirmation, with at most one provider call and explicit omissions.
 
-## Next feature: `forge explain <file>`
+## Delivered feature: `forge explain <file>`
 
-The roadmap calls for an explanation command that helps a developer understand
-what a file does and why. This is the next feature to design; implementation
-must wait until the owner accepts a concrete requirement and command contract.
+The owner-approved FR-7 contract in
+`docs/architecture/proposals/explain-command.md` is implemented as a
+single-file capability. Keep future work within its accepted scope.
 
 ### Small work breakdown
 
-1. **SWE design task:** propose FR-7 and the smallest useful CLI contract. Define
-   what an explanation contains, how it stays grounded in the selected file,
-   source-size and provider-call limits, output and error behavior, and how the
-   command reuses the existing safe reader and `AIProvider` port. Include
-   acceptance criteria and deterministic fake-provider tests. Do not implement
-   before the owner accepts the design.
-2. **SWE implementation task, after approval:** implement only the accepted
-   contract, add unit/integration/CLI tests at the appropriate levels, update
-   user documentation, changelog, and project status, then run the full gate.
-3. **Owner evaluation:** review the result and decide whether a live-provider
+1. **Owner evaluation:** review the result and decide whether a live-provider
    quality check is worth its cost. Automated tests must never call a live
    provider.
 

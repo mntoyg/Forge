@@ -18,6 +18,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Added
 
+- **`forge explain <FILE>`** - explain one selected source file using at most
+  one configured-provider call. Substantive claims cite validated line ranges
+  and source excerpts; invalid claims are omitted and incomplete results are
+  marked. Reads are bounded and the command does not modify files or run code.
 - **`forge review [PATH ...]`** - preview a bounded working-tree change set and
   request confirmation before one provider call. It reports included and
   omitted paths, validates findings against changed lines, and states when
@@ -30,8 +34,7 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Documentation
 
-- Draft the proposed FR-7 and minimum `forge explain <FILE>` contract for
-  project-owner review; implementation is not approved.
+- Record the approved FR-7 implementation and document the explain command.
 - Add `docs/development/task.md` to record delivered capabilities and the
   staged plan for `forge explain` and subsequent features.
 - Add a proposed architecture and product boundary for controlled,

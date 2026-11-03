@@ -5,8 +5,9 @@
 Forge helps developers understand, debug, review, generate, and improve
 software without leaving the shell.
 
-> **Status: MVP.** `forge debug` analyses one source file, and `forge review`
-> reviews a bounded set of current Git changes with one confirmed provider call.
+> **Status: MVP.** `forge debug` analyzes one source file, `forge explain`
+> provides an evidence-backed explanation of one selected file, and
+> `forge review` reviews bounded current Git changes with one confirmed call.
 > See [ROADMAP.md](ROADMAP.md) for what comes next.
 
 ---
@@ -86,6 +87,16 @@ buggy_division.py: 2 findings
                      confidence: likely
 
 model: gpt-4o-mini-2024-07-18 | tokens: 412 in, 186 out
+```
+
+To understand an unfamiliar file, use `forge explain`. The selected file is
+sent to your configured provider in at most one call; Forge cites validated
+line ranges and shows excerpts from that exact snapshot. Claims without valid
+evidence are omitted and the result is marked incomplete. It does not inspect
+other files, run commands, or modify files.
+
+```bash
+forge explain src/app.py
 ```
 
 Inside a repository, each finding that cites a line also says when that line

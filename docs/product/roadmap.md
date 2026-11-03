@@ -99,7 +99,8 @@ holds that an exit code without a test is an intention, not a contract.
 
 **Goal:** the second and third verbs from the vision.
 
-- [ ] `forge explain <file>` - what this code does and why
+- [x] `forge explain <file>` - evidence-backed account of purpose, symbols,
+      and flow (FR-7)
 - [x] `forge review` - review a bounded working-tree change set in one
       confirmed provider call (FR-6, ADR-0014)
 - [ ] Shared rendering for findings across commands

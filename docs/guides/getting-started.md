@@ -106,6 +106,23 @@ Then try it on something of your own:
 uv run forge debug src/whatever.py
 ```
 
+### Explain an unfamiliar file
+
+To get an overview rather than a defect analysis, ask Forge to explain one
+source file:
+
+```bash
+uv run forge explain src/app.py
+```
+
+Forge sends the selected file to your configured provider in one request at
+most. Each substantive claim cites validated one-based line ranges, with
+excerpts taken from the submitted snapshot. Claims without valid evidence are
+omitted and the output is marked incomplete. Forge does not inspect adjacent
+files, run repository commands, or modify files. A file over the configured
+`FORGE_MAX_FILE_BYTES` limit is refused without truncation. Use `--plain` to
+disable the progress spinner.
+
 ## 5. Read the output
 
 Each finding carries two separate judgements, and conflating them is the most

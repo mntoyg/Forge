@@ -1,7 +1,7 @@
-# Draft proposal: `forge explain <FILE>`
+# Accepted contract: `forge explain <FILE>`
 
-**Status:** Draft for project-owner review. This proposal does not approve
-implementation or change `docs/product/requirements.md`.
+**Status:** Approved by the project owner on 2026-11-04 and implemented under
+FR-7. This document remains the accepted command contract.
 
 ## Proposed user outcome and contract
 
@@ -11,7 +11,7 @@ file's apparent purpose, important symbols, and main input/control/data flow.
 It explains *why* only when the supplied code supports that inference; it must
 label inferred intent and say when the reason is not knowable from this file.
 
-Proposed FR-7 (for owner approval):
+FR-7:
 
 - **FR-7.1:** Explain one user-selected source file, with no automatic scan of
   other files, Git history, or project commands.
@@ -69,13 +69,11 @@ proposed here: the selected source is sent after invocation, so help and user
 documentation must say that plainly. Never print detected credential values
 if a future decision adds secret detection.
 
-**Safe-reader implementation note:** the current filesystem reader checks
-`stat().st_size` and then calls `read_bytes()`. That leaves a growth window
-between the check and the read. Before this command ships, preserve the existing
-limit while bounding the actual read (for example, read at most the limit plus
-one sentinel byte), refuse overflow without truncation, and test a file that
-grows after the size check. This closes the existing FR-3.4 boundary; it does
-not require a new product limit.
+**Safe-reader implementation note:** the filesystem reader checks the size and
+then reads at most the configured limit plus one sentinel byte. It refuses
+overflow rather than truncating, including when a file grows between the check
+and read. Deterministic integration tests verify the bound and that no provider
+call occurs on overflow.
 
 ## Errors and exit codes
 
@@ -115,9 +113,9 @@ Acceptance criteria and fake-provider tests:
 
 **ADR recommendation: no new ADR for this MVP.** A one-file use case reuses the
 accepted `SourceReader`, `AIProvider`, layer boundaries, and exit-code contract;
-this proposal adds no dependency, persistence, or concurrency. The owner must
-approve FR-7 and the command contract before they are added to the requirements
-or implemented. A dollar-price promise, multi-file context, retries/chunking,
+this proposal adds no dependency, persistence, or concurrency. FR-7 and the
+command contract were approved before implementation. A dollar-price promise,
+multi-file context, retries/chunking,
 or any new provider/architecture boundary needs a separate product decision and
 possibly an ADR. In particular, do not revive ADR-0013's suspended windowing
 approach.

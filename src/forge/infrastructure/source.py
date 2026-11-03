@@ -58,7 +58,7 @@ class FilesystemSourceReader:
                 "limit. Raise FORGE_MAX_FILE_BYTES, or analyse a smaller file."
             )
 
-        content = self._decode(resolved, path)
+        content = self._decode(resolved, path, self._max_bytes)
 
         try:
             return SourceFile(path=resolved, content=content)
@@ -89,7 +89,7 @@ class FilesystemSourceReader:
         return candidate
 
     @staticmethod
-    def _decode(resolved: Path, original: Path) -> str:
+    def _decode(resolved: Path, original: Path, max_bytes: int) -> str:
         """Read the file as UTF-8 text, or explain that it is not text.
 
         Read as bytes first so that a binary file fails here, with a message
@@ -102,9 +102,21 @@ class FilesystemSourceReader:
         guess. Nothing is written back, so this changes only what is analysed.
         """
         try:
-            raw = resolved.read_bytes()
+            with resolved.open("rb", buffering=0) as source:
+                content = bytearray()
+                while len(content) <= max_bytes:
+                    chunk = source.read(max_bytes + 1 - len(content))
+                    if not chunk:
+                        break
+                    content.extend(chunk)
+                raw = bytes(content)
         except OSError as error:
             raise SourceUnreadableError(f"Cannot read {original}: {error}") from error
+        if len(raw) > max_bytes:
+            raise SourceTooLargeError(
+                f"{original} grew beyond the {max_bytes:,} byte limit while being "
+                "read. Raise FORGE_MAX_FILE_BYTES, or analyse a smaller file."
+            )
 
         try:
             text = raw.decode("utf-8")
