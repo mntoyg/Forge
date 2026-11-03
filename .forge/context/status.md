@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-10-24 on `main`; quality gate passes (429 passed, 1 skipped).
+**Last verified:** 2026-11-04 on `main`; quality gate passes (429 passed, 1 skipped).
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
 repository was recreated on 2026-09-06 - see below.
 
@@ -32,7 +32,7 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 429 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-10-24; Windows symlink test skips locally |
+| Local gate: 429 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
@@ -59,21 +59,15 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-0. **Tag `v0.1.0`.** The version, the changelog section, and the preflight are
-   done and on `main`; `.forge/workflows/release.md` step 6 is the tag, and it
-   is deliberately a human action.
-1. **Publish the repository, or stop calling it open-source.** GitHub API
-   confirmed it is private on 2026-10-23. Meanwhile,
-   while the README, `pyproject.toml` and the vision all say otherwise and the
-   README tells a reader to clone a URL they cannot reach. The decision is a
-   human's; the repository is ready for either answer.
-2. **Re-decide how a long file is reviewed in full.** ADR-0013 is suspended:
-   300- and 800-line marked windows were each missed twice. With approval,
-   measure the largest marked window that is read to its end (8 to 300 lines)
-   and a ~300-line chunk sent alone; then a new ADR, then code.
-3. **Recheck release readiness.** `forge review` is implemented under FR-6 and
-   ADR-0014; installation and publication choices still need their own audit
-   and human decisions.
+0. **Make `mntoyg/Forge` public.** The owner requested publication; the local
+   refs and current PR history have been audited. Keep `mntoyg/Forge-archive`
+   private. See `docs/development/task.md` for feature sequencing.
+1. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
+   tagging remains a deliberate owner action after green CI.
+2. **Design `forge explain <file>`.** Start with FR-7 and an accepted command
+   contract; do not implement until the owner approves it.
+3. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
+   measurement and accept a new ADR before implementation.
 
 ## Blocked, or needs a human
 

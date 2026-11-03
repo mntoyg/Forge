@@ -28,6 +28,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Documentation
 
+- Add `docs/development/task.md` to record delivered capabilities and the
+  staged plan for `forge explain` and subsequent features.
 - Add a proposed architecture and product boundary for controlled,
   repository-aware software engineering assistance.
 - Accept the bounded `forge review` MVP design in ADR-0014.
