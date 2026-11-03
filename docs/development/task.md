@@ -66,7 +66,7 @@ run and a new ADR is accepted.
 
 ## Release actions
 
-- The owner has requested that `mntoyg/Forge` become public; verify the final
-  visibility change separately. Keep `mntoyg/Forge-archive` private.
+- `mntoyg/Forge` is public as of 2026-11-04. Keep `mntoyg/Forge-archive`
+  private.
 - Tagging `v0.1.0` remains a deliberate owner action after release preflight and
   green CI. PyPI publishing remains out of scope.

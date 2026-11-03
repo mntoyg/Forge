@@ -59,20 +59,18 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-0. **Make `mntoyg/Forge` public.** The owner requested publication; the local
-   refs and current PR history have been audited. Keep `mntoyg/Forge-archive`
-   private. See `docs/development/task.md` for feature sequencing.
-1. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
+0. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
    tagging remains a deliberate owner action after green CI.
-2. **Design `forge explain <file>`.** Start with FR-7 and an accepted command
+1. **Design `forge explain <file>`.** Start with FR-7 and an accepted command
    contract; do not implement until the owner approves it.
-3. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
+2. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
    measurement and accept a new ADR before implementation.
 
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
   Codex's current 7-day meter: 5% used; daily use is unavailable.
+- `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
 - Never force-push or bypass GitHub branch protection.

@@ -13,6 +13,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 - Set a shared AI usage budget of at most 14 percentage points of a weekly plan
   per local calendar day.
+- Publish the `mntoyg/Forge` repository for public access; keep the archived
+  repository private.
 
 ### Added
 
