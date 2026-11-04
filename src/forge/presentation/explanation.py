@@ -108,10 +108,50 @@ def _diagnostic_text(diagnostic: ExplanationDiagnostic) -> str:
             f"{count} symbol claim{plural} {verb} omitted because a unique "
             "subject could not be resolved."
         )
-    if kind is ExplanationDiagnosticKind.EVIDENCE_INVALID:
+    if kind is ExplanationDiagnosticKind.EVIDENCE_MALFORMED:
         return (
             f"{count} {claim_type} claim{plural} {verb} omitted because evidence "
-            "could not be validated."
+            "was malformed or its line range was invalid."
+        )
+    if kind is ExplanationDiagnosticKind.EVIDENCE_KIND_UNSUPPORTED:
+        return (
+            f"{count} {claim_type} claim{plural} {verb} omitted because the anchor "
+            "kind was unsupported."
+        )
+    if kind is ExplanationDiagnosticKind.EVIDENCE_TARGET_SHAPE_UNSUPPORTED:
+        return (
+            f"{count} {claim_type} claim{plural} {verb} omitted because the target "
+            "shape was unsupported."
+        )
+    if kind is ExplanationDiagnosticKind.EVIDENCE_TARGET_NOT_FOUND:
+        return (
+            f"{count} {claim_type} claim{plural} {verb} omitted because the target "
+            "did not match executable tokens in the cited lines."
+        )
+    if kind is ExplanationDiagnosticKind.EVIDENCE_SOURCE_SHAPE_MISMATCH:
+        return (
+            f"{count} {claim_type} claim{plural} {verb} omitted because the target "
+            "did not match the required source shape for its anchor kind."
+        )
+    if kind is ExplanationDiagnosticKind.EVIDENCE_VALIDATION_UNAVAILABLE:
+        return (
+            f"{count} {claim_type} claim{plural} {verb} omitted because evidence "
+            "could not be validated for this source."
+        )
+    if kind is ExplanationDiagnosticKind.CALL_TARGET_IS_DECLARATION:
+        return (
+            f"{count} {claim_type} claim{plural} {verb} omitted because the call "
+            "target matched a function declaration, not a call expression."
+        )
+    if kind is ExplanationDiagnosticKind.CALL_EXPRESSION_NOT_FOUND:
+        return (
+            f"{count} {claim_type} claim{plural} {verb} omitted because a call "
+            "expression could not be confirmed in the cited lines."
+        )
+    if kind is ExplanationDiagnosticKind.SYMBOL_OPERATION_DISALLOWED:
+        return (
+            f"{count} symbol claim{plural} {verb} omitted because symbol claims "
+            "cannot use operation anchors."
         )
     if kind is ExplanationDiagnosticKind.EVIDENCE_OUT_OF_SCOPE:
         return (

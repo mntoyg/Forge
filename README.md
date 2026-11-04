@@ -96,7 +96,8 @@ kind, target, and line range. Claims with structurally invalid or mismatched
 anchors are omitted and the result is marked incomplete. It does not inspect
 other files, run commands, or modify files.
 Analysis notes distinguish empty sections from claims omitted by validation and
-show only fixed categories and counts, never provider text.
+show only fixed categories and counts. Each omitted claim is counted once under
+its first failed validation rule; notes never echo provider text.
 Structural anchor validation currently supports Python `.py` and `.pyi` files.
 Other source extensions remain accepted inputs, but their evidence claims are
 omitted and the result is marked incomplete.

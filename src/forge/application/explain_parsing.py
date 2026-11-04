@@ -217,7 +217,7 @@ def _claim(
         return None, ExplanationDiagnosticKind.CLAIM_MALFORMED
     raw_evidence = item.get("evidence")
     if not isinstance(raw_evidence, list) or not raw_evidence:
-        return None, ExplanationDiagnosticKind.EVIDENCE_INVALID
+        return None, ExplanationDiagnosticKind.EVIDENCE_MALFORMED
 
     symbol: str | None = None
     symbol_scope: tuple[int, int] | None = None
@@ -229,16 +229,16 @@ def _claim(
 
     evidence: list[EvidenceAnchor] = []
     for raw_anchor in raw_evidence:
-        anchor = _anchor(
+        anchor, diagnostic = _anchor(
             raw_anchor,
             source,
             source_tokens=source_tokens,
             source_tree=source_tree,
         )
         if anchor is None:
-            return None, ExplanationDiagnosticKind.EVIDENCE_INVALID
+            return None, diagnostic or ExplanationDiagnosticKind.EVIDENCE_MALFORMED
         if section == "symbols" and anchor.kind is EvidenceKind.OPERATION:
-            return None, ExplanationDiagnosticKind.EVIDENCE_INVALID
+            return None, ExplanationDiagnosticKind.SYMBOL_OPERATION_DISALLOWED
         if symbol_scope is not None and not _range_within_scope(anchor, symbol_scope):
             return None, ExplanationDiagnosticKind.EVIDENCE_OUT_OF_SCOPE
         evidence.append(anchor)
@@ -310,10 +310,10 @@ def _anchor(
     *,
     source_tokens: tuple[tokenize.TokenInfo, ...] | None,
     source_tree: ast.Module | None,
-) -> EvidenceAnchor | None:
+) -> tuple[EvidenceAnchor | None, ExplanationDiagnosticKind | None]:
     """Validate an anchor's target and declared source shape against the snapshot."""
     if not isinstance(value, dict):
-        return None
+        return None, ExplanationDiagnosticKind.EVIDENCE_MALFORMED
     raw_kind = value.get("kind")
     target = value.get("target")
     start_line = value.get("start_line")
@@ -321,36 +321,47 @@ def _anchor(
     if (
         not isinstance(raw_kind, str)
         or not isinstance(target, str)
-        or target != target.strip()
-        or not target
         or isinstance(start_line, bool)
         or not isinstance(start_line, int)
         or isinstance(end_line, bool)
         or not isinstance(end_line, int)
         or not 1 <= start_line <= end_line <= source.line_count
     ):
-        return None
+        return None, ExplanationDiagnosticKind.EVIDENCE_MALFORMED
+    if target != target.strip() or not target:
+        return None, ExplanationDiagnosticKind.EVIDENCE_TARGET_SHAPE_UNSUPPORTED
     try:
         kind = EvidenceKind(raw_kind)
     except ValueError:
-        return None
+        return None, ExplanationDiagnosticKind.EVIDENCE_KIND_UNSUPPORTED
 
+    target_tokens = _target_tokens(target)
+    if target_tokens is None:
+        return None, ExplanationDiagnosticKind.EVIDENCE_TARGET_SHAPE_UNSUPPORTED
     if source_tokens is None:
-        return None
+        return None, ExplanationDiagnosticKind.EVIDENCE_VALIDATION_UNAVAILABLE
     anchor_tokens = tuple(
         token
         for token in source_tokens
         if start_line <= token.start[0] <= end_line
         and token.type not in _IGNORED_TOKEN_TYPES
     )
-    target_tokens = _target_tokens(target)
-    if target_tokens is None or not _matches_anchor(kind, target_tokens, anchor_tokens):
-        return None
-    if kind is EvidenceKind.CALL and not _has_call_expression(
-        source, source_tree, target_tokens, start_line, end_line
-    ):
-        return None
-    return EvidenceAnchor(kind, target, start_line, end_line)
+    if not tuple(_target_occurrences(target_tokens, anchor_tokens)):
+        return None, ExplanationDiagnosticKind.EVIDENCE_TARGET_NOT_FOUND
+    if not _matches_anchor(kind, target_tokens, anchor_tokens):
+        return None, ExplanationDiagnosticKind.EVIDENCE_SOURCE_SHAPE_MISMATCH
+    if kind is EvidenceKind.CALL:
+        if source_tree is None:
+            return None, ExplanationDiagnosticKind.EVIDENCE_VALIDATION_UNAVAILABLE
+        if not _has_call_expression(
+            source, source_tree, target_tokens, start_line, end_line
+        ):
+            if _is_function_declaration_target(
+                source_tree, target_tokens, start_line, end_line
+            ):
+                return None, ExplanationDiagnosticKind.CALL_TARGET_IS_DECLARATION
+            return None, ExplanationDiagnosticKind.CALL_EXPRESSION_NOT_FOUND
+    return EvidenceAnchor(kind, target, start_line, end_line), None
 
 
 def _python_tokens(source: SourceFile) -> tuple[tokenize.TokenInfo, ...] | None:
@@ -401,6 +412,24 @@ def _has_call_expression(
         if segment is not None and _target_tokens(segment) == target:
             return True
     return False
+
+
+def _is_function_declaration_target(
+    source_tree: ast.Module,
+    target: tuple[tuple[int, str], ...],
+    start_line: int,
+    end_line: int,
+) -> bool:
+    """Tell a declared function name from a call to that function."""
+    if len(target) != 1 or target[0][0] != tokenize.NAME:
+        return False
+    name = target[0][1]
+    return any(
+        isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == name
+        and start_line <= node.lineno <= end_line
+        for node in ast.walk(source_tree)
+    )
 
 
 def _target_tokens(target: str) -> tuple[tuple[int, str], ...] | None:

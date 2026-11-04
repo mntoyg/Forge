@@ -29,7 +29,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - Guide `forge explain` to cite the provider call for provider-backed purpose
   claims and the return annotation or returned value for result-type roles.
 - Add safe explain analysis notes that distinguish empty or malformed sections
-  from rejected claims and report only fixed reason categories and counts.
+  from rejected claims and report specific evidence-validation reasons as fixed
+  categories and counts, with one first rejection reason per claim.
 - Set a shared AI usage budget of at most 14 percentage points of a weekly plan
   per local calendar day.
 - Publish the `mntoyg/Forge` repository for public access; keep the archived

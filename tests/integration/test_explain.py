@@ -447,7 +447,8 @@ def test_explanation_diagnostics_are_counted_and_never_echo_provider_content(
         in notes
     )
     assert (
-        "2 symbol claims were omitted because evidence could not be validated." in notes
+        "2 symbol claims were omitted because the target did not match executable tokens in the cited lines."
+        in notes
     )
     assert (
         "1 symbol claim was omitted because evidence fell outside the declared subject scope."
@@ -472,6 +473,212 @@ def test_explanation_diagnostics_are_counted_and_never_echo_provider_content(
         provider_response,
     ):
         assert private_value not in notes
+
+
+@pytest.mark.integration
+def test_evidence_diagnostics_name_validator_rules_without_echoing_inputs(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    source_text = (
+        "class SafeSubject:\n"
+        "    def run(self):\n"
+        "        return selected_client.send()\n"
+    )
+    (workspace / "explain.py").write_bytes(source_text.encode())
+    payload = {
+        "purpose": [
+            {
+                "claim": "The selected client is called.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "selected_client.send",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+            {
+                "claim": "PRIVATE_MALFORMED_EVIDENCE_CLAIM",
+                "confidence": "likely",
+                "evidence": ["PRIVATE_MALFORMED_EVIDENCE_OBJECT"],
+            },
+            {
+                "claim": "PRIVATE_OUT_OF_RANGE_CLAIM",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "operation",
+                        "target": "selected_client.send()",
+                        "start_line": 99,
+                        "end_line": 99,
+                    }
+                ],
+            },
+            {
+                "claim": "PRIVATE_TARGET_ABSENT_CLAIM",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "missing_client.send",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+            {
+                "claim": "PRIVATE_UNKNOWN_KIND_CLAIM",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "PRIVATE_UNKNOWN_KIND",
+                        "target": "selected_client.send",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+            {
+                "claim": "PRIVATE_TARGET_SHAPE_CLAIM",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": '"PRIVATE_TARGET_SHAPE"',
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+            {
+                "claim": "PRIVATE_CALL_DECLARATION_CLAIM",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "run",
+                        "start_line": 2,
+                        "end_line": 2,
+                    }
+                ],
+            },
+        ],
+        "flow": [],
+        "symbols": [
+            {
+                "symbol": "SafeSubject",
+                "claim": "PRIVATE_SYMBOL_OPERATION_CLAIM",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "operation",
+                        "target": "return selected_client.send()",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            }
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider_response = json.dumps(payload)
+    provider = _provider(provider_response)
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+    notes = rendered.split("Analysis notes:\n", 1)[1].split("Incomplete:", 1)[0]
+
+    assert provider.call_count == 1
+    assert result.incomplete
+    assert len(result.purpose) == 1
+    assert result.purpose[0].text == "The selected client is called."
+    assert "The selected client is called." in rendered
+    assert "Evidence: call target `selected_client.send`, lines 3-3" in rendered
+    assert "3 |         return selected_client.send()" in rendered
+    assert (
+        "2 purpose claims were omitted because evidence was malformed or its line range was invalid."
+        in notes
+    )
+    assert (
+        "1 purpose claim was omitted because the anchor kind was unsupported." in notes
+    )
+    assert (
+        "1 purpose claim was omitted because the target shape was unsupported." in notes
+    )
+    assert (
+        "1 purpose claim was omitted because the target did not match executable tokens in the cited lines."
+        in notes
+    )
+    assert (
+        "1 purpose claim was omitted because the call target matched a function declaration, not a call expression."
+        in notes
+    )
+    assert (
+        "1 symbol claim was omitted because symbol claims cannot use operation anchors."
+        in notes
+    )
+    for private_value in (
+        "PRIVATE_MALFORMED_EVIDENCE_CLAIM",
+        "PRIVATE_MALFORMED_EVIDENCE_OBJECT",
+        "PRIVATE_OUT_OF_RANGE_CLAIM",
+        "PRIVATE_TARGET_ABSENT_CLAIM",
+        "PRIVATE_UNKNOWN_KIND_CLAIM",
+        "PRIVATE_UNKNOWN_KIND",
+        "PRIVATE_TARGET_SHAPE_CLAIM",
+        '"PRIVATE_TARGET_SHAPE"',
+        "PRIVATE_CALL_DECLARATION_CLAIM",
+        "PRIVATE_SYMBOL_OPERATION_CLAIM",
+        "SafeSubject",
+        source_text,
+        provider_response,
+    ):
+        assert private_value not in notes
+
+
+@pytest.mark.integration
+def test_valid_call_anchor_is_rendered_without_rejection_diagnostic(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    (workspace / "app.py").write_bytes(b"client.send()\n")
+    payload = {
+        "purpose": [
+            {
+                "claim": "Sends the request through the client.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "client.send",
+                        "start_line": 1,
+                        "end_line": 1,
+                    }
+                ],
+            }
+        ],
+        "flow": [],
+        "symbols": [],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider = _provider(json.dumps(payload))
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("app.py"))
+    rendered = render_explanation(result)
+    notes = rendered.split("Analysis notes:\n", 1)[1].split("Incomplete:", 1)[0]
+
+    assert provider.call_count == 1
+    assert len(result.purpose) == 1
+    assert "Sends the request through the client." in rendered
+    assert "Evidence: call target `client.send`, lines 1-1" in rendered
+    assert "purpose claim was omitted" not in notes
+    assert "evidence was malformed" not in notes
 
 
 @pytest.mark.integration

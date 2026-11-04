@@ -191,6 +191,46 @@ def test_malformed_context_and_limitations_are_not_guessed_as_content_gaps() -> 
     assert "PRIVATE_" not in repr(result.diagnostics)
 
 
+def test_claim_is_counted_once_under_its_first_evidence_rejection() -> None:
+    source = SourceFile(Path("app.py"), "client.send()\n")
+    claim = {
+        "claim": "Calls the client.",
+        "confidence": "likely",
+        "evidence": [
+            {
+                "kind": "unknown-kind",
+                "target": "missing.call",
+                "start_line": 1,
+                "end_line": 1,
+            },
+            {
+                "kind": "call",
+                "target": "client.send",
+                "start_line": 99,
+                "end_line": 99,
+            },
+        ],
+    }
+
+    result = parse_explanation(
+        json.dumps(_payload(claim)), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.incomplete
+    purpose_rejections = tuple(
+        diagnostic
+        for diagnostic in result.diagnostics
+        if diagnostic.section is ExplanationSection.PURPOSE
+        and diagnostic.kind is not ExplanationDiagnosticKind.SECTION_EMPTY
+    )
+    assert len(purpose_rejections) == 1
+    assert (
+        purpose_rejections[0].kind
+        is ExplanationDiagnosticKind.EVIDENCE_KIND_UNSUPPORTED
+    )
+    assert purpose_rejections[0].count == 1
+
+
 def test_model_certain_confidence_is_capped_at_likely() -> None:
     source = SourceFile(Path("app.py"), "total = sum(values)\n")
     claim = _claim(1, 1, target="total = sum(values)")
