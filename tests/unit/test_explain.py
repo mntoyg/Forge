@@ -46,6 +46,7 @@ def test_prompt_includes_only_the_complete_numbered_source_snapshot() -> None:
     source = SourceFile(Path("app.py"), "value = 1\nprint(value)\n")
 
     request = build_explain_request(source)
+    prompt = " ".join(request.messages[0].content.split())
 
     assert len(request.messages) == 2
     assert request.messages[0].role is Role.SYSTEM
@@ -55,6 +56,10 @@ def test_prompt_includes_only_the_complete_numbered_source_snapshot() -> None:
     assert '"kind":"call"' in request.messages[0].content
     assert "not its step-by-step" in request.messages[0].content
     assert "distinct responsibility" in request.messages[0].content
+    assert "Each symbol entry must describe exactly one" in prompt
+    assert "Emit separate entries for the same symbol" in prompt
+    assert "A call anchor must identify an actual call expression" in prompt
+    assert "never a function or method declaration" in prompt
     assert "Each symbols entry must include `symbol`" in request.messages[0].content
     assert "Python's AST" in request.messages[0].content
     assert "Do not present constructor or initialization" in request.messages[0].content

@@ -73,7 +73,7 @@ def test_explanation_cites_excerpts_from_the_submitted_snapshot(
 
 
 @pytest.mark.integration
-def test_explain_symbol_role_is_bound_to_its_declared_class_scope(
+def test_explain_claims_use_distinct_responsibility_evidence_from_snapshot(
     tmp_path: Path,
 ) -> None:
     workspace = tmp_path
@@ -83,16 +83,28 @@ def test_explain_symbol_role_is_bound_to_its_declared_class_scope(
         "        source = self._reader.read(path)\n"
         "        request = build_explain_request(source)\n"
         "        response = self._provider.complete(request)\n"
-        "        return parse_explanation(response.text, source)\n"
+        "        result = parse_explanation(response.text, source)\n"
+        "        return result\n"
     )
     (workspace / "explain.py").write_bytes(source_text.encode())
     payload = {
-        "purpose": [],
-        "flow": [],
-        "symbols": [
+        "purpose": [
             {
-                "symbol": "ExplainSource",
-                "claim": "Coordinates a bounded source read, one provider request, and parsing against the same snapshot.",
+                "claim": "Obtains an explanation from the configured provider.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._provider.complete",
+                        "start_line": 5,
+                        "end_line": 5,
+                    }
+                ],
+            }
+        ],
+        "flow": [
+            {
+                "claim": "Reads the selected source through the injected reader.",
                 "confidence": "likely",
                 "evidence": [
                     {
@@ -100,21 +112,76 @@ def test_explain_symbol_role_is_bound_to_its_declared_class_scope(
                         "target": "self._reader.read",
                         "start_line": 3,
                         "end_line": 3,
-                    },
+                    }
+                ],
+            }
+        ],
+        "symbols": [
+            {
+                "symbol": "ExplainSource",
+                "claim": "Reads the selected source through the injected reader.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._reader.read",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+            {
+                "symbol": "ExplainSource",
+                "claim": "Builds the provider request from the selected source snapshot.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "build_explain_request",
+                        "start_line": 4,
+                        "end_line": 4,
+                    }
+                ],
+            },
+            {
+                "symbol": "ExplainSource",
+                "claim": "Delegates the explanation request to the configured provider.",
+                "confidence": "likely",
+                "evidence": [
                     {
                         "kind": "call",
                         "target": "self._provider.complete",
                         "start_line": 5,
                         "end_line": 5,
-                    },
+                    }
+                ],
+            },
+            {
+                "symbol": "ExplainSource",
+                "claim": "Parses the provider response against the submitted source snapshot.",
+                "confidence": "likely",
+                "evidence": [
                     {
                         "kind": "call",
                         "target": "parse_explanation",
                         "start_line": 6,
                         "end_line": 6,
-                    },
+                    }
                 ],
-            }
+            },
+            {
+                "symbol": "ExplainSource",
+                "claim": "Performs an extra validation pass after parsing.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "validate_again",
+                        "start_line": 6,
+                        "end_line": 6,
+                    }
+                ],
+            },
         ],
         "limitations": [],
         "context_insufficient": False,
@@ -126,18 +193,72 @@ def test_explain_symbol_role_is_bound_to_its_declared_class_scope(
     rendered = render_explanation(result)
 
     assert provider.call_count == 1
-    assert len(result.symbols) == 1
-    assert result.symbols[0].symbol == "ExplainSource"
-    assert (
-        "ExplainSource: Coordinates a bounded source read, one provider request, "
-        "and parsing against the same snapshot."
-    ) in rendered
-    assert "Evidence: call target `self._reader.read`, lines 3-3" in rendered
-    assert "3 |         source = self._reader.read(path)" in rendered
+    submitted = provider.requests[0].messages[1].content
+    for line_number, line in enumerate(source_text.splitlines(), start=1):
+        assert f"{line_number:>4} | {line}" in submitted
+    assert len(result.symbols) == 4
+    assert all(claim.symbol == "ExplainSource" for claim in result.symbols)
+    assert result.incomplete
+    assert "Obtains an explanation from the configured provider." in rendered
     assert "Evidence: call target `self._provider.complete`, lines 5-5" in rendered
     assert "5 |         response = self._provider.complete(request)" in rendered
+    assert "Reads the selected source through the injected reader." in rendered
+    assert "Evidence: call target `self._reader.read`, lines 3-3" in rendered
+    assert "3 |         source = self._reader.read(path)" in rendered
+    assert "Builds the provider request from the selected source snapshot." in rendered
+    assert "Evidence: call target `build_explain_request`, lines 4-4" in rendered
+    assert "4 |         request = build_explain_request(source)" in rendered
+    assert "Delegates the explanation request to the configured provider." in rendered
+    assert (
+        "Parses the provider response against the submitted source snapshot."
+        in rendered
+    )
     assert "Evidence: call target `parse_explanation`, lines 6-6" in rendered
-    assert "6 |         return parse_explanation(response.text, source)" in rendered
+    assert "6 |         result = parse_explanation(response.text, source)" in rendered
+    assert "Performs an extra validation pass after parsing." not in rendered
+
+
+@pytest.mark.integration
+def test_explain_rejects_method_declaration_as_provider_call_evidence(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    source_text = (
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        return None\n"
+    )
+    (workspace / "explain.py").write_bytes(source_text.encode())
+    payload = {
+        "purpose": [
+            {
+                "claim": "Obtains an explanation from the configured provider.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "__call__",
+                        "start_line": 2,
+                        "end_line": 2,
+                    }
+                ],
+            }
+        ],
+        "flow": [],
+        "symbols": [],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider = _provider(json.dumps(payload))
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+
+    assert provider.call_count == 1
+    assert result.purpose == ()
+    assert result.incomplete
+    assert "Obtains an explanation from the configured provider." not in rendered
 
 
 @pytest.mark.integration

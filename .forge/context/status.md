@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-11-04 on `main`; quality gate passed (497 passed, 1 skipped).
+**Last verified:** 2026-11-04 on `main`; quality gate passed (498 passed, 1 skipped).
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
 repository was recreated on 2026-09-06 - see below.
 
@@ -34,11 +34,11 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 497 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
+| Local gate: 498 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
-| `forge explain` binds symbol claims to one declared class/function and requires typed evidence ranges inside its Python AST scope; other extensions are incomplete | Focused fake-provider suite: 67 passed; full gate: 497 passed, 1 skipped |
-| Latest live `forge explain` output before typed anchors cited docstrings for provider-backed Purpose and constructor assignments for reader/provider roles; result-type evidence improved | `uv run forge explain src/forge/application/explain.py`, 2026-11-04; no live call since |
+| `forge explain` asks for one responsibility per symbol claim, cites actual use sites, and rejects method declarations as call evidence; Python evidence remains AST-scoped and does not prove semantics | Deterministic fake-provider integration and CLI tests; full gate: 498 passed, 1 skipped |
+| Latest live `forge explain` output before typed anchors cited docstrings for provider-backed Purpose and constructor assignments for reader/provider roles | `uv run forge explain src/forge/application/explain.py`, 2026-11-04; no live call since |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |

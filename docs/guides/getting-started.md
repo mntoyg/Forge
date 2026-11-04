@@ -128,9 +128,11 @@ adjacent files, run repository commands, or modify files. A file over the config
 disable the progress spinner. Purpose, operation flow, and symbol
 responsibilities are kept distinct; repeated summaries and name-only symbol
 entries are omitted. Forge asks symbol-role claims to cite where the selected
-file uses them, not only their import statements. Symbol claims require a call,
-access, return-type, or return-value anchor; an import or constructor
-assignment alone is insufficient. Each symbol claim names one uniquely
+file uses them, not only their import statements, and gives each responsibility
+its own evidence. A call citation must point to an actual invocation, not a
+method declaration. Symbol claims require a call, access, return-type, or
+return-value anchor; an import or constructor assignment alone is insufficient.
+Each symbol claim names one uniquely
 declared class, function, or async function, and Python's AST checks that its
 evidence lies within that declaration's scope. Ambiguous, undeclared, or
 out-of-scope claims are omitted and mark the result incomplete. This structural

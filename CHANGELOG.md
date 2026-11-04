@@ -23,7 +23,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   not establish semantic correctness.
 - Improve `forge explain` by separating purpose from operation flow, omitting
   repeated summaries and name-only symbol entries, prompting for symbol
-  citations at usage sites rather than imports alone, and capping provider
+  responsibilities as separate claims with their own usage-site evidence,
+  rejecting method declarations as call evidence, and capping provider
   `certain` confidence labels at `likely`.
 - Guide `forge explain` to cite the provider call for provider-backed purpose
   claims and the return annotation or returned value for result-type roles.

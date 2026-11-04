@@ -101,7 +101,9 @@ omitted and the result is marked incomplete.
 Purpose, operation flow, and symbol responsibilities are kept distinct;
 repeated summaries and name-only symbol entries are omitted. Forge asks symbol
 role claims to cite where the selected file uses them, not only their import
-statements. Each symbol claim names one uniquely declared class, function, or
+statements, and gives each responsibility its own evidence. A call citation
+must point to an actual invocation, not a method declaration. Each symbol
+claim names one uniquely declared class, function, or
 async function; Python's AST checks that its evidence lines lie within that
 declaration's scope. Ambiguous, undeclared, or out-of-scope symbols are omitted
 and mark the result incomplete. These structural checks do not prove a claim is
