@@ -41,10 +41,19 @@ def _provider(error: Exception | None = None) -> FakeProvider:
                     {
                         "claim": "Sets a value.",
                         "confidence": "likely",
-                        "evidence": [_anchor("operation", "value = 1", 1)],
+                        "evidence": [
+                            _anchor("operation", "value = make_value()", 1),
+                            _anchor("call", "make_value", 1),
+                        ],
                     }
                 ],
-                "flow": [],
+                "flow": [
+                    {
+                        "claim": "Calls make_value to obtain the value.",
+                        "confidence": "likely",
+                        "evidence": [_anchor("call", "make_value", 1)],
+                    }
+                ],
                 "symbols": [],
                 "limitations": [],
                 "context_insufficient": False,
@@ -76,7 +85,7 @@ def test_plain_cli_output_uses_one_fake_call_and_writes_no_files(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = tmp_path / "app.py"
-    original = b"value = 1\n"
+    original = b"value = make_value()\n"
     path.write_bytes(original)
     monkeypatch.chdir(tmp_path)
     provider = _provider()
@@ -86,7 +95,9 @@ def test_plain_cli_output_uses_one_fake_call_and_writes_no_files(
 
     assert result.exit_code == ExitCode.OK
     assert "Sets a value." in result.stdout
-    assert "Evidence: operation target `value = 1`, lines 1-1" in result.stdout
+    assert (
+        "Evidence: operation target `value = make_value()`, lines 1-1" in result.stdout
+    )
     assert "15 in, 7 out" in result.stdout
     assert "selected file is sent" not in result.stderr
     assert provider.call_count == 1

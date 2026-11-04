@@ -114,11 +114,12 @@ semantically correct. Confidence is conservative: provider claims labeled
 `certain` are presented as `likely`. Provider-backed purpose claims should cite
 the provider call, and result-type roles should cite the return annotation or
 returned value, not just an import.
-The prompt asks provider-backed Purpose to reuse the exact provider-call anchor
-from Main flow, and to omit Purpose if Main flow has no provider-call anchor.
-For Purpose claims with call evidence, the parser requires at least one exact
-match with a validated Main flow call anchor. These checks do not prove claims
-are correct.
+The prompt asks every Purpose claim to reuse the exact call anchor from Main
+flow, and to omit Purpose if Main flow has no validated call anchor.
+The parser requires a locally valid call anchor that exactly matches a
+validated Main flow call anchor. Missing, malformed, or invalid evidence keeps
+its specific diagnostic; a claim without a matching call is omitted. These
+checks do not prove claims are correct.
 
 ```bash
 forge explain src/app.py

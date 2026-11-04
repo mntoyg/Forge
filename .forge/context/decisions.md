@@ -20,7 +20,7 @@
 | [0013](../../docs/architecture/decisions/0013-review-a-long-file-as-marked-windows.md) | Review a long file as marked windows | Suspended | Measured the same day: a 300- or 800-line marked window is not read to its end. Build nothing until a new ADR supersedes it. |
 | [0014](../../docs/architecture/decisions/0014-bounded-multi-file-change-review.md) | Bounded multi-file change review | Accepted | Separate `forge review`; one confirmed call, 16,000-byte prompt cap, no ADR-0013 windows. |
 | [0015](../../docs/architecture/decisions/0015-explain-symbol-evidence-scope.md) | Bind explain symbol claims to Python declaration scope | Accepted | A symbol claim names one unique class/function declaration; typed evidence must fall within its AST range. This checks scope, not semantic entailment. |
-| [0016](../../docs/architecture/decisions/0016-bind-purpose-call-evidence-to-main-flow.md) | Bind provider-backed Purpose evidence to Main flow | Accepted | Purpose call anchors must match at least one independently validated Main flow call anchor exactly; other Purpose evidence stays independently validated. |
+| [0016](../../docs/architecture/decisions/0016-bind-purpose-call-evidence-to-main-flow.md) | Bind Purpose evidence to Main flow | Accepted | Every accepted Purpose claim needs a locally valid call anchor that exactly matches an independently validated Main flow call anchor. |
 
 ## How to use these
 

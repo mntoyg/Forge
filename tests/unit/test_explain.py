@@ -66,9 +66,9 @@ def test_prompt_includes_only_the_complete_numbered_source_snapshot() -> None:
     assert "entry point that handles the" in request.messages[0].content
     assert "import line only establishes" in request.messages[0].content
     assert "Prefer call, construction, access, or" in request.messages[0].content
-    assert "reuse the provider-call anchor from its Main flow claim verbatim" in prompt
+    assert "Reuse a Main flow call anchor verbatim" in prompt
     assert "same kind, exact target, and exact start_line and end_line" in prompt
-    assert "If Main flow has no provider-call anchor, omit Purpose" in prompt
+    assert "If Main flow has no validated call anchor, omit Purpose" in prompt
     assert "return annotation and/or the code that" in request.messages[0].content
     assert "closing delimiter alone does not" in request.messages[0].content
     assert (

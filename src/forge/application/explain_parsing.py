@@ -95,7 +95,7 @@ def parse_explanation(
                         for anchor in claim.evidence
                         if anchor.kind is EvidenceKind.CALL
                     )
-                    if purpose_calls and not any(
+                    if not purpose_calls or not any(
                         anchor in validated_flow_calls for anchor in purpose_calls
                     ):
                         record(

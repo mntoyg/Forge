@@ -140,11 +140,12 @@ check does not prove a role claim is semantically correct. Confidence is
 conservative: a provider `certain` label is presented as `likely`.
 Provider-backed purpose claims should cite the provider call; result-type roles
 should cite the return annotation or returned value rather than an import alone.
-The prompt asks provider-backed Purpose to reuse the exact provider-call anchor
-from Main flow, and to omit Purpose if Main flow has no provider-call anchor.
-For Purpose claims with call evidence, the parser requires at least one exact
-match with a validated Main flow call anchor. These checks do not prove claims
-correct.
+The prompt asks every Purpose claim to reuse the exact call anchor from Main
+flow, and to omit Purpose if Main flow has no validated call anchor.
+The parser requires a locally valid call anchor that exactly matches a
+validated Main flow call anchor. Missing, malformed, or invalid evidence keeps
+its specific diagnostic; a claim without a matching call is omitted. These
+checks do not prove claims correct.
 Analysis notes distinguish empty sections from claims omitted by validation and
 show only fixed categories and counts. Each omitted claim is counted once under
 its first failed validation rule; notes never echo provider text.

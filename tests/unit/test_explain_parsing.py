@@ -14,10 +14,10 @@ from forge.domain.explanation import (
 from forge.domain.source import SourceFile
 
 
-def _payload(*claims: object) -> dict[str, object]:
+def _payload(*claims: object, flow: list[object] | None = None) -> dict[str, object]:
     return {
         "purpose": list(claims),
-        "flow": [],
+        "flow": flow or [],
         "symbols": [],
         "limitations": [],
         "context_insufficient": False,
@@ -25,17 +25,47 @@ def _payload(*claims: object) -> dict[str, object]:
 
 
 def _claim(
-    start: object = 1, end: object = 2, target: str = "a = 1"
+    start: object = 1,
+    end: object = 2,
+    target: str = "a = 1",
+    *,
+    call_target: str | None = None,
+    call_line: int | None = None,
 ) -> dict[str, object]:
+    evidence: list[object] = [
+        {
+            "kind": "operation",
+            "target": target,
+            "start_line": start,
+            "end_line": end,
+        }
+    ]
+    if call_target is not None and call_line is not None:
+        evidence.append(
+            {
+                "kind": "call",
+                "target": call_target,
+                "start_line": call_line,
+                "end_line": call_line,
+            }
+        )
     return {
         "claim": "Calculates a total.",
         "confidence": "likely",
+        "evidence": evidence,
+    }
+
+
+def _flow_call(target: str, line: int) -> dict[str, object]:
+    return {
+        "claim": "Calls the configured client.",
+        "confidence": "likely",
         "evidence": [
             {
-                "kind": "operation",
+                "kind": "call",
                 "target": target,
-                "start_line": start,
-                "end_line": end,
+                "start_line": line,
+                "end_line": line,
             }
         ],
     }
@@ -83,10 +113,15 @@ def test_missing_evidence_is_discarded_and_context_gap_is_visible() -> None:
 
 
 def test_valid_one_based_range_is_preserved() -> None:
-    source = SourceFile(Path("app.py"), "a = 1\nb = 2\n")
+    source = SourceFile(Path("app.py"), "a = 1\nb = 2\nclient.send()\n")
 
     result = parse_explanation(
-        json.dumps(_payload(_claim())),
+        json.dumps(
+            _payload(
+                _claim(call_target="client.send", call_line=3),
+                flow=[_flow_call("client.send", 3)],
+            )
+        ),
         source,
         model="fake-model",
         usage=TokenUsage(1, 1),
@@ -97,6 +132,83 @@ def test_valid_one_based_range_is_preserved() -> None:
     assert result.purpose[0].evidence[0].kind.value == "operation"
     assert result.purpose[0].evidence[0].target == "a = 1"
     assert not result.incomplete
+
+
+@pytest.mark.parametrize(
+    ("evidence", "expected_kind"),
+    [
+        (None, ExplanationDiagnosticKind.EVIDENCE_MALFORMED),
+        (
+            [
+                {
+                    "kind": "operation",
+                    "target": "response = self._reader.send()",
+                    "start_line": 1,
+                    "end_line": 1,
+                }
+            ],
+            ExplanationDiagnosticKind.PURPOSE_CALL_NOT_IN_FLOW,
+        ),
+        (
+            [
+                {
+                    "kind": "access",
+                    "target": "self._reader",
+                    "start_line": 1,
+                    "end_line": 1,
+                }
+            ],
+            ExplanationDiagnosticKind.PURPOSE_CALL_NOT_IN_FLOW,
+        ),
+        (
+            [
+                {
+                    "kind": "operation",
+                    "target": "response = self._reader.send()",
+                    "start_line": 1,
+                    "end_line": 1,
+                },
+                {
+                    "kind": "call",
+                    "target": "other.send",
+                    "start_line": 1,
+                    "end_line": 1,
+                },
+            ],
+            ExplanationDiagnosticKind.EVIDENCE_TARGET_NOT_FOUND,
+        ),
+    ],
+    ids=("no-evidence", "operation-only", "access-only", "invalid-call"),
+)
+def test_purpose_requires_a_validated_call_shared_with_flow(
+    evidence: list[dict[str, object]] | None,
+    expected_kind: ExplanationDiagnosticKind,
+) -> None:
+    source = SourceFile(Path("app.py"), "response = self._reader.send()\n")
+    claim: dict[str, object] = {
+        "claim": "Uses the client to produce a response.",
+        "confidence": "likely",
+    }
+    if evidence is not None:
+        claim["evidence"] = evidence
+    payload = _payload(
+        claim,
+        flow=[_flow_call("self._reader.send", 1)],
+    )
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.purpose == ()
+    assert result.incomplete
+    purpose_diagnostics = tuple(
+        diagnostic.kind
+        for diagnostic in result.diagnostics
+        if diagnostic.section is ExplanationSection.PURPOSE
+        and diagnostic.kind is not ExplanationDiagnosticKind.SECTION_EMPTY
+    )
+    assert purpose_diagnostics == (expected_kind,)
 
 
 def test_empty_sections_are_distinguished_from_rejected_claims() -> None:
@@ -121,8 +233,11 @@ def test_empty_sections_are_distinguished_from_rejected_claims() -> None:
 
 
 def test_missing_limitations_remains_an_incomplete_result() -> None:
-    source = SourceFile(Path("app.py"), "a = 1\nb = 2\n")
-    payload = _payload(_claim())
+    source = SourceFile(Path("app.py"), "a = 1\nb = 2\nclient.send()\n")
+    payload = _payload(
+        _claim(call_target="client.send", call_line=3),
+        flow=[_flow_call("client.send", 3)],
+    )
     payload.pop("limitations")
 
     result = parse_explanation(
@@ -232,12 +347,18 @@ def test_claim_is_counted_once_under_its_first_evidence_rejection() -> None:
 
 
 def test_model_certain_confidence_is_capped_at_likely() -> None:
-    source = SourceFile(Path("app.py"), "total = sum(values)\n")
-    claim = _claim(1, 1, target="total = sum(values)")
+    source = SourceFile(Path("app.py"), "total = sum(values)\nclient.send()\n")
+    claim = _claim(
+        1,
+        1,
+        target="total = sum(values)",
+        call_target="client.send",
+        call_line=2,
+    )
     claim["confidence"] = "certain"
 
     result = parse_explanation(
-        json.dumps(_payload(claim)),
+        json.dumps(_payload(claim, flow=[_flow_call("client.send", 2)])),
         source,
         model="fake-model",
         usage=TokenUsage(1, 1),
@@ -560,7 +681,7 @@ def test_access_anchor_rejects_import_and_assignment_left_hand_side(
 
 
 def test_access_anchor_accepts_a_read_site() -> None:
-    source = SourceFile(Path("app.py"), "value = self._reader.value\n")
+    source = SourceFile(Path("app.py"), "value = self._reader.value\nclient.send()\n")
     claim = {
         "claim": "The reader supplies the value.",
         "confidence": "likely",
@@ -570,12 +691,18 @@ def test_access_anchor_accepts_a_read_site() -> None:
                 "target": "self._reader.value",
                 "start_line": 1,
                 "end_line": 1,
-            }
+            },
+            {
+                "kind": "call",
+                "target": "client.send",
+                "start_line": 2,
+                "end_line": 2,
+            },
         ],
     }
 
     result = parse_explanation(
-        json.dumps(_payload(claim)),
+        json.dumps(_payload(claim, flow=[_flow_call("client.send", 2)])),
         source,
         model="fake-model",
         usage=TokenUsage(1, 1),

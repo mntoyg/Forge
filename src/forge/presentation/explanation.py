@@ -160,8 +160,8 @@ def _diagnostic_text(diagnostic: ExplanationDiagnostic) -> str:
         )
     if kind is ExplanationDiagnosticKind.PURPOSE_CALL_NOT_IN_FLOW:
         return (
-            f"{count} purpose claim{plural} {verb} omitted because no identical "
-            "call anchor was validated in Main flow."
+            f"{count} purpose claim{plural} {verb} omitted because no Purpose "
+            "call anchor matched a validated Main flow call."
         )
     if kind is ExplanationDiagnosticKind.NAME_ONLY:
         return (

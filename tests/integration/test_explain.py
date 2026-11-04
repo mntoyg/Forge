@@ -47,15 +47,28 @@ def test_explanation_cites_excerpts_from_the_submitted_snapshot(
                 "confidence": "certain",
                 "evidence": [
                     {
-                        "kind": "return_value",
-                        "target": "sum(values)",
+                        "kind": "call",
+                        "target": "sum",
                         "start_line": 2,
                         "end_line": 2,
                     }
                 ],
             }
         ],
-        "flow": [],
+        "flow": [
+            {
+                "claim": "Calls sum with the supplied values.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "sum",
+                        "start_line": 2,
+                        "end_line": 2,
+                    }
+                ],
+            }
+        ],
         "symbols": [],
         "limitations": [],
         "context_insufficient": False,
@@ -68,7 +81,7 @@ def test_explanation_cites_excerpts_from_the_submitted_snapshot(
 
     assert provider.call_count == 1
     assert "1 | def total(values):" in provider.requests[0].messages[1].content
-    assert "Evidence: return_value target `sum(values)`, lines 2-2" in rendered
+    assert "Evidence: call target `sum`, lines 2-2" in rendered
     assert "2 |     return sum(values)" in rendered
 
 
@@ -294,9 +307,9 @@ def test_provider_backed_purpose_reuses_main_flow_call_anchor(
     system_prompt = " ".join(provider.requests[0].messages[0].content.split())
 
     assert provider.call_count == 1
-    assert "reuse the provider-call" in system_prompt
+    assert "Reuse a Main flow call anchor verbatim:" in system_prompt
     assert "same kind, exact target, and exact" in system_prompt
-    assert "If Main flow has no provider-call anchor, omit Purpose" in system_prompt
+    assert "If Main flow has no validated call anchor, omit Purpose" in system_prompt
     assert len(result.purpose) == 1
     assert len(result.flow) == 2
     assert len(result.symbols) == 1
@@ -386,7 +399,7 @@ def test_provider_backed_purpose_with_other_valid_call_is_omitted_safely(
     assert len(result.symbols) == 1
     assert result.incomplete
     assert (
-        "1 purpose claim was omitted because no identical call anchor was validated in Main flow."
+        "1 purpose claim was omitted because no Purpose call anchor matched a validated Main flow call."
         in notes
     )
     assert "PRIVATE_UNMATCHED_PURPOSE_CLAIM" not in notes
@@ -471,59 +484,90 @@ def test_provider_backed_purpose_is_omitted_without_valid_main_flow_call(
     assert "Assigns the provider response." in rendered
     assert "Delegates request completion to the configured provider." in rendered
     assert (
-        "1 purpose claim was omitted because no identical call anchor was validated in Main flow."
+        "1 purpose claim was omitted because no Purpose call anchor matched a validated Main flow call."
         in rendered
     )
 
 
 @pytest.mark.parametrize(
-    ("purpose_anchor", "expected_diagnostic"),
+    ("purpose_evidence", "expected_diagnostic"),
     [
         pytest.param(
-            {
-                "kind": "call",
-                "target": "PRIVATE_WRONG_PROVIDER",
-                "start_line": 3,
-                "end_line": 3,
-            },
+            [
+                {
+                    "kind": "call",
+                    "target": "PRIVATE_WRONG_PROVIDER",
+                    "start_line": 3,
+                    "end_line": 3,
+                }
+            ],
             "1 purpose claim was omitted because the target did not match executable tokens in the cited lines.",
             id="wrong-target",
         ),
         pytest.param(
-            {
-                "kind": "call",
-                "target": "self._provider.complete",
-                "start_line": 2,
-                "end_line": 2,
-            },
+            [
+                {
+                    "kind": "call",
+                    "target": "self._provider.complete",
+                    "start_line": 2,
+                    "end_line": 2,
+                }
+            ],
             "1 purpose claim was omitted because the target did not match executable tokens in the cited lines.",
             id="wrong-source-range",
         ),
         pytest.param(
-            {
-                "kind": "call",
-                "target": "self._provider.complete",
-                "start_line": 99,
-                "end_line": 99,
-            },
+            [
+                {
+                    "kind": "call",
+                    "target": "self._provider.complete",
+                    "start_line": 99,
+                    "end_line": 99,
+                }
+            ],
             "1 purpose claim was omitted because evidence was malformed or its line range was invalid.",
             id="invalid-line-range",
         ),
         pytest.param(
-            {
-                "kind": "call",
-                "target": "self._provider.complete",
-                "start_line": 3,
-            },
+            [{"kind": "call", "target": "self._provider.complete", "start_line": 3}],
             "1 purpose claim was omitted because evidence was malformed or its line range was invalid.",
             id="malformed-anchor",
+        ),
+        pytest.param(
+            None,
+            "1 purpose claim was omitted because evidence was malformed or its line range was invalid.",
+            id="no-evidence",
+        ),
+        pytest.param(
+            [
+                {
+                    "kind": "operation",
+                    "target": "response = self._provider.complete(request)",
+                    "start_line": 3,
+                    "end_line": 3,
+                }
+            ],
+            "1 purpose claim was omitted because no Purpose call anchor matched a validated Main flow call.",
+            id="operation-only",
+        ),
+        pytest.param(
+            [
+                {
+                    "kind": "access",
+                    "target": "self._provider",
+                    "start_line": 3,
+                    "end_line": 3,
+                }
+            ],
+            "1 purpose claim was omitted because no Purpose call anchor matched a validated Main flow call.",
+            id="access-only",
         ),
     ],
 )
 @pytest.mark.integration
 def test_provider_backed_purpose_rejects_invalid_call_anchor(
     tmp_path: Path,
-    purpose_anchor: dict[str, Any],
+    purpose_evidence: list[dict[str, Any]] | None,
     expected_diagnostic: str,
 ) -> None:
     workspace = tmp_path
@@ -545,7 +589,11 @@ def test_provider_backed_purpose_rejects_invalid_call_anchor(
             {
                 "claim": "PRIVATE_UNSUPPORTED_PURPOSE_CLAIM",
                 "confidence": "likely",
-                "evidence": [purpose_anchor],
+                **(
+                    {"evidence": purpose_evidence}
+                    if purpose_evidence is not None
+                    else {}
+                ),
             }
         ],
         "flow": [
@@ -591,7 +639,8 @@ def test_provider_backed_purpose_rejects_invalid_call_anchor(
     assert len(result.symbols) == 1
     assert result.incomplete
     assert expected_diagnostic in notes
-    assert "no identical call anchor was validated in Main flow" not in notes
+    if "no Purpose call anchor" not in expected_diagnostic:
+        assert "no Purpose call anchor" not in notes
     assert "PRIVATE_UNSUPPORTED_PURPOSE_CLAIM" not in notes
     assert "PRIVATE_WRONG_PROVIDER" not in notes
     assert "Sends the request to the configured provider." in rendered

@@ -41,13 +41,13 @@ FR-7:
 - **FR-7.5:** Remain read-only: do not modify files, execute source or
   repository commands, discover adjacent files, retry with more context, or
   start an autonomous loop. Treat source and provider output as untrusted data.
-- **FR-7.6:** A Purpose claim with call evidence must include at least one call
-  anchor exactly equal by kind, target, start line, and end line to a call
-  anchor in a Main flow claim that independently passed validation. Validate
-  Main flow before Purpose internally, without changing render order. If no
-  validated Main flow call anchor matches, omit the Purpose claim and mark the
-  result incomplete. Invalid Purpose evidence retains its existing specific
-  diagnostic.
+- **FR-7.6:** Every Purpose claim must include at least one `call` evidence
+  anchor that passes existing source validation and exactly equals by kind,
+  target, start line, and end line a call anchor in a Main flow claim that
+  independently passed validation. Validate Main flow before Purpose
+  internally, without changing render order. If no such anchor matches, omit
+  Purpose and mark the result incomplete. Missing, malformed, or otherwise
+  invalid Purpose evidence retains its existing specific diagnostic.
 
 Suggested command: `forge explain <FILE> [--plain]`, with an explicit single
 file path. `--plain` follows `debug`; otherwise stdout uses plain text when it
@@ -138,11 +138,12 @@ Acceptance criteria and fake-provider tests:
 5. CLI tests cover help without a key, missing configuration (`3`), success
    and provider errors, output streams, plain output without a TTY, and absence
    of repository execution or file writes.
-6. A Purpose call anchor survives only when it exactly matches an independently
-   validated Main flow call anchor. A valid but unmatched call, or no validated
-   Main flow call, omits Purpose with a fixed safe diagnostic while preserving
-   valid flow and symbol claims. Malformed or otherwise invalid Purpose evidence
-   keeps its more specific existing diagnostic.
+6. Every Purpose claim survives only when one of its locally valid call anchors
+   exactly matches an independently validated Main flow call anchor. Purpose
+   with no evidence keeps the existing evidence diagnostic; operation/access-
+   only evidence, a valid unmatched call, or no validated Main flow call omits
+   Purpose with a fixed safe diagnostic. Malformed/invalid evidence keeps its
+   more specific existing diagnostic while valid flow and symbol claims remain.
 
 ## Decision boundary
 

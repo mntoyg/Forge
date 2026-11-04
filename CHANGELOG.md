@@ -11,6 +11,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Changed
 
+- Require each `forge explain` Purpose claim to include a locally valid call
+  anchor that exactly matches a validated Main flow call. Preserve existing
+  specific diagnostics for invalid evidence and mark valid unmatched claims
+  incomplete. This structural relationship does not prove semantic correctness.
 - Give `forge explain` typed evidence anchors with exact source targets. The
   parser validates target, range, and supported source shape, drops invalid or
   mismatched claims, and marks the result incomplete. Structural token
@@ -27,10 +31,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   rejecting method declarations as call evidence, and capping provider
   `certain` confidence labels at `likely`.
 - Prompt provider-backed `forge explain` Purpose claims to reuse the exact
-  provider-call anchor from Main flow. The parser now requires at least one
-  exact match between Purpose call evidence and an independently validated
-  Main flow call. Result-type roles are guided to cite the return annotation or
-  returned value.
+  provider-call anchor from Main flow. The parser now requires every Purpose
+  claim to include a locally valid call anchor matching an independently
+  validated Main flow call. Result-type roles are guided to cite the return
+  annotation or returned value.
 - Add safe explain analysis notes that distinguish empty or malformed sections
   from rejected claims and report specific evidence-validation reasons as fixed
   categories and counts, with one first rejection reason per claim.
