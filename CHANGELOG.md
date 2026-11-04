@@ -17,6 +17,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   validation currently supports Python `.py` and `.pyi`; other source
   extensions remain accepted but their claims are omitted. This does not prove
   semantic entailment.
+- Bind explain symbol claims to an explicit, unique Python class/function
+  subject and require every evidence range to lie within its AST scope. Omit
+  ambiguous or out-of-scope roles and mark the result incomplete; AST scope does
+  not establish semantic correctness.
 - Improve `forge explain` by separating purpose from operation flow, omitting
   repeated summaries and name-only symbol entries, prompting for symbol
   citations at usage sites rather than imports alone, and capping provider

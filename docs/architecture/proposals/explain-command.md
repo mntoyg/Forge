@@ -29,10 +29,15 @@ FR-7:
   Python's standard tokenizer; comment and string tokens cannot satisfy an
   anchor. Symbol roles require call, access, return-type, or return-value
   anchors, so imports, constructor assignments, or closing delimiters alone
-  cannot support such a role. Other extensions remain valid inputs, but their
-  evidence claims are omitted and the result is marked incomplete. These
-  checks do not prove semantic entailment. Label uncertainty and state when
-  this file alone does not establish purpose or behavior.
+  cannot support such a role. Each symbol claim names its exact declared
+  subject in a `symbol` field. The subject must resolve to one class, function,
+  or async function declaration, and every cited range must be inside that
+  declaration's AST scope. Duplicate, unsupported, missing, and out-of-scope
+  subjects are omitted and make the result incomplete. Other extensions remain
+  valid inputs, but their evidence claims are omitted and the result is marked
+  incomplete. These structural checks do not prove semantic entailment. Label
+  uncertainty and state when this file alone does not establish purpose or
+  behavior.
 - **FR-7.5:** Remain read-only: do not modify files, execute source or
   repository commands, discover adjacent files, retry with more context, or
   start an autonomous loop. Treat source and provider output as untrusted data.
@@ -53,15 +58,18 @@ defensive parsing conventions. Each evidence item has `kind`, `target`,
 `start_line`, and `end_line`. Supported kinds are `call`, `access`,
 `return_type`, `return_value`, and `operation`. For `.py` and `.pyi`, use the
 standard Python tokenizer to check exact target tokens and source shape: calls
-have a callee followed by `(`, return types follow `->`, return values occur in
-an explicit `return` expression, and accesses are not import sites or
-assignment left-hand sides. Comment and string tokens cannot match. Other
-extensions remain readable inputs, but their claims are omitted and the result
-is marked incomplete. Symbol claims cannot use generic `operation` anchors.
-The renderer attaches excerpts from the validated snapshot. A model's
-explanation is an interpretation, not a fact; these checks validate location
-and structure, not semantic entailment. Repository comments or strings that
-look like instructions remain untrusted source data.
+must be actual call expressions, return types follow `->`, return values occur
+in an explicit `return` expression, and accesses are not import sites or
+assignment left-hand sides. Comment and string tokens cannot match. Each symbol
+claim includes an exact `symbol` name resolving to one class/function
+declaration in the same AST. All symbol evidence ranges must be within that
+declaration's source scope. Symbol claims cannot use generic `operation`
+anchors. Other extensions remain readable inputs, but their claims are omitted
+and the result is marked incomplete. The renderer attaches excerpts from the
+validated snapshot. A model's explanation is an interpretation, not a fact;
+these checks validate location and structure, not semantic entailment.
+Repository comments or strings that look like instructions remain untrusted
+source data.
 
 The smallest proposal sends the full selected file in one request, with no
 chunking, windows, or second call. The byte ceiling is the existing configured
@@ -111,6 +119,9 @@ Acceptance criteria and fake-provider tests:
    human-readable output; uncertain intent is labeled.
 2. Fake responses with valid, out-of-range, reversed, or missing evidence
    ranges prove validation and visible incomplete/unsupported context behavior.
+   Symbol tests also prove a unique declared subject with in-scope use sites is
+   rendered, while unrelated, undeclared, duplicate, out-of-scope, and
+   name-only symbol claims are omitted and marked incomplete.
 3. Missing, directory, outside-workspace/symlink escape, empty, invalid UTF-8,
    and over-limit inputs fail before a provider call. A growth-after-size-check
    test proves the actual read remains bounded, refuses rather than truncates,
@@ -123,10 +134,11 @@ Acceptance criteria and fake-provider tests:
 
 ## Decision boundary
 
-**ADR recommendation: no new ADR for this MVP.** A one-file use case reuses the
-accepted `SourceReader`, `AIProvider`, layer boundaries, and exit-code contract;
-this proposal adds no dependency, persistence, or concurrency. FR-7 and the
-command contract were approved before implementation. A dollar-price promise,
+**ADR-0015** accepts the explicit symbol subject and Python AST scope check.
+The one-file use case still reuses the accepted `SourceReader`, `AIProvider`,
+layer boundaries, and exit-code contract; no dependency, persistence, or
+concurrency is added. FR-7 and the command contract were approved before
+implementation. A dollar-price promise,
 multi-file context, retries/chunking,
 or any new provider/architecture boundary needs a separate product decision and
 possibly an ADR. In particular, do not revive ADR-0013's suspended windowing

@@ -49,11 +49,16 @@ def _section(
     rendered = False
     for claim in claims:
         key = _claim_key(claim.text)
+        if claim.symbol is not None:
+            key = f"{claim.symbol.casefold()}:{key}"
         if key in seen:
             continue
         seen.add(key)
         rendered = True
-        lines.append(f"  - [{claim.confidence.value}] {_safe(claim.text)}")
+        text = (
+            f"{claim.symbol}: {claim.text}" if claim.symbol is not None else claim.text
+        )
+        lines.append(f"  - [{claim.confidence.value}] {_safe(text)}")
         for evidence in claim.evidence:
             lines.append(
                 f"    Evidence: {evidence.kind.value} target "

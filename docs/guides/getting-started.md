@@ -130,8 +130,12 @@ responsibilities are kept distinct; repeated summaries and name-only symbol
 entries are omitted. Forge asks symbol-role claims to cite where the selected
 file uses them, not only their import statements. Symbol claims require a call,
 access, return-type, or return-value anchor; an import or constructor
-assignment alone is insufficient. Confidence is conservative: a provider
-`certain` label is presented as `likely`.
+assignment alone is insufficient. Each symbol claim names one uniquely
+declared class, function, or async function, and Python's AST checks that its
+evidence lies within that declaration's scope. Ambiguous, undeclared, or
+out-of-scope claims are omitted and mark the result incomplete. This structural
+check does not prove a role claim is semantically correct. Confidence is
+conservative: a provider `certain` label is presented as `likely`.
 Provider-backed purpose claims should cite the provider call; result-type roles
 should cite the return annotation or returned value rather than an import alone.
 

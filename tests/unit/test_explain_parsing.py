@@ -175,10 +175,14 @@ def test_invalid_or_mismatched_anchor_is_discarded_and_marks_incomplete(
 
 
 def test_operation_anchor_cannot_support_a_symbol_role() -> None:
-    source = SourceFile(Path("app.py"), "run_provider()\n")
+    source = SourceFile(
+        Path("app.py"),
+        "class Provider:\n" "    def run(self):\n" "        run_provider()\n",
+    )
     payload = _payload()
     payload["symbols"] = [
         {
+            "symbol": "Provider",
             "claim": "The provider performs the operation.",
             "confidence": "likely",
             "evidence": [
@@ -336,6 +340,32 @@ def test_call_target_must_match_the_complete_identifier() -> None:
     assert result.incomplete
 
 
+def test_call_anchor_rejects_a_function_declaration() -> None:
+    source = SourceFile(Path("app.py"), "def run():\n    pass\n")
+    claim = {
+        "claim": "Runs the operation.",
+        "confidence": "likely",
+        "evidence": [
+            {
+                "kind": "call",
+                "target": "run",
+                "start_line": 1,
+                "end_line": 1,
+            }
+        ],
+    }
+
+    result = parse_explanation(
+        json.dumps(_payload(claim)),
+        source,
+        model="fake-model",
+        usage=TokenUsage(1, 1),
+    )
+
+    assert result.purpose == ()
+    assert result.incomplete
+
+
 def test_operation_target_must_match_complete_tokens() -> None:
     source = SourceFile(Path("app.py"), "client.complete_request()\n")
     claim = {
@@ -456,18 +486,20 @@ def test_symbol_that_only_repeats_its_name_is_discarded() -> None:
     payload = _payload()
     payload["symbols"] = [
         {
+            "symbol": "ExplainSource",
             "claim": "ExplainSource class",
             "confidence": "certain",
             "evidence": [
                 {
-                    "kind": "operation",
-                    "target": "ExplainSource",
-                    "start_line": 1,
-                    "end_line": 1,
+                    "kind": "call",
+                    "target": "self._reader.read",
+                    "start_line": 3,
+                    "end_line": 3,
                 }
             ],
         },
         {
+            "symbol": "ExplainSource",
             "claim": "Coordinates the source read and provider request",
             "confidence": "likely",
             "evidence": [
@@ -488,6 +520,164 @@ def test_symbol_that_only_repeats_its_name_is_discarded() -> None:
     assert len(result.symbols) == 1
     assert "Coordinates" in result.symbols[0].text
     assert result.incomplete
+
+
+@pytest.mark.parametrize(
+    ("symbol", "claim_text", "source_text", "target", "line"),
+    [
+        (
+            "OtherThing",
+            "OtherThing reads a selected source.",
+            "class ExplainSource:\n"
+            "    def __call__(self):\n"
+            "        return self._reader.read()\n"
+            "class OtherThing:\n"
+            "    def read(self):\n"
+            "        return self._provider.complete()\n",
+            "self._reader.read",
+            3,
+        ),
+        (
+            "MissingThing",
+            "MissingThing reads a selected source.",
+            "class ExplainSource:\n"
+            "    def __call__(self):\n"
+            "        return self._reader.read()\n",
+            "self._reader.read",
+            3,
+        ),
+        (
+            "ExplainSource",
+            "ExplainSource reads a selected source.",
+            "class ExplainSource:\n"
+            "    def __call__(self):\n"
+            "        return self._reader.read()\n"
+            "class OtherThing:\n"
+            "    def read(self):\n"
+            "        return self._provider.complete()\n",
+            "self._provider.complete",
+            6,
+        ),
+        (
+            "ExplainSource",
+            "ExplainSource reads a selected source.",
+            "class ExplainSource:\n"
+            "    def __call__(self):\n"
+            "        return self._reader.read()\n"
+            "class ExplainSource:\n"
+            "    def __call__(self):\n"
+            "        return self._provider.complete()\n",
+            "self._reader.read",
+            3,
+        ),
+        (
+            "ExplainSource",
+            "ExplainSource class",
+            "class ExplainSource:\n"
+            "    def __call__(self):\n"
+            "        return self._reader.read()\n",
+            "self._reader.read",
+            3,
+        ),
+    ],
+    ids=(
+        "unrelated-subject",
+        "undeclared-subject",
+        "out-of-scope",
+        "ambiguous",
+        "name-only",
+    ),
+)
+def test_symbol_claim_requires_unique_subject_and_in_scope_evidence(
+    symbol: str,
+    claim_text: str,
+    source_text: str,
+    target: str,
+    line: int,
+) -> None:
+    source = SourceFile(Path("explain.py"), source_text)
+    payload = _payload()
+    payload["symbols"] = [
+        {
+            "symbol": symbol,
+            "claim": claim_text,
+            "confidence": "likely",
+            "evidence": [
+                {
+                    "kind": "call",
+                    "target": target,
+                    "start_line": line,
+                    "end_line": line,
+                }
+            ],
+        }
+    ]
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.symbols == ()
+    assert result.incomplete
+
+
+def test_missing_symbol_subject_is_discarded_and_marks_incomplete() -> None:
+    source = SourceFile(
+        Path("explain.py"),
+        "class ExplainSource:\n"
+        "    def __call__(self):\n"
+        "        return self._reader.read()\n",
+    )
+    payload = _payload()
+    payload["symbols"] = [
+        {
+            "claim": "Coordinates the selected source read.",
+            "confidence": "likely",
+            "evidence": [
+                {
+                    "kind": "call",
+                    "target": "self._reader.read",
+                    "start_line": 3,
+                    "end_line": 3,
+                }
+            ],
+        }
+    ]
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.symbols == ()
+    assert result.incomplete
+
+
+def test_syntax_error_omits_symbols_with_a_visible_scope_limitation() -> None:
+    source = SourceFile(Path("explain.py"), "class ExplainSource:\n    if:\n")
+    payload = _payload()
+    payload["symbols"] = [
+        {
+            "symbol": "ExplainSource",
+            "claim": "Coordinates selected-file work.",
+            "confidence": "likely",
+            "evidence": [
+                {
+                    "kind": "call",
+                    "target": "self._reader.read",
+                    "start_line": 2,
+                    "end_line": 2,
+                }
+            ],
+        }
+    ]
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.symbols == ()
+    assert result.incomplete
+    assert any("symbol scope validation" in item for item in result.limitations)
 
 
 def test_response_without_claims_or_limits_is_rejected() -> None:

@@ -1,5 +1,6 @@
 """Validate evidence ranges and limitations in an explanation response."""
 
+import ast
 import io
 import json
 import re
@@ -35,6 +36,7 @@ def parse_explanation(
     """Keep only claims with valid locations in the submitted source snapshot."""
     payload = _decode(text)
     source_tokens = _python_tokens(source)
+    source_tree = _python_tree(source) if source_tokens is not None else None
     incomplete = source_tokens is None
     sections: dict[str, tuple[ExplanationClaim, ...]] = {}
     for name in ("purpose", "flow", "symbols"):
@@ -46,7 +48,11 @@ def parse_explanation(
         claims: list[ExplanationClaim] = []
         for item in raw_claims:
             claim, invalid = _claim(
-                item, source, section=name, source_tokens=source_tokens
+                item,
+                source,
+                section=name,
+                source_tokens=source_tokens,
+                source_tree=source_tree,
             )
             incomplete = incomplete or invalid
             if claim is not None:
@@ -55,6 +61,14 @@ def parse_explanation(
 
     limitations, invalid_limitations = _limitations(payload.get("limitations"))
     incomplete = incomplete or invalid_limitations or bool(limitations)
+    if source_tokens is not None and source_tree is None:
+        limitation = (
+            "Python syntax could not be parsed; symbol scope validation was "
+            "unavailable and symbol claims were omitted."
+        )
+        if limitation not in limitations:
+            limitations = (*limitations, limitation)
+        incomplete = True
 
     context_insufficient = payload.get("context_insufficient")
     if not isinstance(context_insufficient, bool):
@@ -127,6 +141,7 @@ def _claim(
     *,
     section: str,
     source_tokens: tuple[tokenize.TokenInfo, ...] | None,
+    source_tree: ast.Module | None,
 ) -> tuple[ExplanationClaim | None, bool]:
     if not isinstance(item, dict):
         return None, True
@@ -137,16 +152,33 @@ def _claim(
     if not isinstance(raw_evidence, list) or not raw_evidence:
         return None, True
 
+    symbol: str | None = None
+    symbol_scope: tuple[int, int] | None = None
+    if section == "symbols":
+        resolved = _symbol_scope(item.get("symbol"), source_tree)
+        if resolved is None:
+            return None, True
+        symbol, symbol_scope = resolved
+
     evidence: list[EvidenceAnchor] = []
     for raw_anchor in raw_evidence:
-        anchor = _anchor(raw_anchor, source, source_tokens=source_tokens)
+        anchor = _anchor(
+            raw_anchor,
+            source,
+            source_tokens=source_tokens,
+            source_tree=source_tree,
+        )
         if anchor is None:
             return None, True
         if section == "symbols" and anchor.kind is EvidenceKind.OPERATION:
             return None, True
+        if symbol_scope is not None and not _range_within_scope(anchor, symbol_scope):
+            return None, True
         evidence.append(anchor)
 
-    if section == "symbols" and _is_name_only(text, tuple(evidence), source):
+    if symbol is not None and _is_name_only(
+        text, tuple(evidence), source, symbol=symbol
+    ):
         return None, True
 
     confidence = item.get("confidence")
@@ -165,9 +197,40 @@ def _claim(
             text=text.strip(),
             confidence=level or Confidence.POSSIBLE,
             evidence=tuple(evidence),
+            symbol=symbol,
         ),
         invalid_confidence,
     )
+
+
+def _symbol_scope(
+    value: object, source_tree: ast.Module | None
+) -> tuple[str, tuple[int, int]] | None:
+    """Resolve one explicit symbol name to a unique Python declaration scope."""
+    if (
+        source_tree is None
+        or not isinstance(value, str)
+        or value != value.strip()
+        or not value.isidentifier()
+    ):
+        return None
+    definitions = tuple(
+        node
+        for node in ast.walk(source_tree)
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == value
+    )
+    if len(definitions) != 1:
+        return None
+    definition = definitions[0]
+    if not isinstance(definition.end_lineno, int):
+        return None
+    return value, (definition.lineno, definition.end_lineno)
+
+
+def _range_within_scope(anchor: EvidenceAnchor, scope: tuple[int, int]) -> bool:
+    start, end = scope
+    return start <= anchor.start_line <= anchor.end_line <= end
 
 
 def _anchor(
@@ -175,6 +238,7 @@ def _anchor(
     source: SourceFile,
     *,
     source_tokens: tuple[tokenize.TokenInfo, ...] | None,
+    source_tree: ast.Module | None,
 ) -> EvidenceAnchor | None:
     """Validate an anchor's target and declared source shape against the snapshot."""
     if not isinstance(value, dict):
@@ -211,6 +275,10 @@ def _anchor(
     target_tokens = _target_tokens(target)
     if target_tokens is None or not _matches_anchor(kind, target_tokens, anchor_tokens):
         return None
+    if kind is EvidenceKind.CALL and not _has_call_expression(
+        source, source_tree, target_tokens, start_line, end_line
+    ):
+        return None
     return EvidenceAnchor(kind, target, start_line, end_line)
 
 
@@ -226,6 +294,42 @@ def _python_tokens(source: SourceFile) -> tuple[tokenize.TokenInfo, ...] | None:
         )
     except (IndentationError, tokenize.TokenError):
         return None
+
+
+def _python_tree(source: SourceFile) -> ast.Module | None:
+    """Parse the submitted Python snapshot without reading any other file."""
+    if source.path.suffix.casefold() not in {".py", ".pyi"}:
+        return None
+    try:
+        return ast.parse(source.content)
+    except SyntaxError:
+        return None
+
+
+def _has_call_expression(
+    source: SourceFile,
+    source_tree: ast.Module | None,
+    target: tuple[tuple[int, str], ...],
+    start_line: int,
+    end_line: int,
+) -> bool:
+    """Reject call-shaped function declarations that are not call expressions."""
+    if source_tree is None:
+        return False
+    for node in ast.walk(source_tree):
+        if not isinstance(node, ast.Call):
+            continue
+        function = node.func
+        function_end = function.end_lineno
+        if (
+            not isinstance(function_end, int)
+            or not start_line <= function.lineno <= function_end <= end_line
+        ):
+            continue
+        segment = ast.get_source_segment(source.content, function)
+        if segment is not None and _target_tokens(segment) == target:
+            return True
+    return False
 
 
 def _target_tokens(target: str) -> tuple[tuple[int, str], ...] | None:
@@ -361,7 +465,11 @@ _SYMBOL_FILLER = frozenset(
 
 
 def _is_name_only(
-    text: str, evidence: tuple[EvidenceAnchor, ...], source: SourceFile
+    text: str,
+    evidence: tuple[EvidenceAnchor, ...],
+    source: SourceFile,
+    *,
+    symbol: str,
 ) -> bool:
     """Reject symbol entries that only repeat identifiers or declaration kinds."""
     source_lines = source.content.splitlines()
@@ -371,6 +479,7 @@ def _is_name_only(
         for line in range(span.start_line, span.end_line + 1)
     )
     source_identifiers = {word.casefold() for word in re.findall(r"[\w$]+", cited_text)}
+    source_identifiers.update(word.casefold() for word in re.findall(r"[\w$]+", symbol))
     claim_words = [word.casefold() for word in re.findall(r"[\w$]+", text)]
     useful_words = [
         word

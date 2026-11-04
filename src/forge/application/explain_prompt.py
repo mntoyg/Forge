@@ -14,8 +14,8 @@ Keep the sections distinct:
   flow;
 - flow: the ordered, meaningful operations performed, without repeating the
   purpose summary;
-- symbols: only symbols with a useful, distinct responsibility, explained by
-  what each does rather than by repeating its class or method name.
+- symbols: only useful classes and functions declared in this file, each with
+  a distinct responsibility explained by what it does.
 Omit symbols that add no useful information. Only infer why when the supplied
 code supports the inference; otherwise say it cannot be established from this
 file alone.
@@ -53,11 +53,23 @@ actual provider call as evidence, not a docstring that only states intent.
 When describing a result type, cite its return annotation and/or the code that
 constructs the returned value; an import or closing delimiter alone does not
 show its role. If this file does not show a useful role, omit the symbol.
+Each symbols entry must include `symbol`, the exact declared class or function
+name that owns the role claim. Its name must identify one declaration only.
+Every symbol evidence range must fall inside that declaration's source scope;
+for a class, use work in one of its methods to describe the class role. Never
+attach an unrelated declaration name to an otherwise valid use-site anchor.
+The parser verifies declaration identity and scope with Python's AST, but this
+does not prove that the role description is semantically correct. If the name
+is ambiguous, undeclared, unsupported, or the evidence is outside its scope,
+omit that symbol claim.
 State missing context in limitations and set context_insufficient to true.
 Return JSON only in this shape:
 {"purpose":[{"claim":"...","confidence":"certain|likely|possible",
 "evidence":[{"kind":"call","target":"service.run",
-"start_line":1,"end_line":2}]}],"flow":[],"symbols":[],
+"start_line":1,"end_line":2}]}],"flow":[],
+"symbols":[{"symbol":"ExplainSource","claim":"...",
+"confidence":"likely","evidence":[{"kind":"call",
+"target":"self._reader.read","start_line":1,"end_line":1}]}],
 "limitations":[],"context_insufficient":false}
 """
 

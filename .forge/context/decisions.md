@@ -19,6 +19,7 @@
 | [0012](../../docs/architecture/decisions/0012-the-caveat-is-for-whole-file-runs.md) | The caveat is for whole-file runs only | Accepted | Above ~4,000 input tokens a *whole-file* run says so. `--diff` is measured reliable and stays silent. |
 | [0013](../../docs/architecture/decisions/0013-review-a-long-file-as-marked-windows.md) | Review a long file as marked windows | Suspended | Measured the same day: a 300- or 800-line marked window is not read to its end. Build nothing until a new ADR supersedes it. |
 | [0014](../../docs/architecture/decisions/0014-bounded-multi-file-change-review.md) | Bounded multi-file change review | Accepted | Separate `forge review`; one confirmed call, 16,000-byte prompt cap, no ADR-0013 windows. |
+| [0015](../../docs/architecture/decisions/0015-explain-symbol-evidence-scope.md) | Bind explain symbol claims to Python declaration scope | Accepted | A symbol claim names one unique class/function declaration; typed evidence must fall within its AST range. This checks scope, not semantic entailment. |
 
 ## How to use these
 

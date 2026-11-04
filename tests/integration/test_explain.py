@@ -73,6 +73,123 @@ def test_explanation_cites_excerpts_from_the_submitted_snapshot(
 
 
 @pytest.mark.integration
+def test_explain_symbol_role_is_bound_to_its_declared_class_scope(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    source_text = (
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        source = self._reader.read(path)\n"
+        "        request = build_explain_request(source)\n"
+        "        response = self._provider.complete(request)\n"
+        "        return parse_explanation(response.text, source)\n"
+    )
+    (workspace / "explain.py").write_bytes(source_text.encode())
+    payload = {
+        "purpose": [],
+        "flow": [],
+        "symbols": [
+            {
+                "symbol": "ExplainSource",
+                "claim": "Coordinates a bounded source read, one provider request, and parsing against the same snapshot.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._reader.read",
+                        "start_line": 3,
+                        "end_line": 3,
+                    },
+                    {
+                        "kind": "call",
+                        "target": "self._provider.complete",
+                        "start_line": 5,
+                        "end_line": 5,
+                    },
+                    {
+                        "kind": "call",
+                        "target": "parse_explanation",
+                        "start_line": 6,
+                        "end_line": 6,
+                    },
+                ],
+            }
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider = _provider(json.dumps(payload))
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+
+    assert provider.call_count == 1
+    assert len(result.symbols) == 1
+    assert result.symbols[0].symbol == "ExplainSource"
+    assert (
+        "ExplainSource: Coordinates a bounded source read, one provider request, "
+        "and parsing against the same snapshot."
+    ) in rendered
+    assert "Evidence: call target `self._reader.read`, lines 3-3" in rendered
+    assert "3 |         source = self._reader.read(path)" in rendered
+    assert "Evidence: call target `self._provider.complete`, lines 5-5" in rendered
+    assert "5 |         response = self._provider.complete(request)" in rendered
+    assert "Evidence: call target `parse_explanation`, lines 6-6" in rendered
+    assert "6 |         return parse_explanation(response.text, source)" in rendered
+
+
+@pytest.mark.integration
+def test_explain_omits_unrelated_symbol_with_a_valid_call_site(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    source_text = (
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        return self._reader.read(path)\n"
+        "class OtherThing:\n"
+        "    def read(self):\n"
+        "        return self._provider.complete()\n"
+    )
+    (workspace / "explain.py").write_bytes(source_text.encode())
+    payload = {
+        "purpose": [],
+        "flow": [],
+        "symbols": [
+            {
+                "symbol": "OtherThing",
+                "claim": "OtherThing coordinates the selected source read.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._reader.read",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            }
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider = _provider(json.dumps(payload))
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+
+    assert provider.call_count == 1
+    assert result.symbols == ()
+    assert result.incomplete
+    assert "OtherThing coordinates" not in rendered
+    assert "Important symbols:\n  None identified." in rendered
+    assert "Incomplete:" in rendered
+
+
+@pytest.mark.integration
 def test_growth_after_preflight_is_bounded_and_makes_no_provider_call(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

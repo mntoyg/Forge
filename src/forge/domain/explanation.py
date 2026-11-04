@@ -42,12 +42,15 @@ class ExplanationClaim:
     text: str
     confidence: Confidence
     evidence: tuple[EvidenceAnchor, ...]
+    symbol: str | None = None
 
     def __post_init__(self) -> None:
         if not self.text.strip():
             raise ValueError("An explanation claim must contain text.")
         if not self.evidence:
             raise ValueError("An explanation claim needs source evidence.")
+        if self.symbol is not None and not self.symbol.strip():
+            raise ValueError("An explanation symbol needs a name.")
 
 
 @dataclass(frozen=True, slots=True)

@@ -101,11 +101,14 @@ omitted and the result is marked incomplete.
 Purpose, operation flow, and symbol responsibilities are kept distinct;
 repeated summaries and name-only symbol entries are omitted. Forge asks symbol
 role claims to cite where the selected file uses them, not only their import
-statements. The Python tokenizer checks anchor targets and source shapes, but
-does not prove a claim is semantically correct. Confidence is conservative:
-provider claims labeled `certain` are presented as `likely`. Provider-backed
-purpose claims should cite the provider call, and result-type roles should cite
-the return annotation or returned value, not just an import.
+statements. Each symbol claim names one uniquely declared class, function, or
+async function; Python's AST checks that its evidence lines lie within that
+declaration's scope. Ambiguous, undeclared, or out-of-scope symbols are omitted
+and mark the result incomplete. These structural checks do not prove a claim is
+semantically correct. Confidence is conservative: provider claims labeled
+`certain` are presented as `likely`. Provider-backed purpose claims should cite
+the provider call, and result-type roles should cite the return annotation or
+returned value, not just an import.
 
 ```bash
 forge explain src/app.py

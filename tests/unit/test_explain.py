@@ -55,6 +55,8 @@ def test_prompt_includes_only_the_complete_numbered_source_snapshot() -> None:
     assert '"kind":"call"' in request.messages[0].content
     assert "not its step-by-step" in request.messages[0].content
     assert "distinct responsibility" in request.messages[0].content
+    assert "Each symbols entry must include `symbol`" in request.messages[0].content
+    assert "Python's AST" in request.messages[0].content
     assert "Do not present constructor or initialization" in request.messages[0].content
     assert "entry point that handles the" in request.messages[0].content
     assert "import line only establishes" in request.messages[0].content

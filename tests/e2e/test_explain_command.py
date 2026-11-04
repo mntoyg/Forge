@@ -244,24 +244,25 @@ def test_observed_repetition_and_name_only_symbols_render_as_distinct_roles() ->
                     ],
                     "symbols": [
                         {
+                            "symbol": "ExplainSource",
                             "claim": "ExplainSource class",
                             "confidence": "certain",
-                            "evidence": [_anchor("operation", "ExplainSource", 1)],
+                            "evidence": [_anchor("call", "self._reader.read", 3)],
                         },
                         {
+                            "symbol": "__call__",
                             "claim": "__call__ method",
                             "confidence": "certain",
-                            "evidence": [_anchor("operation", "__call__", 2)],
+                            "evidence": [_anchor("call", "self._reader.read", 3)],
                         },
                         {
+                            "symbol": "ExplainSource",
                             "claim": "Coordinates source reading and the provider request.",
                             "confidence": "certain",
-                            "evidence": [_anchor("call", "self._provider.complete", 4)],
-                        },
-                        {
-                            "claim": "Validates the provider response against source lines.",
-                            "confidence": "certain",
-                            "evidence": [_anchor("call", "parse_explanation", 5)],
+                            "evidence": [
+                                _anchor("call", "self._provider.complete", 4),
+                                _anchor("call", "parse_explanation", 5),
+                            ],
                         },
                     ],
                     "limitations": [],
@@ -284,9 +285,12 @@ def test_observed_repetition_and_name_only_symbols_render_as_distinct_roles() ->
         in result.stdout
     )
     assert "Coordinates source reading and the provider request." in result.stdout
-    assert "Validates the provider response against source lines." in result.stdout
     assert "ExplainSource class" not in result.stdout
     assert "__call__ method" not in result.stdout
+    assert (
+        "ExplainSource: Coordinates source reading and the provider request."
+        in result.stdout
+    )
     assert "[certain]" not in result.stdout
     assert provider.call_count == 1
 
@@ -354,34 +358,15 @@ def test_flow_and_symbol_roles_cite_usage_sites_from_the_submitted_snapshot() ->
                     ],
                     "symbols": [
                         {
-                            "claim": "The reader supplies the selected file snapshot.",
-                            "confidence": "likely",
-                            "evidence": [_anchor("call", "self._reader.read", 16)],
-                        },
-                        {
-                            "claim": "The request builder packages the snapshot for the provider.",
-                            "confidence": "likely",
-                            "evidence": [_anchor("call", "build_explain_request", 17)],
-                        },
-                        {
-                            "claim": "The provider port performs the single external completion call.",
+                            "symbol": "ExplainSource",
+                            "claim": "Coordinates the selected-file read, provider call, and response parsing against one source snapshot.",
                             "confidence": "likely",
                             "evidence": [
-                                _anchor("call", "self._provider.complete", 18)
+                                _anchor("call", "self._reader.read", 16),
+                                _anchor("call", "self._provider.complete", 18),
+                                _anchor("call", "parse_explanation", 19),
                             ],
-                        },
-                        {
-                            "claim": "The parser validates the response with the original snapshot.",
-                            "confidence": "likely",
-                            "evidence": [_anchor("call", "parse_explanation", 19)],
-                        },
-                        {
-                            "claim": "The return annotation names the validated result type.",
-                            "confidence": "likely",
-                            "evidence": [
-                                _anchor("return_type", "ExplanationResult", 15)
-                            ],
-                        },
+                        }
                     ],
                     "limitations": [],
                     "context_insufficient": False,
@@ -410,21 +395,13 @@ def test_flow_and_symbol_roles_cite_usage_sites_from_the_submitted_snapshot() ->
     assert "Parses the response" in flow
     assert "__init__" not in flow
     assert "_reader = reader" not in flow
-    assert "The reader supplies" in symbols
-    assert "The request builder packages" in symbols
-    assert "The provider port performs" in symbols
-    assert "The parser validates" in symbols
-    assert "The return annotation names" in symbols
-    for claim, line_number in (
-        ("The reader supplies the selected file snapshot.", 16),
-        ("The request builder packages the snapshot for the provider.", 17),
-        ("The provider port performs the single external completion call.", 18),
-        ("The parser validates the response with the original snapshot.", 19),
-        ("The return annotation names the validated result type.", 15),
-    ):
-        assert f"{claim}\n    Evidence:" in symbols
+    assert (
+        "ExplainSource: Coordinates the selected-file read, provider call, and "
+        "response parsing against one source snapshot."
+    ) in symbols
+    for line_number in (16, 18, 19):
         assert f"lines {line_number}-{line_number}" in symbols
-    for line_number in range(15, 20):
+    for line_number in (16, 18, 19):
         assert f"lines {line_number}-{line_number}" in result.stdout
         assert f"{line_number:>4} | {lines[line_number - 1]}" in result.stdout
     for import_line in range(4, 9):
@@ -474,7 +451,8 @@ def test_purpose_and_return_type_cite_their_actual_use_sites() -> None:
                     "flow": [],
                     "symbols": [
                         {
-                            "claim": "ExplanationResult is the result type promised by the use case and returned by the parser call.",
+                            "symbol": "ExplainSource",
+                            "claim": "Returns the declared result type after parsing the provider response against the submitted source.",
                             "confidence": "likely",
                             "evidence": [
                                 _anchor("return_type", "ExplanationResult", 16),
@@ -506,6 +484,7 @@ def test_purpose_and_return_type_cite_their_actual_use_sites() -> None:
     assert "Evidence: call target `self._provider.complete`, lines 18-18" in purpose
     assert f"18 | {lines[17]}" in purpose
     assert "Evidence: return_type target `ExplanationResult`, lines 16-16" in symbols
+    assert "ExplainSource: Returns the declared result type" in symbols
     assert f"16 | {lines[15]}" in symbols
     assert "Evidence: return_value target `parse_explanation`, lines 19-22" in symbols
     for line_number in range(19, 23):
@@ -528,8 +507,7 @@ def test_mismatched_anchor_kinds_and_declaration_sites_are_omitted() -> None:
         "    def __call__(self, path):",
         "        source = self._reader.read(path)",
         "        response = self._provider.complete(source)",
-        "        return parse_explanation(",
-        "        )",
+        "        return source",
     )
     source = SourceFile(Path("explain.py"), "\n".join(lines))
     claims = {
@@ -543,24 +521,28 @@ def test_mismatched_anchor_kinds_and_declaration_sites_are_omitted() -> None:
         "flow": [],
         "symbols": [
             {
+                "symbol": "ExplainSource",
                 "claim": "The reader supplies the selected source.",
                 "confidence": "likely",
                 "evidence": [_anchor("access", "self._reader", 6)],
             },
             {
+                "symbol": "ExplainSource",
                 "claim": "The provider makes a completion request.",
                 "confidence": "likely",
                 "evidence": [_anchor("call", "self._provider.complete", 7)],
             },
             {
+                "symbol": "ExplainSource",
                 "claim": "ExplanationResult is the returned result type.",
                 "confidence": "likely",
                 "evidence": [_anchor("return_type", "ExplanationResult", 2)],
             },
             {
+                "symbol": "ExplainSource",
                 "claim": "The return expression produces the explanation result.",
                 "confidence": "likely",
-                "evidence": [_anchor("return_value", "parse_explanation", 13)],
+                "evidence": [_anchor("return_value", "parse_explanation", 12)],
             },
         ],
         "limitations": [],
