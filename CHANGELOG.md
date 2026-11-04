@@ -12,7 +12,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 ### Changed
 
 - Improve `forge explain` by separating purpose from operation flow, omitting
-  repeated summaries and name-only symbol entries, and capping provider
+  repeated summaries and name-only symbol entries, prompting for symbol
+  citations at usage sites rather than imports alone, and capping provider
   `certain` confidence labels at `likely`.
 - Set a shared AI usage budget of at most 14 percentage points of a weekly plan
   per local calendar day.

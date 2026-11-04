@@ -95,8 +95,10 @@ line ranges and shows excerpts from that exact snapshot. Claims without valid
 evidence are omitted and the result is marked incomplete. It does not inspect
 other files, run commands, or modify files.
 Purpose, operation flow, and symbol responsibilities are kept distinct;
-repeated summaries and name-only symbol entries are omitted. Confidence is
-conservative: provider claims labeled `certain` are presented as `likely`.
+repeated summaries and name-only symbol entries are omitted. Forge asks symbol
+role claims to cite where the selected file uses them, not only their import
+statements. Citations locate evidence but do not prove a role claim. Confidence
+is conservative: provider claims labeled `certain` are presented as `likely`.
 
 ```bash
 forge explain src/app.py

@@ -257,3 +257,134 @@ def test_observed_repetition_and_name_only_symbols_render_as_distinct_roles() ->
     assert "__call__ method" not in result.stdout
     assert "[certain]" not in result.stdout
     assert provider.call_count == 1
+
+
+@pytest.mark.e2e
+def test_flow_and_symbol_roles_cite_usage_sites_from_the_submitted_snapshot() -> None:
+    lines = (
+        '"""Explain one selected source file."""',
+        "from pathlib import Path",
+        "",
+        "from forge.application.explain_parsing import parse_explanation",
+        "from forge.application.explain_prompt import build_explain_request",
+        "from forge.domain.ai import AIProvider",
+        "from forge.domain.explanation import ExplanationResult",
+        "from forge.domain.source import SourceReader",
+        "",
+        "class ExplainSource:",
+        "    def __init__(self, reader: SourceReader, provider: AIProvider) -> None:",
+        "        self._reader = reader",
+        "        self._provider = provider",
+        "",
+        "    def __call__(self, path: Path) -> ExplanationResult:",
+        "        source = self._reader.read(path)",
+        "        request = build_explain_request(source)",
+        "        response = self._provider.complete(request)",
+        "        return parse_explanation(response.text, source)",
+    )
+    source = SourceFile(Path("explain.py"), "\n".join(lines))
+    provider = FakeProvider(
+        response=CompletionResponse(
+            text=json.dumps(
+                {
+                    "purpose": [
+                        {
+                            "claim": "Coordinates one evidence-backed explanation for the selected file.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 10, "end_line": 19}],
+                        }
+                    ],
+                    "flow": [
+                        {
+                            "claim": "Reads the selected source through the configured reader.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 16, "end_line": 16}],
+                        },
+                        {
+                            "claim": "Builds a request from that source snapshot.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 17, "end_line": 17}],
+                        },
+                        {
+                            "claim": "Makes one provider call with the request.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 18, "end_line": 18}],
+                        },
+                        {
+                            "claim": "Parses the response against the same source and returns the result.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 19, "end_line": 19}],
+                        },
+                    ],
+                    "symbols": [
+                        {
+                            "claim": "The reader supplies the selected file snapshot.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 16, "end_line": 16}],
+                        },
+                        {
+                            "claim": "The request builder packages the snapshot for the provider.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 17, "end_line": 17}],
+                        },
+                        {
+                            "claim": "The provider port performs the single external completion call.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 18, "end_line": 18}],
+                        },
+                        {
+                            "claim": "The parser validates the response with the original snapshot.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 19, "end_line": 19}],
+                        },
+                        {
+                            "claim": "The return annotation names the validated result type.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 15, "end_line": 15}],
+                        },
+                    ],
+                    "limitations": [],
+                    "context_insufficient": False,
+                }
+            ),
+            model="fake-model",
+            usage=TokenUsage(input_tokens=75, output_tokens=65),
+        )
+    )
+    app = _app(lambda: ExplainSource(FakeSourceReader(source=source), provider))
+
+    result = runner.invoke(app, ["explain.py", "--plain"])
+
+    assert result.exit_code == ExitCode.OK
+    assert provider.call_count == 1
+    submitted = provider.requests[0].messages[1].content
+    for line_number, line in enumerate(lines, start=1):
+        assert f"{line_number:>4} | {line}" in submitted
+    flow = result.stdout.split("Main flow:", 1)[1].split("Important symbols:", 1)[0]
+    symbols = result.stdout.split("Important symbols:", 1)[1].split("Limitations:", 1)[
+        0
+    ]
+    assert "Reads the selected source" in flow
+    assert "Builds a request" in flow
+    assert "Makes one provider call" in flow
+    assert "Parses the response" in flow
+    assert "__init__" not in flow
+    assert "_reader = reader" not in flow
+    assert "The reader supplies" in symbols
+    assert "The request builder packages" in symbols
+    assert "The provider port performs" in symbols
+    assert "The parser validates" in symbols
+    assert "The return annotation names" in symbols
+    for claim, line_number in (
+        ("The reader supplies the selected file snapshot.", 16),
+        ("The request builder packages the snapshot for the provider.", 17),
+        ("The provider port performs the single external completion call.", 18),
+        ("The parser validates the response with the original snapshot.", 19),
+        ("The return annotation names the validated result type.", 15),
+    ):
+        assert f"{claim}\n    Evidence: lines {line_number}-{line_number}" in symbols
+    for line_number in range(15, 20):
+        assert f"Evidence: lines {line_number}-{line_number}" in result.stdout
+        assert f"{line_number:>4} | {lines[line_number - 1]}" in result.stdout
+    for import_line in range(4, 9):
+        assert f"Evidence: lines {import_line}-{import_line}" not in symbols

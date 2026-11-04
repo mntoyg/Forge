@@ -123,8 +123,10 @@ files, run repository commands, or modify files. A file over the configured
 `FORGE_MAX_FILE_BYTES` limit is refused without truncation. Use `--plain` to
 disable the progress spinner. Purpose, operation flow, and symbol
 responsibilities are kept distinct; repeated summaries and name-only symbol
-entries are omitted. Confidence is conservative: a provider `certain` label is
-presented as `likely`.
+entries are omitted. Forge asks symbol-role claims to cite where the selected
+file uses them, not only their import statements. Citations locate evidence but
+do not prove a role claim. Confidence is conservative: a provider `certain`
+label is presented as `likely`.
 
 ## 5. Read the output
 
