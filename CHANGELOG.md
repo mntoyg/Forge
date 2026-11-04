@@ -11,6 +11,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Changed
 
+- Clarify JSON proposal error behavior for local `inspect` and define when
+  completeness may be known from current result metadata.
 - Draft a versioned machine-readable JSON output contract for deferred FR-4.4;
   owner review is required before implementation.
 - Rename the distribution to `mntoyg-forge`, document tool installation, and

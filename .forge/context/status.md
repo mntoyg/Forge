@@ -82,7 +82,7 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Codex meter: 11% over 7 days, 7% over 5 hours; daily use is unavailable.
+  Latest Codex meter: 12% over 7 days; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.

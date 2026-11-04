@@ -9,7 +9,7 @@ FR-4.1 through FR-4.3 keep human-readable output as the default, send results to
 | Command | Result and diagnostics today | Error behavior |
 | --- | --- | --- |
 | `debug` / `debug --diff` | `AnalysisResult`: source path, findings, model/usage and optional file history. Whole-file safety warning is separate stderr text; diff is silent. Invalid individual provider findings may be discarded without a count in the result. | Typed input/config/provider failures map to ADR-0006 exit codes; error text to stderr. |
-| `inspect` | `ProjectOverview`: root, guidance, languages, tools, checks, directories and prose omissions. Scanner completeness is not retained as a dedicated result field. | Typed input/config/provider failures use existing mapping; error text to stderr. |
+| `inspect` | `ProjectOverview`: root, guidance, languages, tools, checks, directories and prose omissions. Scanner completeness is available on the reader's `ProjectEvidence` but is not retained on `ProjectOverview`. | Local path/filesystem failures are caught as `ForgeError`, printed to stderr, and mapped by the existing CLI exit-code function. `inspect` does not call a provider or require provider configuration. |
 | `review` | Before consent, a `ReviewPlan` is printed; after consent, `ReviewResult` has findings, typed path omissions and an incomplete flag. Non-TTY confirmation does not call provider. | No changes exits 1; decline exits 0; analysis errors use existing mapping. |
 | `explain` | `ExplanationResult`: claims, source evidence, limitations, context-insufficient/incomplete flags and safe typed diagnostics. Successful incomplete results exit 0. | Errors to stderr with existing mapping. |
 
@@ -46,7 +46,7 @@ Alternatives: (a) debug only, smallest compatibility surface but omits useful in
 }
 ```
 
-`status` is `success` or `error`. Successful `completeness.status` is `complete`, `partial`, or `unknown`. Complete means no known processing omission was reported; it does not mean the model found every issue or that its claims are correct. Warnings and omissions use stable codes and structured fields, not matching human prose. Keep counts/reasons only where the application has evidence for them. Never infer completeness from an empty findings list or claim a count of rejected AI claims when current result types do not provide one.
+`status` is `success` or `error`. Successful `completeness.status` is `complete`, `partial`, or `unknown`. `complete` means the declared bounded processing scope completed without a known omission; it does not mean the model found every issue or that its claims are correct. `partial` requires affirmative evidence of an omitted part of that scope. `unknown` means current result metadata cannot establish whether such an omission occurred. Warnings and omissions use stable codes and structured fields, not matching human prose. Keep counts/reasons only where the application has evidence for them. Never infer completeness from an empty findings list or claim a count of rejected AI claims when current result types do not provide one.
 
 Example debug result (field names are proposed):
 
@@ -69,13 +69,18 @@ Example debug result (field names are proposed):
     "model": "configured-model",
     "usage": {"input_tokens": 1200, "output_tokens": 180}
   },
-  "completeness": {"status": "complete", "warnings": [], "omissions": []}
+  "completeness": {"status": "unknown", "warnings": [], "omissions": []}
 }
 ```
 
-The `history` value, when present, contains its existing recent-commit records and window. `location` is null when absent. `mode` is `file` or `diff`. Do not expose prompt text, raw provider response, credentials, or unredacted environment/config values.
+The example uses `unknown` because current `AnalysisResult` does not say whether `parse_findings` discarded malformed individual entries. The `history` value, when present, contains its existing recent-commit records and window. `location` is null when absent. `mode` is `file` or `diff`. Do not expose prompt text, raw provider response, credentials, or unredacted environment/config values.
 
-Example partial result: use a stable warning code for the known whole-file safety limit and set completeness to `partial`; for diff, do not invent that warning because current behavior is silent. For inspect, represent each known scanner omission with a code and safe relative path/details. Since current inspect result strings and underlying completeness are not fully typed in the result, implementation must preserve or add explicit safe metadata rather than parse prose. If completeness cannot be established, use `unknown`.
+### Completeness using current data and proposed metadata
+
+- **Debug, current code:** `_size_warning` gives affirmative evidence for `partial` on a whole-file run above the input-token threshold; `--diff` remains silent under ADR-0012. In every other case use `unknown`: `parse_findings` silently drops malformed individual entries, and neither its tuple result nor `AnalysisResult` records whether that happened. Do not emit `complete` from an empty findings list, absence of a size warning, or a diff run.
+- **Inspect, current code:** use `unknown`. The reader's `ProjectEvidence.complete` indicates whether the bounded scan finished, but `InspectProject` does not carry it into `ProjectOverview`; free-text omissions are not a stable substitute and must not be classified by parsing prose. `inspect` is local and has no provider/configuration failure mode.
+- **Smallest typed change for owner approval:** carry one `incomplete: bool` signal with the result. For debug, set it when `parse_findings` discards any raw finding, and propagate it to `AnalysisResult`; for inspect, propagate the reader's `ProjectEvidence.complete` as an explicit completeness field on `ProjectOverview` (or equivalent). Emit `partial` for a known debug size warning, a dropped debug finding, or an inspect scan marked incomplete. Emit `complete` only when the relevant typed signal confirms no known processing omission within the command's declared bounded scope. Emit `unknown` whenever that signal is unavailable. This proposes no rejection counts and does not imply AI coverage or correctness.
+- Represent known partial conditions with stable warning/omission codes and safe relative paths where available. For diff, do not invent the ADR-0012 whole-file warning. For inspect, bounded exclusions and the fact that the command inspects selected metadata are part of its declared scope, not a claim to have read every repository file.
 
 Example error (stderr; stdout empty; exit code remains the ADR-0006 value):
 
@@ -103,7 +108,7 @@ Use stable error codes such as `result_unavailable`, `input_unusable`, `not_conf
 1. Accept initial scope (`debug` + `inspect`) or choose debug-only/all four.
 2. Accept `--format json`, its conflict with `--plain`, and text help/argument-error behavior.
 3. Accept the envelope, `complete|partial|unknown` meaning, stable warning/error codes, and stderr JSON with empty stdout on command errors.
-4. Decide whether to extend result types to preserve inspect completeness and count discarded debug claims; current types cannot report these reliably. Default recommendation: expose only evidence already represented and use `unknown` where necessary; do not add semantic-validation heuristics.
+4. Approve or reject the minimal typed completeness signals: a debug incomplete flag when findings are discarded and an inspect scan-complete flag propagated from `ProjectEvidence`. Do not expose a rejected-claim count; the current parser does not provide one. Until approved metadata exists, use `unknown` except for affirmative partial evidence already available to the CLI.
 5. Confirm unchanged ADR-0006 exits and the exclusion of review consent and explain evidence in v1.
 
 No accepted ADR needs to change if serialization remains a CLI/presentation concern, provider-internal JSON remains separate, and exit semantics stay unchanged. FR-4.4 remains deferred until owner acceptance.
