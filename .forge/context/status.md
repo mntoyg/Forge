@@ -70,10 +70,9 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Define the JSON output contract** for deferred FR-4.4 before implementation:
-   specify schema, command coverage, error/partial-result behavior, and whether
-   human output remains the default. Record the agreed contract before assigning
-   implementation to SWE.
+1. **Owner review required:** review
+   `docs/architecture/proposals/json-output-contract.md` and accept or request
+   changes before implementation of deferred FR-4.4.
 2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
    deterministic checks validate declaration scope, not semantic entailment.
    Live quality evaluation still needs explicit approval.

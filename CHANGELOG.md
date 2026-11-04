@@ -11,6 +11,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Changed
 
+- Draft a versioned machine-readable JSON output contract for deferred FR-4.4;
+  owner review is required before implementation.
 - Rename the distribution to `mntoyg-forge`, document tool installation, and
   publish one build to GitHub Releases and PyPI with job-scoped permissions.
 - Require each `forge explain` Purpose claim to include a locally valid call

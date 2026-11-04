@@ -45,22 +45,15 @@ single-file capability. Keep future work within its accepted scope.
 
 ## Following feature: machine-readable output
 
-FR-4.4 remains deferred. First define and agree on the output contract; do not
-start implementation until the owner accepts the contract.
+FR-4.4 remains deferred. Review
+[`json-output-contract.md`](../architecture/proposals/json-output-contract.md)
+and obtain owner acceptance before implementation. The draft recommends
+`debug` (including `--diff`) and `inspect` for v1, with `review` and `explain`
+deferred.
 
-### Contract task breakdown
-
-1. **Audit current output:** map each command's human output, errors, and partial
-   result states to the existing application result types.
-2. **Propose a stable JSON contract:** define top-level schema/versioning,
-   stdout versus stderr, exit codes, error shape, and how incomplete or omitted
-   AI claims are represented. Keep human-readable output as the default.
-3. **Set initial command scope:** recommend which existing commands should
-   support JSON in the first increment and list excluded commands explicitly.
-4. **Add examples and acceptance criteria:** include valid output, provider or
-   input failure, and incomplete analysis without exposing secrets or raw prompts.
-5. **Owner review:** record the accepted scope and contract before SWE implements
-   it. Tests must use fakes and remain deterministic.
+After approval: record the accepted contract/ADR if needed; add a presentation
+serializer and CLI format option; preserve any explicitly approved result
+metadata; add deterministic fake-provider tests and docs; then run the full gate.
 
 ## Deferred research: full review of long files
 
