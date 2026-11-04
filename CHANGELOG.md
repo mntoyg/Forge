@@ -11,6 +11,9 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Changed
 
+- Record the owner-selected PyPI distribution name `mntoyg-forge` after a
+  direct availability lookup returned 404; PyPI registration eligibility is
+  still subject to its name policy.
 - Require each `forge explain` Purpose claim to include a locally valid call
   anchor that exactly matches a validated Main flow call. Preserve existing
   specific diagnostics for invalid evidence and mark valid unmatched claims

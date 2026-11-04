@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-11-04 on `main`; quality gate passed (522 passed, 1 skipped).
+**Last verified:** 2026-11-05 on `main`; quality gate passed (522 passed, 1 skipped).
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
 repository was recreated on 2026-09-06 - see below.
 
@@ -27,8 +27,10 @@ opinion and reports omissions and incomplete coverage.
 `forge explain <FILE>` implements FR-7: it submits one bounded source snapshot
 in at most one provider call and renders only claims with validated evidence.
 Distribution decision: keep GitHub Releases and add PyPI through Trusted
-Publishing (ADR-0017). The distribution name is still unchosen; `forge-cli` is
-occupied on PyPI, so implementation waits for an available owner-approved name.
+Publishing (ADR-0017). The owner selected `mntoyg-forge`; PyPI returned 404 for
+its project and JSON endpoints on 2026-11-05 (ADR-0018). This is not a name
+reservation or guarantee of eligibility. Metadata and publishing workflow
+remain unchanged pending implementation and PyPI project setup.
 
 ## What is true right now
 
@@ -37,10 +39,11 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 522 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
+| Local gate: 522 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
+| PyPI lookup for `mntoyg-forge` returned HTTP 404 at both project and JSON endpoints | Direct PyPI endpoints, 2026-11-05; PyPI policy says 404 does not guarantee a name can be registered |
 | Latest user-shared live output showed valid Main flow and symbols but omitted Purpose because its call target did not match the cited lines | User-provided result; no live call during this follow-up |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
@@ -66,12 +69,15 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-0. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
+0. **Prepare PyPI distribution for `mntoyg-forge`.** ADR-0017 and ADR-0018
+   select the channel and candidate name. Confirm eligibility during PyPI
+   project setup, then update metadata, lockfile, docs, and Trusted Publishing.
+1. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
    tagging remains a deliberate owner action after green CI.
-1. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
+2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
    deterministic checks validate declaration scope, not semantic entailment.
    Live quality evaluation still needs explicit approval.
-2. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
+3. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
    measurement and accept a new ADR before implementation.
 
 ## Blocked, or needs a human
@@ -123,13 +129,6 @@ Each of these cost real time once. They are here so it happens only once.
   a test that reads `result.stdout` for a flag name passes on a wide terminal
   and fails on CI's 80 columns. Assert on the source string - `debug_cli.HELP`
   - and keep one test that the text reaches the user at all.
-- **A long file is reviewed from the top until the model loses interest.**
-  Not a size limit being hit - the identical defect at line 6 of an 877-line
-  file is found, and missed at the end of the same file. Anything measuring
-  quality must vary *where* the defect is, not only how big the file is.
-- **Temperature 0 is not determinism.** Two runs over one unchanged file
-  disagreed on how many findings there were and on which lines they sat.
-  Anything that needs a repeatable answer needs caching, not a temperature.
 - **A file that documents its own defects can pull the model's line numbers
   into the comment describing them**, as `examples/retry_backoff.js` did once.
   Every file in `examples/` has such a header; real user code does not.
