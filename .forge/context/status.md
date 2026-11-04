@@ -7,8 +7,9 @@
 > Read it after `project.md` and before starting any task.
 
 **Last verified:** 2026-11-05 on `main`; quality gate passed (525 passed, 1 skipped).
-Version `0.1.0` is prepared and unreleased: the tag is a human action. The
-repository was recreated on 2026-09-06 - see below.
+Version `0.1.0` is published on GitHub Releases and PyPI. The owner verified
+installation with `uvx --from mntoyg-forge==0.1.0 forge --version` (`forge 0.1.0`).
+The repository was recreated on 2026-09-06 - see below.
 
 ---
 
@@ -29,7 +30,8 @@ in at most one provider call and renders only claims with validated evidence.
 Distribution decision: keep GitHub Releases and add PyPI through Trusted
 Publishing (ADR-0017). Metadata and release workflow now use `mntoyg-forge`;
 the workflow builds once and publishes the same artifacts to both channels.
-The PyPI pending publisher and GitHub `pypi` environment still need owner setup.
+The `v0.1.0` release workflow completed successfully, and the owner confirmed
+the published CLI installs and runs from PyPI.
 
 ## What is true right now
 
@@ -42,7 +44,7 @@ verification - correct it or delete it instead.
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
-| Package metadata is `mntoyg-forge`; the release workflow reuses one artifact for GitHub and PyPI with job-scoped permissions | `pyproject.toml`, `uv.lock`, `.github/workflows/release.yml`; PyPI publisher setup remains pending |
+| `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |
 | Latest user-shared live output showed valid Main flow and symbols but omitted Purpose because its call target did not match the cited lines | User-provided result; no live call during this follow-up |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
@@ -68,10 +70,10 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-0. **Set up the PyPI pending publisher and GitHub `pypi` environment**, then
-   verify the first release artifacts match by SHA-256.
-1. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
-   tagging remains a deliberate owner action after green CI.
+1. **Define the JSON output contract** for deferred FR-4.4 before implementation:
+   specify schema, command coverage, error/partial-result behavior, and whether
+   human output remains the default. Record the agreed contract before assigning
+   implementation to SWE.
 2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
    deterministic checks validate declaration scope, not semantic entailment.
    Live quality evaluation still needs explicit approval.
@@ -82,8 +84,6 @@ order, say why rather than silently reordering.
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
   Codex meter: 11% over 7 days, 7% over 5 hours; daily use is unavailable.
-- `mntoyg-forge` returned 404 in the PyPI lookup on 2026-11-05; this did not
-  reserve it. Confirm PyPI accepts the name during project setup.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
