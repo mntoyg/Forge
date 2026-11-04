@@ -95,6 +95,8 @@ anchors and shows excerpts from that exact snapshot. Each anchor names its
 kind, target, and line range. Claims with structurally invalid or mismatched
 anchors are omitted and the result is marked incomplete. It does not inspect
 other files, run commands, or modify files.
+Analysis notes distinguish empty sections from claims omitted by validation and
+show only fixed categories and counts, never provider text.
 Structural anchor validation currently supports Python `.py` and `.pyi` files.
 Other source extensions remain accepted inputs, but their evidence claims are
 omitted and the result is marked incomplete.

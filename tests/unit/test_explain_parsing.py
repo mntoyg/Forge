@@ -6,7 +6,11 @@ import pytest
 from forge.application.explain_parsing import parse_explanation
 from forge.domain.ai import TokenUsage
 from forge.domain.errors import ProviderResponseError
-from forge.domain.explanation import EvidenceKind
+from forge.domain.explanation import (
+    EvidenceKind,
+    ExplanationDiagnosticKind,
+    ExplanationSection,
+)
 from forge.domain.source import SourceFile
 
 
@@ -93,6 +97,98 @@ def test_valid_one_based_range_is_preserved() -> None:
     assert result.purpose[0].evidence[0].kind.value == "operation"
     assert result.purpose[0].evidence[0].target == "a = 1"
     assert not result.incomplete
+
+
+def test_empty_sections_are_distinguished_from_rejected_claims() -> None:
+    source = SourceFile(Path("app.py"), "a = 1\nb = 2\n")
+    payload = _payload()
+    payload["purpose"] = []
+    payload["flow"] = [_claim()]
+    payload["symbols"] = []
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert not result.incomplete
+    assert [
+        (diagnostic.section, diagnostic.kind, diagnostic.count)
+        for diagnostic in result.diagnostics
+    ] == [
+        (ExplanationSection.PURPOSE, ExplanationDiagnosticKind.SECTION_EMPTY, 1),
+        (ExplanationSection.SYMBOLS, ExplanationDiagnosticKind.SECTION_EMPTY, 1),
+    ]
+
+
+def test_missing_limitations_remains_an_incomplete_result() -> None:
+    source = SourceFile(Path("app.py"), "a = 1\nb = 2\n")
+    payload = _payload(_claim())
+    payload.pop("limitations")
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.incomplete
+    assert result.purpose
+    assert result.limitations == ()
+    assert (None, ExplanationDiagnosticKind.LIMITATIONS_MISSING, 1) in tuple(
+        (diagnostic.section, diagnostic.kind, diagnostic.count)
+        for diagnostic in result.diagnostics
+    )
+
+
+def test_missing_and_malformed_metadata_sections_are_reported_safely() -> None:
+    source = SourceFile(Path("app.py"), "a = 1\nb = 2\n")
+    payload = _payload(_claim())
+    del payload["purpose"]
+    payload["symbols"] = "PRIVATE_SYMBOL_SECTION"
+    payload.pop("limitations")
+    payload.pop("context_insufficient")
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.incomplete
+    assert result.context_insufficient
+    assert result.limitations == ()
+    assert [
+        (diagnostic.section, diagnostic.kind, diagnostic.count)
+        for diagnostic in result.diagnostics
+    ] == [
+        (ExplanationSection.PURPOSE, ExplanationDiagnosticKind.SECTION_MISSING, 1),
+        (ExplanationSection.FLOW, ExplanationDiagnosticKind.SECTION_EMPTY, 1),
+        (ExplanationSection.SYMBOLS, ExplanationDiagnosticKind.SECTION_MALFORMED, 1),
+        (None, ExplanationDiagnosticKind.LIMITATIONS_MISSING, 1),
+        (None, ExplanationDiagnosticKind.CONTEXT_STATUS_MISSING, 1),
+    ]
+    assert "PRIVATE_SYMBOL_SECTION" not in repr(result.diagnostics)
+
+
+def test_malformed_context_and_limitations_are_not_guessed_as_content_gaps() -> None:
+    source = SourceFile(Path("app.py"), "a = 1\nb = 2\n")
+    payload = _payload(_claim())
+    payload["limitations"] = "PRIVATE_LIMITATIONS_VALUE"
+    payload["context_insufficient"] = "PRIVATE_CONTEXT_VALUE"
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.incomplete
+    assert result.context_insufficient
+    assert result.limitations == ()
+    assert [
+        (diagnostic.section, diagnostic.kind, diagnostic.count)
+        for diagnostic in result.diagnostics
+        if diagnostic.section is None
+    ] == [
+        (None, ExplanationDiagnosticKind.LIMITATIONS_FIELD_MALFORMED, 1),
+        (None, ExplanationDiagnosticKind.CONTEXT_STATUS_MALFORMED, 1),
+    ]
+    assert "This file alone does not provide enough context" not in repr(result)
+    assert "PRIVATE_" not in repr(result.diagnostics)
 
 
 def test_model_certain_confidence_is_capped_at_likely() -> None:

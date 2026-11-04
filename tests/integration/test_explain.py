@@ -262,6 +262,219 @@ def test_explain_rejects_method_declaration_as_provider_call_evidence(
 
 
 @pytest.mark.integration
+def test_explanation_diagnostics_report_empty_sections_without_rejection_claims(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    (workspace / "app.py").write_bytes(b"a = 1\n")
+    payload = {
+        "purpose": [],
+        "flow": [
+            {
+                "claim": "Assigns the initial value.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "operation",
+                        "target": "a = 1",
+                        "start_line": 1,
+                        "end_line": 1,
+                    }
+                ],
+            }
+        ],
+        "symbols": [],
+        "limitations": [],
+        "context_insufficient": True,
+    }
+    provider = _provider(json.dumps(payload))
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("app.py"))
+    rendered = render_explanation(result)
+
+    assert provider.call_count == 1
+    assert result.flow
+    assert "No claims were returned for Purpose." in rendered
+    assert "No claims were returned for Important symbols." in rendered
+    assert "claim was omitted because" not in rendered
+    assert "The provider reported that context was insufficient." in rendered
+
+
+@pytest.mark.integration
+def test_explanation_diagnostics_distinguish_missing_and_malformed_sections(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    (workspace / "app.py").write_bytes(b"a = 1\n")
+    payload = {
+        "flow": [
+            {
+                "claim": "Assigns the initial value.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "operation",
+                        "target": "a = 1",
+                        "start_line": 1,
+                        "end_line": 1,
+                    }
+                ],
+            }
+        ],
+        "symbols": "PRIVATE_MALFORMED_SYMBOL_SECTION",
+        "limitations": "PRIVATE_MALFORMED_LIMITATIONS",
+        "context_insufficient": False,
+    }
+    provider_response = json.dumps(payload)
+    provider = _provider(provider_response)
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("app.py"))
+    rendered = render_explanation(result)
+    notes = rendered.split("Analysis notes:\n", 1)[1].split("Incomplete:", 1)[0]
+
+    assert provider.call_count == 1
+    assert "The Purpose section was missing." in notes
+    assert "The Important symbols section was malformed" in notes
+    assert "The limitations field was malformed." in notes
+    assert "PRIVATE_MALFORMED_SYMBOL_SECTION" not in notes
+    assert "PRIVATE_MALFORMED_LIMITATIONS" not in notes
+    assert provider_response not in notes
+
+
+@pytest.mark.integration
+def test_explanation_diagnostics_are_counted_and_never_echo_provider_content(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    source_text = (
+        "class SafeSubject:\n"
+        "    def run(self):\n"
+        "        return selected_client.send()\n"
+        "class OtherSubject:\n"
+        "    def run(self):\n"
+        "        return foreign_client.send()\n"
+    )
+    (workspace / "explain.py").write_bytes(source_text.encode())
+    payload = {
+        "purpose": [],
+        "flow": [],
+        "symbols": [
+            {
+                "claim": "PRIVATE_CLAIM_MISSING_SUBJECT",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "selected_client.send",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+            {
+                "symbol": "SafeSubject",
+                "claim": "PRIVATE_CLAIM_INVALID_EVIDENCE",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "PRIVATE_ANCHOR_TARGET",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+            {
+                "symbol": "SafeSubject",
+                "claim": "PRIVATE_CLAIM_SECOND_INVALID_EVIDENCE",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "PRIVATE_SECOND_ANCHOR_TARGET",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+            {
+                "symbol": "SafeSubject",
+                "claim": "PRIVATE_CLAIM_OUT_OF_SCOPE",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "foreign_client.send",
+                        "start_line": 6,
+                        "end_line": 6,
+                    }
+                ],
+            },
+            {
+                "symbol": "SafeSubject",
+                "claim": "SafeSubject class",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "selected_client.send",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider_response = json.dumps(payload)
+    provider = _provider(provider_response)
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+    notes = rendered.split("Analysis notes:\n", 1)[1].split("Incomplete:", 1)[0]
+
+    assert provider.call_count == 1
+    assert result.incomplete
+    assert result.purpose == result.flow == result.symbols == ()
+    assert "No claims were returned for Purpose." in notes
+    assert "No claims were returned for Main flow." in notes
+    assert (
+        "1 symbol claim was omitted because a unique subject could not be resolved."
+        in notes
+    )
+    assert (
+        "2 symbol claims were omitted because evidence could not be validated." in notes
+    )
+    assert (
+        "1 symbol claim was omitted because evidence fell outside the declared subject scope."
+        in notes
+    )
+    assert (
+        "1 symbol claim was omitted because the claim only repeated the symbol name."
+        in notes
+    )
+    for private_value in (
+        "PRIVATE_CLAIM_MISSING_SUBJECT",
+        "PRIVATE_CLAIM_INVALID_EVIDENCE",
+        "PRIVATE_CLAIM_SECOND_INVALID_EVIDENCE",
+        "PRIVATE_CLAIM_OUT_OF_SCOPE",
+        "SafeSubject",
+        "OtherSubject",
+        "PRIVATE_ANCHOR_TARGET",
+        "PRIVATE_SECOND_ANCHOR_TARGET",
+        "selected_client.send",
+        "foreign_client.send",
+        source_text,
+        provider_response,
+    ):
+        assert private_value not in notes
+
+
+@pytest.mark.integration
 def test_explain_omits_unrelated_symbol_with_a_valid_call_site(
     tmp_path: Path,
 ) -> None:

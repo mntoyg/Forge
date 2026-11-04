@@ -2,7 +2,13 @@
 
 import re
 
-from forge.domain.explanation import ExplanationClaim, ExplanationResult
+from forge.domain.explanation import (
+    ExplanationClaim,
+    ExplanationDiagnostic,
+    ExplanationDiagnosticKind,
+    ExplanationResult,
+    ExplanationSection,
+)
 
 
 def render_explanation(result: ExplanationResult) -> str:
@@ -16,6 +22,9 @@ def render_explanation(result: ExplanationResult) -> str:
     if result.limitations:
         lines.extend(["Limitations:"])
         lines.extend(f"  - {_safe(item)}" for item in result.limitations)
+    if result.diagnostics:
+        lines.append("Analysis notes:")
+        lines.extend(f"  - {_diagnostic_text(item)}" for item in result.diagnostics)
     if result.incomplete:
         lines.append(
             "Incomplete: some claims were omitted or context is missing; "
@@ -74,6 +83,84 @@ def _section(
 def _claim_key(text: str) -> str:
     """Normalize wording so repeated summaries render only once."""
     return " ".join(word.casefold() for word in re.findall(r"[\w$]+", text))
+
+
+def _diagnostic_text(diagnostic: ExplanationDiagnostic) -> str:
+    """Render only fixed diagnostic categories, never provider-controlled data."""
+    section = _section_name(diagnostic.section)
+    count = diagnostic.count
+    plural = "s" if count != 1 else ""
+    verb = "were" if count != 1 else "was"
+    claim_type = _claim_type(diagnostic.section)
+    kind = diagnostic.kind
+    if kind is ExplanationDiagnosticKind.SECTION_EMPTY:
+        return f"No claims were returned for {section}."
+    if kind is ExplanationDiagnosticKind.SECTION_MISSING:
+        return f"The {section} section was missing."
+    if kind is ExplanationDiagnosticKind.SECTION_MALFORMED:
+        return (
+            f"The {section} section was malformed; its claims could not be validated."
+        )
+    if kind is ExplanationDiagnosticKind.CLAIM_MALFORMED:
+        return f"{count} {claim_type} claim{plural} {verb} malformed and omitted."
+    if kind is ExplanationDiagnosticKind.SUBJECT_UNAVAILABLE:
+        return (
+            f"{count} symbol claim{plural} {verb} omitted because a unique "
+            "subject could not be resolved."
+        )
+    if kind is ExplanationDiagnosticKind.EVIDENCE_INVALID:
+        return (
+            f"{count} {claim_type} claim{plural} {verb} omitted because evidence "
+            "could not be validated."
+        )
+    if kind is ExplanationDiagnosticKind.EVIDENCE_OUT_OF_SCOPE:
+        return (
+            f"{count} symbol claim{plural} {verb} omitted because evidence fell "
+            "outside the declared subject scope."
+        )
+    if kind is ExplanationDiagnosticKind.NAME_ONLY:
+        return (
+            f"{count} symbol claim{plural} {verb} omitted because the claim only "
+            "repeated the symbol name."
+        )
+    if kind is ExplanationDiagnosticKind.CONFIDENCE_UNRECOGNIZED:
+        return (
+            f"{count} {claim_type} claim{plural} had an unrecognized "
+            "confidence label and is shown as possible."
+        )
+    if kind is ExplanationDiagnosticKind.LIMITATIONS_MALFORMED:
+        return f"{count} limitation item{plural} {verb} malformed and omitted."
+    if kind is ExplanationDiagnosticKind.LIMITATIONS_MISSING:
+        return "The limitations field was missing."
+    if kind is ExplanationDiagnosticKind.LIMITATIONS_FIELD_MALFORMED:
+        return "The limitations field was malformed."
+    if kind is ExplanationDiagnosticKind.CONTEXT_STATUS_MISSING:
+        return "The context completeness status was missing."
+    if kind is ExplanationDiagnosticKind.CONTEXT_STATUS_MALFORMED:
+        return "The context completeness status was malformed."
+    if kind is ExplanationDiagnosticKind.CONTEXT_INSUFFICIENT:
+        return "The provider reported that context was insufficient."
+    raise AssertionError(f"Unhandled explanation diagnostic: {kind}")
+
+
+def _section_name(section: ExplanationSection | None) -> str:
+    if section is ExplanationSection.PURPOSE:
+        return "Purpose"
+    if section is ExplanationSection.FLOW:
+        return "Main flow"
+    if section is ExplanationSection.SYMBOLS:
+        return "Important symbols"
+    return "explanation"
+
+
+def _claim_type(section: ExplanationSection | None) -> str:
+    if section is ExplanationSection.PURPOSE:
+        return "purpose"
+    if section is ExplanationSection.FLOW:
+        return "flow"
+    if section is ExplanationSection.SYMBOLS:
+        return "symbol"
+    return "explanation"
 
 
 def _safe(value: str) -> str:

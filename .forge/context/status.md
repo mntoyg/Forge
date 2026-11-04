@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-11-04 on `main`; quality gate passed (498 passed, 1 skipped).
+**Last verified:** 2026-11-04 on `main`; quality gate passed (505 passed, 1 skipped).
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
 repository was recreated on 2026-09-06 - see below.
 
@@ -34,11 +34,11 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 498 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
+| Local gate: 505 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
-| `forge explain` asks for one responsibility per symbol claim, cites actual use sites, and rejects method declarations as call evidence; Python evidence remains AST-scoped and does not prove semantics | Deterministic fake-provider integration and CLI tests; full gate: 498 passed, 1 skipped |
-| Latest user-shared live output before the claim-guidance update omitted Purpose and showed an `ExplainSource` role claim about reading and provider requests with evidence only for the reader call; result was incomplete | User-provided `uv run forge explain src/forge/application/explain.py`, 2026-11-04; no live call after the guidance update |
+| `forge explain` reports safe section/rejection categories and counts; Python evidence remains AST-scoped and diagnostics never include provider-controlled claim, symbol, target, or source text | Deterministic fake-provider parser/render tests; full gate: 505 passed, 1 skipped |
+| Latest user-shared live output showed empty Purpose/symbol sections with only the generic incomplete notice | User-provided `uv run forge explain src/forge/application/explain.py`, 2026-11-04; no live call after diagnostics work |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
@@ -74,7 +74,7 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Codex's current 7-day meter: 3% used; daily use is unavailable.
+  Codex's current 7-day meter: 5% used; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.

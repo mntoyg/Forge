@@ -14,7 +14,10 @@ from forge.domain.explanation import (
     EvidenceAnchor,
     EvidenceKind,
     ExplanationClaim,
+    ExplanationDiagnostic,
+    ExplanationDiagnosticKind,
     ExplanationResult,
+    ExplanationSection,
 )
 from forge.domain.source import Confidence, SourceFile
 
@@ -39,28 +42,73 @@ def parse_explanation(
     source_tree = _python_tree(source) if source_tokens is not None else None
     incomplete = source_tokens is None
     sections: dict[str, tuple[ExplanationClaim, ...]] = {}
+    diagnostic_counts: dict[
+        tuple[ExplanationSection | None, ExplanationDiagnosticKind], int
+    ] = {}
+
+    def record(
+        section: ExplanationSection | None,
+        kind: ExplanationDiagnosticKind,
+        count: int = 1,
+    ) -> None:
+        key = (section, kind)
+        diagnostic_counts[key] = diagnostic_counts.get(key, 0) + count
+
     for name in ("purpose", "flow", "symbols"):
-        raw_claims = payload.get(name)
-        if not isinstance(raw_claims, list):
+        section = ExplanationSection(name)
+        if name not in payload:
             sections[name] = ()
+            record(section, ExplanationDiagnosticKind.SECTION_MISSING)
             incomplete = True
             continue
+        raw_claims = payload[name]
+        if not isinstance(raw_claims, list):
+            sections[name] = ()
+            record(section, ExplanationDiagnosticKind.SECTION_MALFORMED)
+            incomplete = True
+            continue
+        if not raw_claims:
+            record(section, ExplanationDiagnosticKind.SECTION_EMPTY)
         claims: list[ExplanationClaim] = []
         for item in raw_claims:
-            claim, invalid = _claim(
+            claim, diagnostic = _claim(
                 item,
                 source,
                 section=name,
                 source_tokens=source_tokens,
                 source_tree=source_tree,
             )
-            incomplete = incomplete or invalid
+            if diagnostic is not None:
+                record(section, diagnostic)
+                incomplete = True
             if claim is not None:
                 claims.append(claim)
         sections[name] = tuple(claims)
 
-    limitations, invalid_limitations = _limitations(payload.get("limitations"))
-    incomplete = incomplete or invalid_limitations or bool(limitations)
+    limitations: tuple[str, ...]
+    limitations_missing = "limitations" not in payload
+    if limitations_missing:
+        limitations, invalid_limitations, malformed_limitations = (), 0, False
+        record(None, ExplanationDiagnosticKind.LIMITATIONS_MISSING)
+    else:
+        limitations, invalid_limitations, malformed_limitations = _limitations(
+            payload["limitations"]
+        )
+    if malformed_limitations:
+        record(None, ExplanationDiagnosticKind.LIMITATIONS_FIELD_MALFORMED)
+    if invalid_limitations:
+        record(
+            None,
+            ExplanationDiagnosticKind.LIMITATIONS_MALFORMED,
+            invalid_limitations,
+        )
+    incomplete = (
+        incomplete
+        or limitations_missing
+        or bool(invalid_limitations)
+        or malformed_limitations
+        or bool(limitations)
+    )
     if source_tokens is not None and source_tree is None:
         limitation = (
             "Python syntax could not be parsed; symbol scope validation was "
@@ -70,16 +118,31 @@ def parse_explanation(
             limitations = (*limitations, limitation)
         incomplete = True
 
+    context_status_missing = "context_insufficient" not in payload
     context_insufficient = payload.get("context_insufficient")
     if not isinstance(context_insufficient, bool):
         context_insufficient = True
+        record(
+            None,
+            (
+                ExplanationDiagnosticKind.CONTEXT_STATUS_MISSING
+                if context_status_missing
+                else ExplanationDiagnosticKind.CONTEXT_STATUS_MALFORMED
+            ),
+        )
         incomplete = True
+    elif context_insufficient:
+        record(None, ExplanationDiagnosticKind.CONTEXT_INSUFFICIENT)
     if source_tokens is None:
         context_insufficient = True
         validation_limit = _validation_limitation(source)
         if validation_limit not in limitations:
             limitations = (*limitations, validation_limit)
-    if context_insufficient and not limitations:
+    if (
+        context_insufficient
+        and not limitations
+        and isinstance(payload.get("context_insufficient"), bool)
+    ):
         limitations = (
             "This file alone does not provide enough context to explain all behavior.",
         )
@@ -101,6 +164,10 @@ def parse_explanation(
         incomplete=incomplete,
         model=model,
         usage=usage,
+        diagnostics=tuple(
+            ExplanationDiagnostic(section, kind, count)
+            for (section, kind), count in diagnostic_counts.items()
+        ),
     )
 
 
@@ -142,22 +209,22 @@ def _claim(
     section: str,
     source_tokens: tuple[tokenize.TokenInfo, ...] | None,
     source_tree: ast.Module | None,
-) -> tuple[ExplanationClaim | None, bool]:
+) -> tuple[ExplanationClaim | None, ExplanationDiagnosticKind | None]:
     if not isinstance(item, dict):
-        return None, True
+        return None, ExplanationDiagnosticKind.CLAIM_MALFORMED
     text = item.get("claim")
     if not isinstance(text, str) or not text.strip():
-        return None, True
+        return None, ExplanationDiagnosticKind.CLAIM_MALFORMED
     raw_evidence = item.get("evidence")
     if not isinstance(raw_evidence, list) or not raw_evidence:
-        return None, True
+        return None, ExplanationDiagnosticKind.EVIDENCE_INVALID
 
     symbol: str | None = None
     symbol_scope: tuple[int, int] | None = None
     if section == "symbols":
         resolved = _symbol_scope(item.get("symbol"), source_tree)
         if resolved is None:
-            return None, True
+            return None, ExplanationDiagnosticKind.SUBJECT_UNAVAILABLE
         symbol, symbol_scope = resolved
 
     evidence: list[EvidenceAnchor] = []
@@ -169,17 +236,17 @@ def _claim(
             source_tree=source_tree,
         )
         if anchor is None:
-            return None, True
+            return None, ExplanationDiagnosticKind.EVIDENCE_INVALID
         if section == "symbols" and anchor.kind is EvidenceKind.OPERATION:
-            return None, True
+            return None, ExplanationDiagnosticKind.EVIDENCE_INVALID
         if symbol_scope is not None and not _range_within_scope(anchor, symbol_scope):
-            return None, True
+            return None, ExplanationDiagnosticKind.EVIDENCE_OUT_OF_SCOPE
         evidence.append(anchor)
 
     if symbol is not None and _is_name_only(
         text, tuple(evidence), source, symbol=symbol
     ):
-        return None, True
+        return None, ExplanationDiagnosticKind.NAME_ONLY
 
     confidence = item.get("confidence")
     try:
@@ -199,7 +266,11 @@ def _claim(
             evidence=tuple(evidence),
             symbol=symbol,
         ),
-        invalid_confidence,
+        (
+            ExplanationDiagnosticKind.CONFIDENCE_UNRECOGNIZED
+            if invalid_confidence
+            else None
+        ),
     )
 
 
@@ -489,14 +560,14 @@ def _is_name_only(
     return not useful_words
 
 
-def _limitations(value: object) -> tuple[tuple[str, ...], bool]:
+def _limitations(value: object) -> tuple[tuple[str, ...], int, bool]:
     if not isinstance(value, list):
-        return (), True
+        return (), 0, True
     valid: list[str] = []
-    invalid = False
+    invalid = 0
     for item in value:
         if isinstance(item, str) and item.strip():
             valid.append(item.strip())
         else:
-            invalid = True
-    return tuple(valid), invalid
+            invalid += 1
+    return tuple(valid), invalid, False

@@ -17,6 +17,47 @@ class EvidenceKind(StrEnum):
     OPERATION = "operation"
 
 
+class ExplanationSection(StrEnum):
+    """A fixed explanation section used in safe validation diagnostics."""
+
+    PURPOSE = "purpose"
+    FLOW = "flow"
+    SYMBOLS = "symbols"
+
+
+class ExplanationDiagnosticKind(StrEnum):
+    """A fixed, non-content-bearing reason for an omitted or incomplete result."""
+
+    SECTION_EMPTY = "section_empty"
+    SECTION_MISSING = "section_missing"
+    SECTION_MALFORMED = "section_malformed"
+    CLAIM_MALFORMED = "claim_malformed"
+    SUBJECT_UNAVAILABLE = "subject_unavailable"
+    EVIDENCE_INVALID = "evidence_invalid"
+    EVIDENCE_OUT_OF_SCOPE = "evidence_out_of_scope"
+    NAME_ONLY = "name_only"
+    CONFIDENCE_UNRECOGNIZED = "confidence_unrecognized"
+    LIMITATIONS_MISSING = "limitations_missing"
+    LIMITATIONS_FIELD_MALFORMED = "limitations_field_malformed"
+    LIMITATIONS_MALFORMED = "limitations_malformed"
+    CONTEXT_STATUS_MISSING = "context_status_missing"
+    CONTEXT_STATUS_MALFORMED = "context_status_malformed"
+    CONTEXT_INSUFFICIENT = "context_insufficient"
+
+
+@dataclass(frozen=True, slots=True)
+class ExplanationDiagnostic:
+    """A safe category and count, with no provider-controlled text."""
+
+    section: ExplanationSection | None
+    kind: ExplanationDiagnosticKind
+    count: int = 1
+
+    def __post_init__(self) -> None:
+        if self.count < 1:
+            raise ValueError("An explanation diagnostic count must be positive.")
+
+
 @dataclass(frozen=True, slots=True)
 class EvidenceAnchor:
     """A typed target and one-based range in the submitted source snapshot."""
@@ -66,3 +107,4 @@ class ExplanationResult:
     incomplete: bool
     model: str
     usage: TokenUsage
+    diagnostics: tuple[ExplanationDiagnostic, ...] = ()

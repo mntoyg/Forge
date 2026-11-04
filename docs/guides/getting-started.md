@@ -140,6 +140,8 @@ check does not prove a role claim is semantically correct. Confidence is
 conservative: a provider `certain` label is presented as `likely`.
 Provider-backed purpose claims should cite the provider call; result-type roles
 should cite the return annotation or returned value rather than an import alone.
+Analysis notes distinguish empty sections from claims omitted by validation and
+show only fixed categories and counts, never provider text.
 
 ## 5. Read the output
 
