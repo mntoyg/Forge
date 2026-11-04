@@ -26,8 +26,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   responsibilities as separate claims with their own usage-site evidence,
   rejecting method declarations as call evidence, and capping provider
   `certain` confidence labels at `likely`.
-- Guide `forge explain` to cite the provider call for provider-backed purpose
-  claims and the return annotation or returned value for result-type roles.
+- Prompt provider-backed `forge explain` Purpose claims to reuse the exact
+  provider-call anchor from Main flow. The parser validates anchors against
+  source independently and does not compare across sections. Result-type roles
+  are guided to cite the return annotation or returned value.
 - Add safe explain analysis notes that distinguish empty or malformed sections
   from rejected claims and report specific evidence-validation reasons as fixed
   categories and counts, with one first rejection reason per claim.

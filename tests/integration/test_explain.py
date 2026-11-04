@@ -219,6 +219,201 @@ def test_explain_claims_use_distinct_responsibility_evidence_from_snapshot(
 
 
 @pytest.mark.integration
+def test_provider_backed_purpose_reuses_main_flow_call_anchor(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    source_text = (
+        "class ExplainSource:\n"
+        "    def __call__(self, request):\n"
+        "        response = self._provider.complete(request)\n"
+        "        return parse_explanation(response.text)\n"
+    )
+    (workspace / "explain.py").write_bytes(source_text.encode())
+    provider_call = {
+        "kind": "call",
+        "target": "self._provider.complete",
+        "start_line": 3,
+        "end_line": 3,
+    }
+    payload = {
+        "purpose": [
+            {
+                "claim": "Obtains an explanation from the configured provider.",
+                "confidence": "likely",
+                "evidence": [provider_call],
+            }
+        ],
+        "flow": [
+            {
+                "claim": "Sends the request to the configured provider.",
+                "confidence": "likely",
+                "evidence": [provider_call],
+            },
+            {
+                "claim": "Parses the provider response.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "parse_explanation",
+                        "start_line": 4,
+                        "end_line": 4,
+                    }
+                ],
+            },
+        ],
+        "symbols": [
+            {
+                "symbol": "ExplainSource",
+                "claim": "Delegates request completion to the configured provider.",
+                "confidence": "likely",
+                "evidence": [provider_call],
+            }
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider = _provider(json.dumps(payload))
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+    system_prompt = " ".join(provider.requests[0].messages[0].content.split())
+
+    assert provider.call_count == 1
+    assert "reuse the provider-call" in system_prompt
+    assert "same kind, exact target, and exact" in system_prompt
+    assert "If Main flow has no provider-call anchor, omit Purpose" in system_prompt
+    assert len(result.purpose) == 1
+    assert len(result.flow) == 2
+    assert len(result.symbols) == 1
+    assert "Obtains an explanation from the configured provider." in rendered
+    assert "Sends the request to the configured provider." in rendered
+    assert "Parses the provider response." in rendered
+    assert "Delegates request completion to the configured provider." in rendered
+    assert "Evidence: call target `self._provider.complete`, lines 3-3" in rendered
+    assert "3 |         response = self._provider.complete(request)" in rendered
+    assert "Evidence: call target `parse_explanation`, lines 4-4" in rendered
+    assert "4 |         return parse_explanation(response.text)" in rendered
+
+
+@pytest.mark.parametrize(
+    ("purpose_anchor", "expected_diagnostic"),
+    [
+        pytest.param(
+            {
+                "kind": "call",
+                "target": "PRIVATE_WRONG_PROVIDER",
+                "start_line": 3,
+                "end_line": 3,
+            },
+            "1 purpose claim was omitted because the target did not match executable tokens in the cited lines.",
+            id="wrong-target",
+        ),
+        pytest.param(
+            {
+                "kind": "call",
+                "target": "self._provider.complete",
+                "start_line": 2,
+                "end_line": 2,
+            },
+            "1 purpose claim was omitted because the target did not match executable tokens in the cited lines.",
+            id="wrong-source-range",
+        ),
+        pytest.param(
+            {
+                "kind": "call",
+                "target": "self._provider.complete",
+                "start_line": 99,
+                "end_line": 99,
+            },
+            "1 purpose claim was omitted because evidence was malformed or its line range was invalid.",
+            id="invalid-line-range",
+        ),
+    ],
+)
+@pytest.mark.integration
+def test_provider_backed_purpose_rejects_invalid_call_anchor(
+    tmp_path: Path,
+    purpose_anchor: dict[str, Any],
+    expected_diagnostic: str,
+) -> None:
+    workspace = tmp_path
+    source_text = (
+        "class ExplainSource:\n"
+        "    def __call__(self, request):\n"
+        "        response = self._provider.complete(request)\n"
+        "        return parse_explanation(response.text)\n"
+    )
+    (workspace / "explain.py").write_bytes(source_text.encode())
+    provider_call = {
+        "kind": "call",
+        "target": "self._provider.complete",
+        "start_line": 3,
+        "end_line": 3,
+    }
+    payload = {
+        "purpose": [
+            {
+                "claim": "PRIVATE_UNSUPPORTED_PURPOSE_CLAIM",
+                "confidence": "likely",
+                "evidence": [purpose_anchor],
+            }
+        ],
+        "flow": [
+            {
+                "claim": "Sends the request to the configured provider.",
+                "confidence": "likely",
+                "evidence": [provider_call],
+            },
+            {
+                "claim": "Parses the provider response.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "parse_explanation",
+                        "start_line": 4,
+                        "end_line": 4,
+                    }
+                ],
+            },
+        ],
+        "symbols": [
+            {
+                "symbol": "ExplainSource",
+                "claim": "Delegates request completion to the configured provider.",
+                "confidence": "likely",
+                "evidence": [provider_call],
+            }
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider = _provider(json.dumps(payload))
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+    notes = rendered.split("Analysis notes:\n", 1)[1].split("Incomplete:", 1)[0]
+
+    assert provider.call_count == 1
+    assert result.purpose == ()
+    assert len(result.flow) == 2
+    assert len(result.symbols) == 1
+    assert result.incomplete
+    assert expected_diagnostic in notes
+    assert "PRIVATE_UNSUPPORTED_PURPOSE_CLAIM" not in notes
+    assert "PRIVATE_WRONG_PROVIDER" not in notes
+    assert "Sends the request to the configured provider." in rendered
+    assert "Parses the provider response." in rendered
+    assert "Delegates request completion to the configured provider." in rendered
+    assert "Evidence: call target `self._provider.complete`, lines 3-3" in rendered
+    assert "Evidence: call target `parse_explanation`, lines 4-4" in rendered
+
+
+@pytest.mark.integration
 def test_explain_rejects_method_declaration_as_provider_call_evidence(
     tmp_path: Path,
 ) -> None:

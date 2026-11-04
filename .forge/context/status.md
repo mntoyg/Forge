@@ -34,11 +34,11 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 508 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
+| Local gate: 512 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
-| `forge explain` reports fixed, specific evidence-rejection categories and counts each claim under its first failed rule; Python evidence remains AST-scoped and diagnostics never echo provider-controlled data | Deterministic fake-provider parser/render tests; full gate: 508 passed, 1 skipped |
-| Latest user-shared live output showed empty Purpose/symbol sections with only the generic incomplete notice | User-provided `uv run forge explain src/forge/application/explain.py`, 2026-11-04; no live call after diagnostics work |
+| `forge explain` reports fixed evidence-rejection categories and counts each claim under its first failed rule; its prompt asks provider-backed Purpose to reuse Main flow's call anchor, while the parser validates anchors independently | Deterministic fake-provider parser/render tests; full gate: 512 passed, 1 skipped |
+| Latest user-shared live output showed valid Main flow and symbols but omitted Purpose because its call target did not match the cited lines | User-provided result; no live call during this follow-up |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
@@ -74,7 +74,7 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Codex's current 7-day meter: 6% used; daily use is unavailable.
+  Codex's current 7-day meter: 7% used; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
