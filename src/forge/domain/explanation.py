@@ -43,6 +43,7 @@ class ExplanationDiagnosticKind(StrEnum):
     CALL_EXPRESSION_NOT_FOUND = "call_expression_not_found"
     SYMBOL_OPERATION_DISALLOWED = "symbol_operation_disallowed"
     EVIDENCE_OUT_OF_SCOPE = "evidence_out_of_scope"
+    PURPOSE_CALL_NOT_IN_FLOW = "purpose_call_not_in_flow"
     NAME_ONLY = "name_only"
     CONFIDENCE_UNRECOGNIZED = "confidence_unrecognized"
     LIMITATIONS_MISSING = "limitations_missing"

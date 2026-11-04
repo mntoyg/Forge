@@ -31,6 +31,12 @@ _IGNORED_TOKEN_TYPES = frozenset(
     }
 )
 _IGNORED_TARGET_TOKEN_TYPES = _IGNORED_TOKEN_TYPES | {tokenize.NEWLINE}
+_DIAGNOSTIC_SECTION_ORDER = {
+    ExplanationSection.PURPOSE: 0,
+    ExplanationSection.FLOW: 1,
+    ExplanationSection.SYMBOLS: 2,
+    None: 3,
+}
 
 
 def parse_explanation(
@@ -54,7 +60,8 @@ def parse_explanation(
         key = (section, kind)
         diagnostic_counts[key] = diagnostic_counts.get(key, 0) + count
 
-    for name in ("purpose", "flow", "symbols"):
+    validated_flow_calls: frozenset[EvidenceAnchor] = frozenset()
+    for name in ("flow", "purpose", "symbols"):
         section = ExplanationSection(name)
         if name not in payload:
             sections[name] = ()
@@ -82,8 +89,30 @@ def parse_explanation(
                 record(section, diagnostic)
                 incomplete = True
             if claim is not None:
+                if name == "purpose":
+                    purpose_calls = tuple(
+                        anchor
+                        for anchor in claim.evidence
+                        if anchor.kind is EvidenceKind.CALL
+                    )
+                    if purpose_calls and not any(
+                        anchor in validated_flow_calls for anchor in purpose_calls
+                    ):
+                        record(
+                            section,
+                            ExplanationDiagnosticKind.PURPOSE_CALL_NOT_IN_FLOW,
+                        )
+                        incomplete = True
+                        continue
                 claims.append(claim)
         sections[name] = tuple(claims)
+        if name == "flow":
+            validated_flow_calls = frozenset(
+                anchor
+                for claim in claims
+                for anchor in claim.evidence
+                if anchor.kind is EvidenceKind.CALL
+            )
 
     limitations: tuple[str, ...]
     limitations_missing = "limitations" not in payload
@@ -166,7 +195,10 @@ def parse_explanation(
         usage=usage,
         diagnostics=tuple(
             ExplanationDiagnostic(section, kind, count)
-            for (section, kind), count in diagnostic_counts.items()
+            for (section, kind), count in sorted(
+                diagnostic_counts.items(),
+                key=lambda item: _DIAGNOSTIC_SECTION_ORDER[item[0][0]],
+            )
         ),
     )
 

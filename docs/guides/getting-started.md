@@ -142,8 +142,9 @@ Provider-backed purpose claims should cite the provider call; result-type roles
 should cite the return annotation or returned value rather than an import alone.
 The prompt asks provider-backed Purpose to reuse the exact provider-call anchor
 from Main flow, and to omit Purpose if Main flow has no provider-call anchor.
-The parser validates anchors against the source independently; it does not
-compare anchors across sections or prove claims correct.
+For Purpose claims with call evidence, the parser requires at least one exact
+match with a validated Main flow call anchor. These checks do not prove claims
+correct.
 Analysis notes distinguish empty sections from claims omitted by validation and
 show only fixed categories and counts. Each omitted claim is counted once under
 its first failed validation rule; notes never echo provider text.

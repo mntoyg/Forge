@@ -116,8 +116,9 @@ the provider call, and result-type roles should cite the return annotation or
 returned value, not just an import.
 The prompt asks provider-backed Purpose to reuse the exact provider-call anchor
 from Main flow, and to omit Purpose if Main flow has no provider-call anchor.
-The parser validates each anchor against the source independently; it does not
-compare anchors across sections or prove that claims are correct.
+For Purpose claims with call evidence, the parser requires at least one exact
+match with a validated Main flow call anchor. These checks do not prove claims
+are correct.
 
 ```bash
 forge explain src/app.py

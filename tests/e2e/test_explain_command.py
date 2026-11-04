@@ -448,7 +448,15 @@ def test_purpose_and_return_type_cite_their_actual_use_sites() -> None:
                             ],
                         }
                     ],
-                    "flow": [],
+                    "flow": [
+                        {
+                            "claim": "Calls the configured provider for the response.",
+                            "confidence": "likely",
+                            "evidence": [
+                                _anchor("call", "self._provider.complete", 18)
+                            ],
+                        }
+                    ],
                     "symbols": [
                         {
                             "symbol": "ExplainSource",

@@ -158,6 +158,11 @@ def _diagnostic_text(diagnostic: ExplanationDiagnostic) -> str:
             f"{count} symbol claim{plural} {verb} omitted because evidence fell "
             "outside the declared subject scope."
         )
+    if kind is ExplanationDiagnosticKind.PURPOSE_CALL_NOT_IN_FLOW:
+        return (
+            f"{count} purpose claim{plural} {verb} omitted because no identical "
+            "call anchor was validated in Main flow."
+        )
     if kind is ExplanationDiagnosticKind.NAME_ONLY:
         return (
             f"{count} symbol claim{plural} {verb} omitted because the claim only "
