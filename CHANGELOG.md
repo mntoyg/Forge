@@ -11,6 +11,12 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Changed
 
+- Give `forge explain` typed evidence anchors with exact source targets. The
+  parser validates target, range, and supported source shape, drops invalid or
+  mismatched claims, and marks the result incomplete. Structural token
+  validation currently supports Python `.py` and `.pyi`; other source
+  extensions remain accepted but their claims are omitted. This does not prove
+  semantic entailment.
 - Improve `forge explain` by separating purpose from operation flow, omitting
   repeated summaries and name-only symbol entries, prompting for symbol
   citations at usage sites rather than imports alone, and capping provider

@@ -25,7 +25,14 @@ def _valid_payload() -> dict[str, object]:
             {
                 "claim": "Calculates a total.",
                 "confidence": "likely",
-                "evidence": [{"start_line": 1, "end_line": 2}],
+                "evidence": [
+                    {
+                        "kind": "operation",
+                        "target": "value = 1",
+                        "start_line": 1,
+                        "end_line": 2,
+                    }
+                ],
             }
         ],
         "flow": [],
@@ -43,6 +50,9 @@ def test_prompt_includes_only_the_complete_numbered_source_snapshot() -> None:
     assert len(request.messages) == 2
     assert request.messages[0].role is Role.SYSTEM
     assert "untrusted DATA" in request.messages[0].content
+    assert "validated only for Python source files" in request.messages[0].content
+    assert "exact target copied from the source" in request.messages[0].content
+    assert '"kind":"call"' in request.messages[0].content
     assert "not its step-by-step" in request.messages[0].content
     assert "distinct responsibility" in request.messages[0].content
     assert "Do not present constructor or initialization" in request.messages[0].content

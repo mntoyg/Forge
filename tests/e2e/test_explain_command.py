@@ -22,6 +22,17 @@ from tests.support.fakes import FakeProvider, FakeSourceReader
 runner = CliRunner()
 
 
+def _anchor(
+    kind: str, target: str, start: int, end: int | None = None
+) -> dict[str, object]:
+    return {
+        "kind": kind,
+        "target": target,
+        "start_line": start,
+        "end_line": start if end is None else end,
+    }
+
+
 def _provider(error: Exception | None = None) -> FakeProvider:
     response = CompletionResponse(
         text=json.dumps(
@@ -30,7 +41,7 @@ def _provider(error: Exception | None = None) -> FakeProvider:
                     {
                         "claim": "Sets a value.",
                         "confidence": "likely",
-                        "evidence": [{"start_line": 1, "end_line": 1}],
+                        "evidence": [_anchor("operation", "value = 1", 1)],
                     }
                 ],
                 "flow": [],
@@ -75,7 +86,7 @@ def test_plain_cli_output_uses_one_fake_call_and_writes_no_files(
 
     assert result.exit_code == ExitCode.OK
     assert "Sets a value." in result.stdout
-    assert "Evidence: lines 1-1" in result.stdout
+    assert "Evidence: operation target `value = 1`, lines 1-1" in result.stdout
     assert "15 in, 7 out" in result.stdout
     assert "selected file is sent" not in result.stderr
     assert provider.call_count == 1
@@ -127,6 +138,24 @@ def test_missing_source_is_exit_two_without_provider_call() -> None:
 
 
 @pytest.mark.e2e
+def test_non_python_source_keeps_single_call_but_marks_evidence_incomplete() -> None:
+    provider = _provider()
+    source = SourceFile(Path("app.ts"), "value = 1\n")
+    app = _app(lambda: ExplainSource(FakeSourceReader(source=source), provider))
+
+    result = runner.invoke(app, ["app.ts", "--plain"])
+
+    assert result.exit_code == ExitCode.OK
+    assert provider.call_count == 1
+    assert "Sets a value." not in result.stdout
+    assert "Incomplete:" in result.stdout
+    assert (
+        "Evidence validation supports Python .py and .pyi files only" in result.stdout
+    )
+    assert "   1 | value = 1" in provider.requests[0].messages[1].content
+
+
+@pytest.mark.e2e
 def test_unusable_provider_response_is_exit_one_after_one_call() -> None:
     provider = FakeProvider(
         response=CompletionResponse(
@@ -153,7 +182,7 @@ def test_unsupported_claim_is_omitted_and_result_is_visibly_incomplete() -> None
                         {
                             "claim": "Unsupported claim.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 99, "end_line": 99}],
+                            "evidence": [_anchor("operation", "value = 1", 99)],
                         }
                     ],
                     "flow": [],
@@ -195,41 +224,44 @@ def test_observed_repetition_and_name_only_symbols_render_as_distinct_roles() ->
                         {
                             "claim": "Explains one selected source file.",
                             "confidence": "certain",
-                            "evidence": [{"start_line": 1, "end_line": 5}],
+                            "evidence": [_anchor("operation", "source", 1, 5)],
                         }
                     ],
                     "flow": [
                         {
                             "claim": "Explains one selected source file.",
                             "confidence": "certain",
-                            "evidence": [{"start_line": 1, "end_line": 5}],
+                            "evidence": [_anchor("operation", "source", 1, 5)],
                         },
                         {
                             "claim": "Reads the source, requests one provider response, then validates it.",
                             "confidence": "certain",
-                            "evidence": [{"start_line": 3, "end_line": 5}],
+                            "evidence": [
+                                _anchor("call", "self._reader.read", 3),
+                                _anchor("call", "self._provider.complete", 4),
+                            ],
                         },
                     ],
                     "symbols": [
                         {
                             "claim": "ExplainSource class",
                             "confidence": "certain",
-                            "evidence": [{"start_line": 1, "end_line": 1}],
+                            "evidence": [_anchor("operation", "ExplainSource", 1)],
                         },
                         {
                             "claim": "__call__ method",
                             "confidence": "certain",
-                            "evidence": [{"start_line": 2, "end_line": 2}],
+                            "evidence": [_anchor("operation", "__call__", 2)],
                         },
                         {
                             "claim": "Coordinates source reading and the provider request.",
                             "confidence": "certain",
-                            "evidence": [{"start_line": 2, "end_line": 4}],
+                            "evidence": [_anchor("call", "self._provider.complete", 4)],
                         },
                         {
                             "claim": "Validates the provider response against source lines.",
                             "confidence": "certain",
-                            "evidence": [{"start_line": 5, "end_line": 5}],
+                            "evidence": [_anchor("call", "parse_explanation", 5)],
                         },
                     ],
                     "limitations": [],
@@ -291,56 +323,64 @@ def test_flow_and_symbol_roles_cite_usage_sites_from_the_submitted_snapshot() ->
                         {
                             "claim": "Coordinates one evidence-backed explanation for the selected file.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 10, "end_line": 19}],
+                            "evidence": [
+                                _anchor("call", "self._provider.complete", 18)
+                            ],
                         }
                     ],
                     "flow": [
                         {
                             "claim": "Reads the selected source through the configured reader.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 16, "end_line": 16}],
+                            "evidence": [_anchor("call", "self._reader.read", 16)],
                         },
                         {
                             "claim": "Builds a request from that source snapshot.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 17, "end_line": 17}],
+                            "evidence": [_anchor("call", "build_explain_request", 17)],
                         },
                         {
                             "claim": "Makes one provider call with the request.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 18, "end_line": 18}],
+                            "evidence": [
+                                _anchor("call", "self._provider.complete", 18)
+                            ],
                         },
                         {
                             "claim": "Parses the response against the same source and returns the result.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 19, "end_line": 19}],
+                            "evidence": [_anchor("call", "parse_explanation", 19)],
                         },
                     ],
                     "symbols": [
                         {
                             "claim": "The reader supplies the selected file snapshot.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 16, "end_line": 16}],
+                            "evidence": [_anchor("call", "self._reader.read", 16)],
                         },
                         {
                             "claim": "The request builder packages the snapshot for the provider.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 17, "end_line": 17}],
+                            "evidence": [_anchor("call", "build_explain_request", 17)],
                         },
                         {
                             "claim": "The provider port performs the single external completion call.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 18, "end_line": 18}],
+                            "evidence": [
+                                _anchor("call", "self._provider.complete", 18)
+                            ],
                         },
                         {
                             "claim": "The parser validates the response with the original snapshot.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 19, "end_line": 19}],
+                            "evidence": [_anchor("call", "parse_explanation", 19)],
                         },
                         {
                             "claim": "The return annotation names the validated result type.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 15, "end_line": 15}],
+                            "evidence": [
+                                _anchor("return_type", "ExplanationResult", 15)
+                            ],
                         },
                     ],
                     "limitations": [],
@@ -382,12 +422,13 @@ def test_flow_and_symbol_roles_cite_usage_sites_from_the_submitted_snapshot() ->
         ("The parser validates the response with the original snapshot.", 19),
         ("The return annotation names the validated result type.", 15),
     ):
-        assert f"{claim}\n    Evidence: lines {line_number}-{line_number}" in symbols
+        assert f"{claim}\n    Evidence:" in symbols
+        assert f"lines {line_number}-{line_number}" in symbols
     for line_number in range(15, 20):
-        assert f"Evidence: lines {line_number}-{line_number}" in result.stdout
+        assert f"lines {line_number}-{line_number}" in result.stdout
         assert f"{line_number:>4} | {lines[line_number - 1]}" in result.stdout
     for import_line in range(4, 9):
-        assert f"Evidence: lines {import_line}-{import_line}" not in symbols
+        assert f"lines {import_line}-{import_line}" not in symbols
 
 
 @pytest.mark.e2e
@@ -425,7 +466,9 @@ def test_purpose_and_return_type_cite_their_actual_use_sites() -> None:
                         {
                             "claim": "Uses the configured provider to obtain an explanation of the selected source.",
                             "confidence": "likely",
-                            "evidence": [{"start_line": 18, "end_line": 18}],
+                            "evidence": [
+                                _anchor("call", "self._provider.complete", 18)
+                            ],
                         }
                     ],
                     "flow": [],
@@ -434,8 +477,8 @@ def test_purpose_and_return_type_cite_their_actual_use_sites() -> None:
                             "claim": "ExplanationResult is the result type promised by the use case and returned by the parser call.",
                             "confidence": "likely",
                             "evidence": [
-                                {"start_line": 16, "end_line": 16},
-                                {"start_line": 19, "end_line": 22},
+                                _anchor("return_type", "ExplanationResult", 16),
+                                _anchor("return_value", "parse_explanation", 19, 22),
                             ],
                         }
                     ],
@@ -460,12 +503,85 @@ def test_purpose_and_return_type_cite_their_actual_use_sites() -> None:
     symbols = result.stdout.split("Important symbols:", 1)[1].split("Limitations:", 1)[
         0
     ]
-    assert "Evidence: lines 18-18" in purpose
+    assert "Evidence: call target `self._provider.complete`, lines 18-18" in purpose
     assert f"18 | {lines[17]}" in purpose
-    assert "Evidence: lines 16-16" in symbols
+    assert "Evidence: return_type target `ExplanationResult`, lines 16-16" in symbols
     assert f"16 | {lines[15]}" in symbols
-    assert "Evidence: lines 19-22" in symbols
+    assert "Evidence: return_value target `parse_explanation`, lines 19-22" in symbols
     for line_number in range(19, 23):
         assert f"{line_number:>4} | {lines[line_number - 1]}" in symbols
-    assert "Evidence: lines 8-8" not in symbols
-    assert "Evidence: lines 22-22" not in symbols
+    assert "lines 8-8" not in symbols
+    assert "lines 22-22" not in symbols
+
+
+@pytest.mark.e2e
+def test_mismatched_anchor_kinds_and_declaration_sites_are_omitted() -> None:
+    lines = (
+        '"""Explain the provider-backed result."""',
+        "from forge.domain.explanation import ExplanationResult",
+        "",
+        "class ExplainSource:",
+        "    def __init__(self, reader, provider):",
+        "        self._reader = reader",
+        "        self._provider = provider",
+        "",
+        "    def __call__(self, path):",
+        "        source = self._reader.read(path)",
+        "        response = self._provider.complete(source)",
+        "        return parse_explanation(",
+        "        )",
+    )
+    source = SourceFile(Path("explain.py"), "\n".join(lines))
+    claims = {
+        "purpose": [
+            {
+                "claim": "Uses the configured provider for this explanation.",
+                "confidence": "likely",
+                "evidence": [_anchor("call", "self._provider.complete", 1)],
+            }
+        ],
+        "flow": [],
+        "symbols": [
+            {
+                "claim": "The reader supplies the selected source.",
+                "confidence": "likely",
+                "evidence": [_anchor("access", "self._reader", 6)],
+            },
+            {
+                "claim": "The provider makes a completion request.",
+                "confidence": "likely",
+                "evidence": [_anchor("call", "self._provider.complete", 7)],
+            },
+            {
+                "claim": "ExplanationResult is the returned result type.",
+                "confidence": "likely",
+                "evidence": [_anchor("return_type", "ExplanationResult", 2)],
+            },
+            {
+                "claim": "The return expression produces the explanation result.",
+                "confidence": "likely",
+                "evidence": [_anchor("return_value", "parse_explanation", 13)],
+            },
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider = FakeProvider(
+        response=CompletionResponse(
+            text=json.dumps(claims),
+            model="fake-model",
+            usage=TokenUsage(input_tokens=45, output_tokens=12),
+        )
+    )
+    app = _app(lambda: ExplainSource(FakeSourceReader(source=source), provider))
+
+    result = runner.invoke(app, ["explain.py", "--plain"])
+
+    assert result.exit_code == ExitCode.OK
+    assert provider.call_count == 1
+    assert "Uses the configured provider" not in result.stdout
+    assert "The reader supplies" not in result.stdout
+    assert "The provider makes" not in result.stdout
+    assert "ExplanationResult is" not in result.stdout
+    assert "return expression produces" not in result.stdout
+    assert "Incomplete:" in result.stdout

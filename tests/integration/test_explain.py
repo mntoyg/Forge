@@ -45,7 +45,14 @@ def test_explanation_cites_excerpts_from_the_submitted_snapshot(
             {
                 "claim": "Returns the sum of values.",
                 "confidence": "certain",
-                "evidence": [{"start_line": 1, "end_line": 2}],
+                "evidence": [
+                    {
+                        "kind": "return_value",
+                        "target": "sum(values)",
+                        "start_line": 2,
+                        "end_line": 2,
+                    }
+                ],
             }
         ],
         "flow": [],
@@ -61,8 +68,7 @@ def test_explanation_cites_excerpts_from_the_submitted_snapshot(
 
     assert provider.call_count == 1
     assert "1 | def total(values):" in provider.requests[0].messages[1].content
-    assert "Evidence: lines 1-2" in rendered
-    assert "1 | def total(values):" in rendered
+    assert "Evidence: return_value target `sum(values)`, lines 2-2" in rendered
     assert "2 |     return sum(values)" in rendered
 
 

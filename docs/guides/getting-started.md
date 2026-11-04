@@ -116,17 +116,22 @@ uv run forge explain src/app.py
 ```
 
 Forge sends the selected file to your configured provider in one request at
-most. Each substantive claim cites validated one-based line ranges, with
-excerpts taken from the submitted snapshot. Claims without valid evidence are
-omitted and the output is marked incomplete. Forge does not inspect adjacent
-files, run repository commands, or modify files. A file over the configured
+most. Each substantive claim cites a typed anchor with a kind, exact target,
+and one-based line range; excerpts come from the submitted snapshot. For Python
+`.py` and `.pyi` inputs, the parser checks exact targets and source shape with
+Python's tokenizer, but does not prove a claim is semantically correct. Other
+source extensions are still accepted, but their evidence claims are omitted
+and the result is marked incomplete. Structurally invalid or mismatched Python
+anchors are also omitted and mark the output incomplete. Forge does not inspect
+adjacent files, run repository commands, or modify files. A file over the configured
 `FORGE_MAX_FILE_BYTES` limit is refused without truncation. Use `--plain` to
 disable the progress spinner. Purpose, operation flow, and symbol
 responsibilities are kept distinct; repeated summaries and name-only symbol
 entries are omitted. Forge asks symbol-role claims to cite where the selected
-file uses them, not only their import statements. Citations locate evidence but
-do not prove a role claim. Confidence is conservative: a provider `certain`
-label is presented as `likely`.
+file uses them, not only their import statements. Symbol claims require a call,
+access, return-type, or return-value anchor; an import or constructor
+assignment alone is insufficient. Confidence is conservative: a provider
+`certain` label is presented as `likely`.
 Provider-backed purpose claims should cite the provider call; result-type roles
 should cite the return annotation or returned value rather than an import alone.
 

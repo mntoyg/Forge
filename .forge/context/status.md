@@ -6,8 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-11-04 on `main`; quality gate passed (456 passed,
-1 skipped).
+**Last verified:** 2026-11-04 on `main`; quality gate passed (487 passed, 1 skipped).
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
 repository was recreated on 2026-09-06 - see below.
 
@@ -35,11 +34,11 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 457 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
+| Local gate: 487 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
-| `forge explain <FILE>` reads a bounded snapshot, makes at most one provider call, validates citations, prompts for per-file flow and role evidence at use/return sites, removes repetition/name-only symbols, and caps confidence at `likely` | Unit, integration, and CLI fake-provider tests; full gate passes |
-| One post-fix live `forge explain` run still cited docstring lines for its provider-backed purpose, despite citing use sites for the main flow and result type | `uv run forge explain src/forge/application/explain.py`, 2026-11-04; one call only |
+| `forge explain` validates typed evidence anchors for Python `.py`/`.pyi`; imports, comments, strings, assignments, and delimiters alone cannot support symbol roles; other extensions are marked incomplete | Focused fake-provider tests, 51 passed; full gate: 487 passed, 1 skipped |
+| Latest live `forge explain` output before typed anchors cited docstrings for provider-backed Purpose and constructor assignments for reader/provider roles; result-type evidence improved | `uv run forge explain src/forge/application/explain.py`, 2026-11-04; no live call since |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
@@ -66,16 +65,16 @@ order, say why rather than silently reordering.
 
 0. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
    tagging remains a deliberate owner action after green CI.
-1. **Resolve the remaining live `forge explain` evidence issue.** Decide
-   whether prompt guidance is enough or a deterministic evidence policy is
-   needed before moving on.
+1. **Owner-review typed evidence anchors in `forge explain`.** They validate
+   source shape and location, not semantic entailment; live evaluation needs
+   explicit approval.
 2. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
    measurement and accept a new ADR before implementation.
 
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Codex's current 7-day meter: 0% used; daily use is unavailable.
+  Codex's current 7-day meter: 2% used; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.

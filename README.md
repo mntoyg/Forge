@@ -90,17 +90,22 @@ model: gpt-4o-mini-2024-07-18 | tokens: 412 in, 186 out
 ```
 
 To understand an unfamiliar file, use `forge explain`. The selected file is
-sent to your configured provider in at most one call; Forge cites validated
-line ranges and shows excerpts from that exact snapshot. Claims without valid
-evidence are omitted and the result is marked incomplete. It does not inspect
+sent to your configured provider in at most one call; Forge cites typed source
+anchors and shows excerpts from that exact snapshot. Each anchor names its
+kind, target, and line range. Claims with structurally invalid or mismatched
+anchors are omitted and the result is marked incomplete. It does not inspect
 other files, run commands, or modify files.
+Structural anchor validation currently supports Python `.py` and `.pyi` files.
+Other source extensions remain accepted inputs, but their evidence claims are
+omitted and the result is marked incomplete.
 Purpose, operation flow, and symbol responsibilities are kept distinct;
 repeated summaries and name-only symbol entries are omitted. Forge asks symbol
 role claims to cite where the selected file uses them, not only their import
-statements. Citations locate evidence but do not prove a role claim. Confidence
-is conservative: provider claims labeled `certain` are presented as `likely`.
-Provider-backed purpose claims should cite the provider call, and result-type
-roles should cite the return annotation or returned value, not just an import.
+statements. The Python tokenizer checks anchor targets and source shapes, but
+does not prove a claim is semantically correct. Confidence is conservative:
+provider claims labeled `certain` are presented as `likely`. Provider-backed
+purpose claims should cite the provider call, and result-type roles should cite
+the return annotation or returned value, not just an import.
 
 ```bash
 forge explain src/app.py

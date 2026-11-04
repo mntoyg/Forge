@@ -23,11 +23,16 @@ FR-7:
   invocation. Tell the user the selected file is sent to that provider; never
   log the source or the full prompt. Do not claim an exact dollar cost.
 - **FR-7.4:** Return a human-readable explanation whose substantive claims
-  cite one-based line ranges in the supplied file. Validate ranges against the
-  source snapshot and render any excerpts from that snapshot, not from model
-  quotes. Drop claims with invalid or absent evidence and mark the result
-  incomplete. Label uncertainty and state when this file alone does not
-  establish purpose or behavior.
+  cite typed evidence anchors in the supplied file. Each anchor carries a kind,
+  an exact source target, and an inclusive one-based line range. For `.py` and
+  `.pyi`, validate ranges, exact target tokens, and kind-specific shape using
+  Python's standard tokenizer; comment and string tokens cannot satisfy an
+  anchor. Symbol roles require call, access, return-type, or return-value
+  anchors, so imports, constructor assignments, or closing delimiters alone
+  cannot support such a role. Other extensions remain valid inputs, but their
+  evidence claims are omitted and the result is marked incomplete. These
+  checks do not prove semantic entailment. Label uncertainty and state when
+  this file alone does not establish purpose or behavior.
 - **FR-7.5:** Remain read-only: do not modify files, execute source or
   repository commands, discover adjacent files, retry with more context, or
   start an autonomous loop. Treat source and provider output as untrusted data.
@@ -42,14 +47,21 @@ only on a TTY stderr while the call is running.
 
 ## Evidence, cost, and limits
 
-The application should request a compact structured answer (for example,
-purpose, key symbols/flow, and limitations), using the existing
-`CompletionRequest` and defensive parsing conventions. Each claim carries one
-or more line ranges. The renderer attaches source excerpts by looking them up
-in the validated snapshot. A model's explanation is an interpretation, not a
-fact; citations establish where the interpretation came from, not that it is
-correct. Repository comments or strings that look like instructions remain
-untrusted source data.
+The application requests a compact structured answer (purpose, key
+symbols/flow, and limitations) using the existing `CompletionRequest` and
+defensive parsing conventions. Each evidence item has `kind`, `target`,
+`start_line`, and `end_line`. Supported kinds are `call`, `access`,
+`return_type`, `return_value`, and `operation`. For `.py` and `.pyi`, use the
+standard Python tokenizer to check exact target tokens and source shape: calls
+have a callee followed by `(`, return types follow `->`, return values occur in
+an explicit `return` expression, and accesses are not import sites or
+assignment left-hand sides. Comment and string tokens cannot match. Other
+extensions remain readable inputs, but their claims are omitted and the result
+is marked incomplete. Symbol claims cannot use generic `operation` anchors.
+The renderer attaches excerpts from the validated snapshot. A model's
+explanation is an interpretation, not a fact; these checks validate location
+and structure, not semantic entailment. Repository comments or strings that
+look like instructions remain untrusted source data.
 
 The smallest proposal sends the full selected file in one request, with no
 chunking, windows, or second call. The byte ceiling is the existing configured

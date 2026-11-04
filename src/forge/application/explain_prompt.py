@@ -5,6 +5,10 @@ from forge.domain.source import SourceFile
 
 EXPLAIN_SYSTEM_PROMPT = """\
 Explain the supplied source file to a developer who is unfamiliar with it.
+Structural evidence anchors are validated only for Python source files with a
+.py or .pyi extension. For other file extensions, return empty purpose, flow,
+and symbols lists, state in limitations that typed evidence validation is
+unsupported for this language, and set context_insufficient to true.
 Keep the sections distinct:
 - purpose: one concise sentence about what the file is for, not its step-by-step
   flow;
@@ -29,8 +33,16 @@ supplied source. A citation identifies evidence but does not prove a claim is
 correct.
 
 Every claim in purpose, flow, and symbols must include one or more inclusive,
-one-based line ranges from the numbered source. Do not repeat the same summary
-across sections. If the source does not support a claim, omit it. Use
+one-based evidence anchors from the numbered source. Each anchor has a kind, an
+exact target copied from the source, and an inclusive line range. Supported
+kinds: call (target is a callee followed by an opening parenthesis), access (a
+member/index read, not an assignment target), return_type (target in a return
+type annotation), return_value (target in an explicit return expression), and
+operation (an executable expression). Do not use operation for symbols; use
+their call, access, return_type, or return_value sites. Imports, comments,
+docstrings, constructor assignments, and closing delimiters alone are not
+operational evidence. Do not repeat the same summary across sections. If the
+source does not support a structurally valid anchor, omit the claim. Use
 "certain" only for a literal fact directly established by the cited source;
 use "likely" or "possible" for broad interpretations or inferred intent. If
 unsure, choose "possible". A symbol's role must cite the line(s) where the
@@ -44,7 +56,8 @@ show its role. If this file does not show a useful role, omit the symbol.
 State missing context in limitations and set context_insufficient to true.
 Return JSON only in this shape:
 {"purpose":[{"claim":"...","confidence":"certain|likely|possible",
-"evidence":[{"start_line":1,"end_line":2}]}],"flow":[],"symbols":[],
+"evidence":[{"kind":"call","target":"service.run",
+"start_line":1,"end_line":2}]}],"flow":[],"symbols":[],
 "limitations":[],"context_insufficient":false}
 """
 

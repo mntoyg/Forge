@@ -56,7 +56,9 @@ def _section(
         lines.append(f"  - [{claim.confidence.value}] {_safe(claim.text)}")
         for evidence in claim.evidence:
             lines.append(
-                f"    Evidence: lines {evidence.start_line}-{evidence.end_line}"
+                f"    Evidence: {evidence.kind.value} target "
+                f"`{_safe(evidence.target)}`, lines "
+                f"{evidence.start_line}-{evidence.end_line}"
             )
             for number in range(evidence.start_line, evidence.end_line + 1):
                 lines.append(f"      {number:>4} | {_safe(source_lines[number - 1])}")
