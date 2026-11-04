@@ -26,8 +26,9 @@ for TTY confirmation, and makes at most one provider call. It remains an AI
 opinion and reports omissions and incomplete coverage.
 `forge explain <FILE>` implements FR-7: it submits one bounded source snapshot
 in at most one provider call and renders only claims with validated evidence.
-Distribution remains undecided; see Proposed ADR-0017. It compares the existing
-GitHub Release channel with adding PyPI through Trusted Publishing.
+Distribution decision: keep GitHub Releases and add PyPI through Trusted
+Publishing (ADR-0017). The distribution name is still unchosen; `forge-cli` is
+occupied on PyPI, so implementation waits for an available owner-approved name.
 
 ## What is true right now
 

@@ -64,6 +64,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - Add Proposed ADR-0017 comparing GitHub Releases only with GitHub Releases
   plus PyPI Trusted Publishing; distribution channel and package name remain
   owner decisions.
+- Accept ADR-0017 option B: retain GitHub Releases and add PyPI through Trusted
+  Publishing; package-name selection remains open.
 - Record the approved FR-7 implementation and document the explain command.
 - Add `docs/development/task.md` to record delivered capabilities and the
   staged plan for `forge explain` and subsequent features.

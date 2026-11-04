@@ -24,7 +24,7 @@ the decision will be obvious from the code, but the trade-off will not be.
 | [0014](0014-bounded-multi-file-change-review.md) | Bounded multi-file change review | Accepted |
 | [0015](0015-explain-symbol-evidence-scope.md) | Bind explain symbol claims to Python declaration scope | Accepted |
 | [0016](0016-bind-purpose-call-evidence-to-main-flow.md) | Bind Purpose evidence to Main flow | Accepted |
-| [0017](0017-package-distribution-channels.md) | Choose Python package distribution channels | Proposed |
+| [0017](0017-package-distribution-channels.md) | Choose Python package distribution channels | Accepted |
 
 ## When to write one
 

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed - owner decision required
+Accepted - owner selected option B on 2026-11-04; distribution name pending
 
 ## Context
 
@@ -47,9 +47,11 @@ proposal.
 
 ## Decision
 
-Pending owner review. This record compares two choices; it does not authorize
-implementation, package-name changes, PyPI account or publisher setup, tagging,
-or publication.
+The owner selected option B: keep GitHub Releases and add PyPI through Trusted
+Publishing. This authorizes implementation planning for that channel, but not
+package-name changes, PyPI account or publisher setup, tagging, or publication.
+Those steps require an owner-selected distribution name and the remaining
+acceptance checks below.
 
 ### A. GitHub Release artifacts only
 
