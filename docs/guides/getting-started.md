@@ -127,6 +127,8 @@ entries are omitted. Forge asks symbol-role claims to cite where the selected
 file uses them, not only their import statements. Citations locate evidence but
 do not prove a role claim. Confidence is conservative: a provider `certain`
 label is presented as `likely`.
+Provider-backed purpose claims should cite the provider call; result-type roles
+should cite the return annotation or returned value rather than an import alone.
 
 ## 5. Read the output
 

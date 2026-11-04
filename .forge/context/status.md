@@ -35,10 +35,11 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 456 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
+| Local gate: 457 passed, 1 skipped; format, lint, and types pass | `uv run python scripts/check.py`, 2026-11-04; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
-| `forge explain <FILE>` reads a bounded snapshot, makes at most one provider call, validates citations, prompts for per-file flow and symbol use-site evidence, removes repetition/name-only symbols, and caps confidence at `likely` | Unit, integration, and CLI fake-provider tests; full gate passes |
+| `forge explain <FILE>` reads a bounded snapshot, makes at most one provider call, validates citations, prompts for per-file flow and role evidence at use/return sites, removes repetition/name-only symbols, and caps confidence at `likely` | Unit, integration, and CLI fake-provider tests; full gate passes |
+| One post-fix live `forge explain` run still cited docstring lines for its provider-backed purpose, despite citing use sites for the main flow and result type | `uv run forge explain src/forge/application/explain.py`, 2026-11-04; one call only |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
@@ -65,16 +66,16 @@ order, say why rather than silently reordering.
 
 0. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
    tagging remains a deliberate owner action after green CI.
-1. **Review the implementation of FR-7, `forge explain <FILE>`.** Decide
-   whether a live-provider quality check is worth its cost; automated tests
-   already use a fake provider.
+1. **Resolve the remaining live `forge explain` evidence issue.** Decide
+   whether prompt guidance is enough or a deterministic evidence policy is
+   needed before moving on.
 2. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
    measurement and accept a new ADR before implementation.
 
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Codex's current 7-day meter: 70% used; daily use is unavailable.
+  Codex's current 7-day meter: 0% used; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.

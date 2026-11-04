@@ -99,6 +99,8 @@ repeated summaries and name-only symbol entries are omitted. Forge asks symbol
 role claims to cite where the selected file uses them, not only their import
 statements. Citations locate evidence but do not prove a role claim. Confidence
 is conservative: provider claims labeled `certain` are presented as `likely`.
+Provider-backed purpose claims should cite the provider call, and result-type
+roles should cite the return annotation or returned value, not just an import.
 
 ```bash
 forge explain src/app.py

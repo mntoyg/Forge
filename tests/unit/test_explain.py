@@ -49,6 +49,9 @@ def test_prompt_includes_only_the_complete_numbered_source_snapshot() -> None:
     assert "entry point that handles the" in request.messages[0].content
     assert "import line only establishes" in request.messages[0].content
     assert "Prefer call, construction, access, or" in request.messages[0].content
+    assert "actual provider call as evidence" in request.messages[0].content
+    assert "return annotation and/or the code that" in request.messages[0].content
+    assert "closing delimiter alone does not" in request.messages[0].content
     assert (
         '"certain" only for a literal fact directly established'
         in request.messages[0].content

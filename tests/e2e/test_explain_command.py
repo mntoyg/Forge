@@ -388,3 +388,84 @@ def test_flow_and_symbol_roles_cite_usage_sites_from_the_submitted_snapshot() ->
         assert f"{line_number:>4} | {lines[line_number - 1]}" in result.stdout
     for import_line in range(4, 9):
         assert f"Evidence: lines {import_line}-{import_line}" not in symbols
+
+
+@pytest.mark.e2e
+def test_purpose_and_return_type_cite_their_actual_use_sites() -> None:
+    lines = (
+        '"""Explain a selected source file through an AI provider."""',
+        '"""The provider-backed explanation uses the submitted file snapshot."""',
+        "",
+        "from pathlib import Path",
+        "",
+        "from forge.application.explain_parsing import parse_explanation",
+        "from forge.domain.ai import AIProvider",
+        "from forge.domain.explanation import ExplanationResult",
+        "from forge.domain.source import SourceReader",
+        "",
+        "class ExplainSource:",
+        "    def __init__(self, reader: SourceReader, provider: AIProvider) -> None:",
+        "        self._reader = reader",
+        "        self._provider = provider",
+        "",
+        "    def __call__(self, path: Path) -> ExplanationResult:",
+        "        source = self._reader.read(path)",
+        "        response = self._provider.complete(source)",
+        "        return parse_explanation(",
+        "            response.text,",
+        "            source,",
+        "        )",
+    )
+    source = SourceFile(Path("explain.py"), "\n".join(lines))
+    provider = FakeProvider(
+        response=CompletionResponse(
+            text=json.dumps(
+                {
+                    "purpose": [
+                        {
+                            "claim": "Uses the configured provider to obtain an explanation of the selected source.",
+                            "confidence": "likely",
+                            "evidence": [{"start_line": 18, "end_line": 18}],
+                        }
+                    ],
+                    "flow": [],
+                    "symbols": [
+                        {
+                            "claim": "ExplanationResult is the result type promised by the use case and returned by the parser call.",
+                            "confidence": "likely",
+                            "evidence": [
+                                {"start_line": 16, "end_line": 16},
+                                {"start_line": 19, "end_line": 22},
+                            ],
+                        }
+                    ],
+                    "limitations": [],
+                    "context_insufficient": False,
+                }
+            ),
+            model="fake-model",
+            usage=TokenUsage(input_tokens=40, output_tokens=20),
+        )
+    )
+    app = _app(lambda: ExplainSource(FakeSourceReader(source=source), provider))
+
+    result = runner.invoke(app, ["explain.py", "--plain"])
+
+    assert result.exit_code == ExitCode.OK
+    assert provider.call_count == 1
+    submitted = provider.requests[0].messages[1].content
+    for line_number, line in enumerate(lines, start=1):
+        assert f"{line_number:>4} | {line}" in submitted
+    purpose = result.stdout.split("Purpose:", 1)[1].split("Main flow:", 1)[0]
+    symbols = result.stdout.split("Important symbols:", 1)[1].split("Limitations:", 1)[
+        0
+    ]
+    assert "Evidence: lines 18-18" in purpose
+    assert f"18 | {lines[17]}" in purpose
+    assert "Evidence: lines 16-16" in symbols
+    assert f"16 | {lines[15]}" in symbols
+    assert "Evidence: lines 19-22" in symbols
+    for line_number in range(19, 23):
+        assert f"{line_number:>4} | {lines[line_number - 1]}" in symbols
+    assert "Evidence: lines 8-8" not in symbols
+    assert "Evidence: lines 22-22" not in symbols

@@ -36,9 +36,13 @@ use "likely" or "possible" for broad interpretations or inferred intent. If
 unsure, choose "possible". A symbol's role must cite the line(s) where the
 selected file uses it; an import line only establishes that a name was
 imported, not what role it performs. Prefer call, construction, access, or
-return-type use sites. If this file does not show a useful role, omit the
-symbol. State missing context in limitations and set context_insufficient to
-true. Return JSON only in this shape:
+return-type use sites. When describing a provider-backed purpose, cite the
+actual provider call as evidence, not a docstring that only states intent.
+When describing a result type, cite its return annotation and/or the code that
+constructs the returned value; an import or closing delimiter alone does not
+show its role. If this file does not show a useful role, omit the symbol.
+State missing context in limitations and set context_insufficient to true.
+Return JSON only in this shape:
 {"purpose":[{"claim":"...","confidence":"certain|likely|possible",
 "evidence":[{"start_line":1,"end_line":2}]}],"flow":[],"symbols":[],
 "limitations":[],"context_insufficient":false}

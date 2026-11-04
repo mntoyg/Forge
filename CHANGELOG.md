@@ -15,6 +15,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   repeated summaries and name-only symbol entries, prompting for symbol
   citations at usage sites rather than imports alone, and capping provider
   `certain` confidence labels at `likely`.
+- Guide `forge explain` to cite the provider call for provider-backed purpose
+  claims and the return annotation or returned value for result-type roles.
 - Set a shared AI usage budget of at most 14 percentage points of a weekly plan
   per local calendar day.
 - Publish the `mntoyg/Forge` repository for public access; keep the archived
