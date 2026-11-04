@@ -9,33 +9,33 @@ hosted service in between, and no free tier to run out of.
 
 ## 1. Install
 
-You need [uv](https://docs.astral.sh/uv/getting-started/installation/). It
-installs Python 3.13 for you.
+You need [uv](https://docs.astral.sh/uv/getting-started/installation/). After
+the first PyPI release, install Forge as a tool:
 
 ```bash
-git clone https://github.com/mntoyg/Forge.git
-cd Forge
-uv sync --all-groups
+uv tool install mntoyg-forge
 ```
 
 Check it worked:
 
 ```bash
-uv run forge --version
+forge --version
 ```
 
 ```text
-forge 0.0.1
+forge 0.1.0
 ```
 
 That command needs no key. If it works, the install is fine.
+Before the first release is published, contributors can install from source
+using [the development setup](../development/setup.md).
 
 ## 2. Inspect a project
 
 Before configuring a provider, get a local overview of the repository:
 
 ```bash
-uv run forge inspect
+forge inspect
 ```
 
 The report identifies guidance files, languages inferred from file extensions,
@@ -49,24 +49,21 @@ Git info and global exclude rules are outside the scan.
 
 ## 3. Configure
 
-```bash
-cp .env.example .env
-```
-
-Open `.env` and set your key:
+Create a `.env` file in the project directory and set your key:
 
 ```bash
 FORGE_API_KEY=your-key-here
 ```
 
-That is the only required value. Everything else has a sensible default; the
-full list with explanations is in `.env.example`.
+That is the only required value. Everything else has a sensible default; see
+the [configuration reference](../development/setup.md#configuration) for the
+full list.
 
-**`.env` is git-ignored, and it should stay that way.** Forge never prints your
-key: it is held as a secret value that survives no log line, no error message,
-and no debug output. If a key is ever committed anywhere, treat it as
-compromised and rotate it - removing it from history is necessary but not
-sufficient, because it already exists in every clone.
+Make sure `.env` is listed in your project's `.gitignore` before saving the key.
+Forge never prints your key: it is held as a secret value that survives no log
+line, no error message, and no debug output. If a key is ever committed
+anywhere, treat it as compromised and rotate it - removing it from history is
+necessary but not sufficient, because it already exists in every clone.
 
 ### Using a different model or endpoint
 
@@ -80,14 +77,14 @@ hosted one. Nothing in the tool is specific to one provider.
 
 ## 4. Analyse a file
 
-The repository ships a deliberately broken example:
+Run Forge against a source file in your project (replace the example path):
 
 ```bash
-uv run forge debug examples/buggy_division.py
+forge debug path/to/source.py
 ```
 
 ```text
-buggy_division.py: 2 findings
+source.py: 2 findings
 
   Severity   Line   Finding
   HIGH         16   Divides by len(values) without guarding an empty list
@@ -103,7 +100,7 @@ model: gpt-4o-mini-2024-07-18 | tokens: 412 in, 186 out
 Then try it on something of your own:
 
 ```bash
-uv run forge debug src/whatever.py
+forge debug src/whatever.py
 ```
 
 ### Explain an unfamiliar file
@@ -112,7 +109,7 @@ To get an overview rather than a defect analysis, ask Forge to explain one
 source file:
 
 ```bash
-uv run forge explain src/app.py
+forge explain src/app.py
 ```
 
 Forge sends the selected file to your configured provider in one request at
@@ -248,7 +245,7 @@ Before committing, you usually want an opinion on the lines you just wrote -
 not on the whole file:
 
 ```bash
-uv run forge debug src/app.py --diff
+forge debug src/app.py --diff
 ```
 
 Only lines changed since the last commit are reviewed. Staged and unstaged
@@ -276,14 +273,14 @@ Both exit `2`. Everything else about `forge debug` works fine outside git.
 request, run:
 
 ```bash
-uv run forge review
+forge review
 ```
 
 This plans a review of staged and unstaged tracked changes plus non-ignored
 untracked files. Pass one or more paths to narrow the scope:
 
 ```bash
-uv run forge review src tests
+forge review src tests
 ```
 
 Forge prints included and omitted paths, the configured model, request size,
@@ -307,7 +304,7 @@ autonomously.
 Findings do **not** change the exit code:
 
 ```bash
-uv run forge debug app.py
+forge debug app.py
 echo $?    # 0, even with twenty findings
 ```
 
@@ -327,10 +324,10 @@ whether *Forge* worked, not whether your code is good.
 So a CI step can react to each cause without parsing any text:
 
 ```bash
-uv run forge debug app.py
+forge debug app.py
 case $? in
   0) ;;                                    # fine, findings or not
-  4) echo "provider trouble; retrying"; sleep 30; uv run forge debug app.py ;;
+  4) echo "provider trouble; retrying"; sleep 30; forge debug app.py ;;
   *) echo "forge could not run"; exit 1 ;;
 esac
 ```
@@ -339,7 +336,7 @@ Output drops to plain text automatically when stdout is not a terminal, so a
 pipe or a CI log stays readable. `--plain` forces it:
 
 ```bash
-uv run forge debug app.py --plain > report.txt
+forge debug app.py --plain > report.txt
 ```
 
 Results go to stdout and errors to stderr, so `forge debug app.py 2>/dev/null`

@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-11-05 on `main`; quality gate passed (522 passed, 1 skipped).
+**Last verified:** 2026-11-05 on `main`; quality gate passed (525 passed, 1 skipped).
 Version `0.1.0` is prepared and unreleased: the tag is a human action. The
 repository was recreated on 2026-09-06 - see below.
 
@@ -27,10 +27,9 @@ opinion and reports omissions and incomplete coverage.
 `forge explain <FILE>` implements FR-7: it submits one bounded source snapshot
 in at most one provider call and renders only claims with validated evidence.
 Distribution decision: keep GitHub Releases and add PyPI through Trusted
-Publishing (ADR-0017). The owner selected `mntoyg-forge`; PyPI returned 404 for
-its project and JSON endpoints on 2026-11-05 (ADR-0018). This is not a name
-reservation or guarantee of eligibility. Metadata and publishing workflow
-remain unchanged pending implementation and PyPI project setup.
+Publishing (ADR-0017). Metadata and release workflow now use `mntoyg-forge`;
+the workflow builds once and publishes the same artifacts to both channels.
+The PyPI pending publisher and GitHub `pypi` environment still need owner setup.
 
 ## What is true right now
 
@@ -39,11 +38,11 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 522 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
+| Local gate: 525 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
-| PyPI lookup for `mntoyg-forge` returned HTTP 404 at both project and JSON endpoints | Direct PyPI endpoints, 2026-11-05; PyPI policy says 404 does not guarantee a name can be registered |
+| Package metadata is `mntoyg-forge`; the release workflow reuses one artifact for GitHub and PyPI with job-scoped permissions | `pyproject.toml`, `uv.lock`, `.github/workflows/release.yml`; PyPI publisher setup remains pending |
 | Latest user-shared live output showed valid Main flow and symbols but omitted Purpose because its call target did not match the cited lines | User-provided result; no live call during this follow-up |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
@@ -69,9 +68,8 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-0. **Prepare PyPI distribution for `mntoyg-forge`.** ADR-0017 and ADR-0018
-   select the channel and candidate name. Confirm eligibility during PyPI
-   project setup, then update metadata, lockfile, docs, and Trusted Publishing.
+0. **Set up the PyPI pending publisher and GitHub `pypi` environment**, then
+   verify the first release artifacts match by SHA-256.
 1. **Tag `v0.1.0`.** The version, changelog section, and preflight are ready;
    tagging remains a deliberate owner action after green CI.
 2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
@@ -83,7 +81,9 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Codex's current 7-day meter: 8% used; daily use is unavailable.
+  Codex meter: 11% over 7 days, 7% over 5 hours; daily use is unavailable.
+- `mntoyg-forge` returned 404 in the PyPI lookup on 2026-11-05; this did not
+  reserve it. Confirm PyPI accepts the name during project setup.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.

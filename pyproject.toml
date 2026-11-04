@@ -1,5 +1,5 @@
 [project]
-name = "forge-cli"
+name = "mntoyg-forge"
 version = "0.1.0"
 description = "Forge - an open-source, AI-first coding assistant for the terminal."
 readme = "README.md"

@@ -21,6 +21,26 @@ The version lives in exactly two places, and they must agree:
 `scripts/release.py` fails the release if they disagree, so there is no way to
 ship a mismatched build by accident.
 
+## PyPI Trusted Publishing setup
+
+Before tagging a release, configure a pending Trusted Publisher in the PyPI
+account that will own the package:
+
+| PyPI field | Value |
+| --- | --- |
+| Project name | `mntoyg-forge` |
+| Owner | `mntoyg` |
+| Repository | `Forge` |
+| Workflow name | `release.yml` |
+| Environment name | `pypi` |
+
+In GitHub repository settings, create the `pypi` environment. Add required
+reviewers if the maintainers want a manual approval before publishing. The
+workflow stores no PyPI API token; only its `pypi-publish` job receives
+`id-token: write`. The PyPI publisher is pending until first use and does not
+reserve the package name. If PyPI rejects `mntoyg-forge` during project
+creation, stop and ask the owner to choose another name.
+
 ## Steps
 
 ### 1. Confirm `main` is green
@@ -70,14 +90,19 @@ git tag -a v0.1.0 -m "Release v0.1.0"
 git push origin v0.1.0
 ```
 
-The tag triggers `.github/workflows/release.yml`, which re-runs the full
-quality gate, builds the distribution with `uv build`, and creates a GitHub
-Release with the artifacts attached.
+The tag triggers `.github/workflows/release.yml`. It re-runs the quality gate,
+builds one wheel and source archive, then sends that same artifact set to two
+separate jobs: one creates the GitHub Release, and one publishes it to PyPI.
+The GitHub Release job alone has `contents: write`; the PyPI job alone has
+`id-token: write` and uses the dedicated `pypi` environment.
 
 ### 7. Verify
 
 - The release workflow is green.
 - The GitHub Release exists and has the built artifacts.
+- The PyPI project exists and has the same files as the GitHub Release; compare
+  SHA-256 checksums for every distribution file.
+- The PyPI release shows trusted-publisher provenance.
 - The release notes read correctly.
 
 ## If a release is broken
@@ -88,8 +113,14 @@ Do not delete or move a published tag. Fix forward:
 2. Cut the next patch release.
 3. Note the problem in the changelog entry for the new version.
 
-## Not in scope yet
+## Install from PyPI
 
-Publishing to PyPI. Forge has no user-facing capability yet, so there is
-nothing worth installing from an index. Adding it is an architecture change and
-needs its own decision and its own trusted-publishing setup.
+After a release is published, users can install Forge with:
+
+```bash
+uv tool install mntoyg-forge
+forge --version
+```
+
+For updates, use `uv tool upgrade mntoyg-forge`. The Python import package and
+console command remain named `forge`.

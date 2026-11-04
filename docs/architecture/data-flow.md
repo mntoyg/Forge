@@ -17,7 +17,7 @@ $ forge --version
   _version_callback  reads forge.__version__
     |
     v
-  stdout             "forge 0.0.1"   exit 0
+  stdout             "forge 0.1.0"   exit 0
 ```
 
 The remaining diagrams show the command paths through the layers.

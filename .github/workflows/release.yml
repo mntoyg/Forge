@@ -1,20 +1,18 @@
 name: Release
 
 # Releases are cut by pushing an annotated tag; see .forge/workflows/release.md.
-# This workflow builds the distribution and attaches it to a GitHub Release.
-# Publishing to PyPI is intentionally out of scope until the project has a
-# first user-facing capability.
+# Build once, then publish the same distributions to GitHub Releases and PyPI.
 on:
   push:
     tags:
       - "v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
-    name: Build and publish a GitHub Release
+    name: Build release distributions
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -48,8 +46,50 @@ jobs:
       - name: Build the distribution
         run: uv build
 
+      - name: Upload release distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-distributions
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  github-release:
+    name: Create a GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: release-distributions
+          path: dist/
+
       - name: Create the GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
           generate_release_notes: true
+
+  pypi-publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/mntoyg-forge/
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download release distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: release-distributions
+          path: dist/
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3

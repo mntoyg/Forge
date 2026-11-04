@@ -6,6 +6,7 @@ the entry point, or the layer boundaries are broken by a future change.
 
 import ast
 import importlib
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -39,12 +40,23 @@ FORBIDDEN_PACKAGES = frozenset(
 )
 
 SRC = Path(forge.__file__).parent
+PROJECT_ROOT = SRC.parents[1]
 
 
 @pytest.mark.unit
 def test_package_exposes_a_version() -> None:
     assert isinstance(forge.__version__, str)
     assert forge.__version__
+
+
+@pytest.mark.unit
+def test_distribution_name_and_console_script_are_stable() -> None:
+    project = tomllib.loads(
+        (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    )["project"]
+
+    assert project["name"] == "mntoyg-forge"
+    assert project["scripts"]["forge"] == "forge.main:app"
 
 
 @pytest.mark.unit

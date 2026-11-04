@@ -33,7 +33,18 @@ conversation.
 - **Safe by default.** It never modifies your files without approval and never
   executes the code it reads.
 
-## Install (from source)
+## Install
+
+After the first PyPI release, install Forge as a command-line tool:
+
+```bash
+uv tool install mntoyg-forge
+forge --version
+```
+
+The import package and command remain named `forge`.
+
+### Install from source
 
 You need [uv](https://docs.astral.sh/uv/). Python 3.13 is installed by uv, not
 by you.
@@ -63,17 +74,22 @@ guidance contents, call a provider, or run commands. Any missing
 evidence or scan limit is shown in the report. Git info and global exclude
 rules are outside the scan.
 
-Set a key first - Forge uses your own:
+Set a key first - Forge uses your own. Create `.env` in the project directory
+and add this value:
 
 ```bash
-cp .env.example .env    # then fill in FORGE_API_KEY
+FORGE_API_KEY=your-key-here
 ```
+
+Make sure `.env` is listed in your project's `.gitignore` before saving the key.
 
 Then point it at a file:
 
 ```bash
-forge debug examples/buggy_division.py
+forge debug path/to/source.py
 ```
+
+Replace the path with a source file in your project.
 
 ```text
 buggy_division.py: 2 findings
