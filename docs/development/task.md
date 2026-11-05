@@ -80,17 +80,29 @@ remain unchanged; framework parsing errors keep their text behavior.
 provider/configuration error path. Error messages are fixed, concise text and
 never include exception, provider, prompt, secret, or environment strings.
 Deterministic CLI tests verify all mappings, single-line stderr JSON, empty
-stdout, and unchanged text streams. FR-4.4 v1 covers debug and inspect only;
-review and explain remain excluded.
+stdout, and unchanged text streams. ADR-0019 records the original v1 scope of
+debug and inspect; ADR-0020 separately approves explain as an additive command.
 
-## Proposed follow-up: `forge explain` JSON output
+## Approved follow-up: `forge explain` JSON output
 
 [`explain-json-output-contract.md`](../architecture/proposals/explain-json-output-contract.md)
-proposes a separate additive JSON contract for `forge explain`. It is marked
-**Proposed — awaiting owner approval**. Implementation requires owner approval
-and a new accepted ADR first. The proposal maps every current parser diagnostic
-to an omission, warning, or informational category, and defines a fail-closed
-relative-path rule. FR-4.4 v1 remains limited to `debug` and `inspect`.
+is accepted by the owner and recorded in
+[ADR-0020](../architecture/decisions/0020-explain-json-output.md). The proposal
+maps every parser diagnostic and defines the safe relative-path rule.
+
+### Stage A — typed parser completeness (complete)
+
+Added `ExplanationResult.processing_incomplete` and typed
+validation-availability diagnostics; parser tests classify known omissions,
+warnings, informational sections, and unavailable validation. The legacy
+`incomplete` flag and text output are unchanged; new availability diagnostics
+are metadata-only in this stage.
+
+### Stage B — JSON serializer and CLI (not started)
+
+Add the pure explain serializer and `--format text|json` integration with the
+approved streams, path, privacy, error, and exit-code contract. Stage A does
+not add user-facing JSON output.
 
 ## Deferred research: full review of long files
 

@@ -20,10 +20,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   inspect omissions now carry stable codes and optional relative paths.
 - Add typed completeness metadata for debug parsing and inspect scans under
   ADR-0019.
-- Draft a separate `forge explain` JSON contract; owner approval and a new ADR
-  are required before implementation. FR-4.4 v1 remains debug/inspect only.
-- Clarify the pending explain JSON proposal with diagnostic classifications,
-  stable completeness objects, validation-availability signals, and safe paths.
+- Accept the additive `forge explain` JSON contract under ADR-0020 and add its
+  typed parser completeness metadata; serializer and CLI remain Stage B.
 
 ### Changed
 

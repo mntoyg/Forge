@@ -1,9 +1,9 @@
 # Proposed JSON output contract for `forge explain`
 
-**Status: Proposed — awaiting owner approval.** This is a docs-only proposal.
-It does not change FR-4.4 v1, which remains implemented for `debug` and
-`inspect` only, or change CLI behavior. Do not implement until the owner accepts
-the contract and the required decision record.
+**Status: Accepted by the owner on 2026-11-05; implementation is staged under
+[ADR-0020](../decisions/0020-explain-json-output.md).** This remains the
+detailed schema reference. Stage A covers parser metadata only; JSON
+serialization and CLI wiring remain for a separate Stage B.
 
 ## Scope and compatibility
 
@@ -214,29 +214,21 @@ exit code 2 before reading or calling the provider.
   selection retain their current text behavior. In text mode, preserve the
   existing diagnostic, stream, spinner, and exit behavior.
 
-## Candidate decision record and owner decisions
+## Accepted decisions and implementation stages
 
-If accepted, create a new ADR (candidate **ADR-0020: Add `forge explain` to
-machine-readable JSON output**) before implementation. It should extend the
-JSON command scope without rewriting ADR-0019's historical decision; ADR-0019
-continues to describe the approved debug/inspect v1 scope at that time. The new
-ADR should accept the explain schema, typed `processing_incomplete` signal,
-stream/error behavior, privacy limits, and unchanged FR-7 / ADR-0006 behavior.
+The owner approved the additive `command: "explain"` under schema v1, the
+typed `processing_incomplete` field and diagnostic mappings above, parsed
+limitations, and keeping `--plain` accepted as a no-op in JSON mode. ADR-0020
+records these choices while preserving ADR-0019 as the historical debug/
+inspect decision. ADR-0020 also fixes the one-file/provider boundary, privacy,
+stdout/stderr, safe-path, and unchanged exit-code requirements.
 
-The owner should decide:
-
-1. Whether `schema_version: 1` may add `command: "explain"` as a compatible
-   additive command under the existing compatibility rule.
-2. Whether the proposed `processing_incomplete` metadata and the separation of
-   processing completeness from the existing `incomplete` flag are acceptable.
-3. Whether the proposed mapping of every current diagnostic kind, including
-   the two new validation-availability kinds, is sufficient and whether valid
-   provider-reported limitations should remain warnings.
-4. Whether `limitations` should expose the parsed statements as proposed, given
-   they are untrusted model text, while excluding source excerpts and raw
-   provider responses.
-5. Whether existing `--plain` remains accepted (and redundant) in JSON mode or
-   is rejected as a text-only option.
+Stage A adds result metadata and parser diagnostics with deterministic tests;
+presentation hides the new availability diagnostics to preserve text output.
+Stage B is a separate implementation step for the pure serializer and
+`--format text|json` CLI behavior, including success/error streams and
+acceptance tests. Completion of Stage A does not mean explain JSON support is
+available to users.
 
 ## Acceptance tests after approval
 
@@ -264,5 +256,7 @@ Deterministic tests must prove:
 7. A fake provider is called at most once with only the selected source; the
    serializer performs no filesystem, provider, environment, or Git access.
 
-Until the owner approves this proposal and the candidate ADR, no explain JSON
-implementation or runtime change is authorized.
+The owner approval is recorded in ADR-0020. Stage A implements parser metadata
+and deterministic tests while preserving existing text output. It does not add
+a serializer or CLI format option; Stage B remains a separate reviewed
+implementation step.

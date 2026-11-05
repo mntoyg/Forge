@@ -37,6 +37,44 @@ _DIAGNOSTIC_SECTION_ORDER = {
     ExplanationSection.SYMBOLS: 2,
     None: 3,
 }
+_OMISSION_DIAGNOSTICS = frozenset(
+    {
+        ExplanationDiagnosticKind.SECTION_MISSING,
+        ExplanationDiagnosticKind.SECTION_MALFORMED,
+        ExplanationDiagnosticKind.CLAIM_MALFORMED,
+        ExplanationDiagnosticKind.SUBJECT_UNAVAILABLE,
+        ExplanationDiagnosticKind.EVIDENCE_MALFORMED,
+        ExplanationDiagnosticKind.EVIDENCE_KIND_UNSUPPORTED,
+        ExplanationDiagnosticKind.EVIDENCE_TARGET_SHAPE_UNSUPPORTED,
+        ExplanationDiagnosticKind.EVIDENCE_TARGET_NOT_FOUND,
+        ExplanationDiagnosticKind.EVIDENCE_SOURCE_SHAPE_MISMATCH,
+        ExplanationDiagnosticKind.EVIDENCE_VALIDATION_UNAVAILABLE,
+        ExplanationDiagnosticKind.CALL_TARGET_IS_DECLARATION,
+        ExplanationDiagnosticKind.CALL_EXPRESSION_NOT_FOUND,
+        ExplanationDiagnosticKind.SYMBOL_OPERATION_DISALLOWED,
+        ExplanationDiagnosticKind.EVIDENCE_OUT_OF_SCOPE,
+        ExplanationDiagnosticKind.PURPOSE_CALL_NOT_IN_FLOW,
+        ExplanationDiagnosticKind.NAME_ONLY,
+        ExplanationDiagnosticKind.LIMITATIONS_MISSING,
+        ExplanationDiagnosticKind.LIMITATIONS_FIELD_MALFORMED,
+        ExplanationDiagnosticKind.LIMITATIONS_MALFORMED,
+        ExplanationDiagnosticKind.CONTEXT_STATUS_MISSING,
+        ExplanationDiagnosticKind.CONTEXT_STATUS_MALFORMED,
+    }
+)
+_VALIDATION_UNAVAILABLE_DIAGNOSTICS = frozenset(
+    {
+        ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE,
+        ExplanationDiagnosticKind.SYMBOL_VALIDATION_UNAVAILABLE,
+    }
+)
+_WARNING_DIAGNOSTICS = frozenset(
+    {
+        ExplanationDiagnosticKind.CONFIDENCE_UNRECOGNIZED,
+        ExplanationDiagnosticKind.CONTEXT_INSUFFICIENT,
+    }
+)
+_INFORMATIONAL_DIAGNOSTICS = frozenset({ExplanationDiagnosticKind.SECTION_EMPTY})
 
 
 def parse_explanation(
@@ -59,6 +97,11 @@ def parse_explanation(
     ) -> None:
         key = (section, kind)
         diagnostic_counts[key] = diagnostic_counts.get(key, 0) + count
+
+    if source_tokens is None:
+        record(None, ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE)
+    elif source_tree is None:
+        record(None, ExplanationDiagnosticKind.SYMBOL_VALIDATION_UNAVAILABLE)
 
     validated_flow_calls: frozenset[EvidenceAnchor] = frozenset()
     for name in ("flow", "purpose", "symbols"):
@@ -183,6 +226,14 @@ def parse_explanation(
             "useful context limits."
         )
 
+    diagnostics = tuple(
+        ExplanationDiagnostic(section, kind, count)
+        for (section, kind), count in sorted(
+            diagnostic_counts.items(),
+            key=lambda item: _DIAGNOSTIC_SECTION_ORDER[item[0][0]],
+        )
+    )
+    processing_incomplete = _processing_incomplete(diagnostics)
     return ExplanationResult(
         source=source,
         purpose=sections["purpose"],
@@ -193,14 +244,27 @@ def parse_explanation(
         incomplete=incomplete,
         model=model,
         usage=usage,
-        diagnostics=tuple(
-            ExplanationDiagnostic(section, kind, count)
-            for (section, kind), count in sorted(
-                diagnostic_counts.items(),
-                key=lambda item: _DIAGNOSTIC_SECTION_ORDER[item[0][0]],
-            )
-        ),
+        diagnostics=diagnostics,
+        processing_incomplete=processing_incomplete,
     )
+
+
+def _processing_incomplete(
+    diagnostics: tuple[ExplanationDiagnostic, ...],
+) -> bool | None:
+    """Report known omissions separately from unavailable validation."""
+    kinds = {diagnostic.kind for diagnostic in diagnostics}
+    if kinds & _OMISSION_DIAGNOSTICS:
+        return True
+    classified = (
+        _OMISSION_DIAGNOSTICS
+        | _VALIDATION_UNAVAILABLE_DIAGNOSTICS
+        | _WARNING_DIAGNOSTICS
+        | _INFORMATIONAL_DIAGNOSTICS
+    )
+    if kinds & _VALIDATION_UNAVAILABLE_DIAGNOSTICS or kinds - classified:
+        return None
+    return False
 
 
 def _validation_limitation(source: SourceFile) -> str:

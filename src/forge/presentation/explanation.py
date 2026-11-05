@@ -23,8 +23,22 @@ def render_explanation(result: ExplanationResult) -> str:
         lines.extend(["Limitations:"])
         lines.extend(f"  - {_safe(item)}" for item in result.limitations)
     if result.diagnostics:
-        lines.append("Analysis notes:")
-        lines.extend(f"  - {_diagnostic_text(item)}" for item in result.diagnostics)
+        # These availability signals support structured output only; limitations
+        # already explain them in the existing text contract.
+        visible_diagnostics = tuple(
+            item
+            for item in result.diagnostics
+            if item.kind
+            not in {
+                ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE,
+                ExplanationDiagnosticKind.SYMBOL_VALIDATION_UNAVAILABLE,
+            }
+        )
+        if visible_diagnostics:
+            lines.append("Analysis notes:")
+            lines.extend(
+                f"  - {_diagnostic_text(item)}" for item in visible_diagnostics
+            )
     if result.incomplete:
         lines.append(
             "Incomplete: some claims were omitted or context is missing; "

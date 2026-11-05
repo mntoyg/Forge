@@ -24,6 +24,7 @@
 | [0017](../../docs/architecture/decisions/0017-package-distribution-channels.md) | Choose Python package distribution channels | Accepted | Keep GitHub Releases and publish to PyPI through Trusted Publishing. |
 | [0018](../../docs/architecture/decisions/0018-pypi-distribution-name.md) | Select the PyPI distribution name | Accepted | Use `mntoyg-forge` as the distribution name; keep `forge` as the command and import. |
 | [0019](../../docs/architecture/decisions/0019-json-output-phase-1-metadata.md) | Prepare completeness metadata for JSON output | Accepted | Debug carries parser omission state; inspect carries bounded scan completeness. FR-4.4 v1 serialization is limited to debug and inspect; text and exit codes stay unchanged. |
+| [0020](../../docs/architecture/decisions/0020-explain-json-output.md) | Add `forge explain` to machine-readable JSON output | Accepted | Add explain under schema v1; Stage A adds typed processing completeness, Stage B adds serializer/CLI; one-file scope and ADR-0006 behavior stay fixed. |
 
 ## How to use these
 

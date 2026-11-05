@@ -3,15 +3,24 @@ from pathlib import Path
 
 import pytest
 
-from forge.application.explain_parsing import parse_explanation
+from forge.application.explain_parsing import (
+    _INFORMATIONAL_DIAGNOSTICS,
+    _OMISSION_DIAGNOSTICS,
+    _VALIDATION_UNAVAILABLE_DIAGNOSTICS,
+    _WARNING_DIAGNOSTICS,
+    _processing_incomplete,
+    parse_explanation,
+)
 from forge.domain.ai import TokenUsage
 from forge.domain.errors import ProviderResponseError
 from forge.domain.explanation import (
     EvidenceKind,
+    ExplanationDiagnostic,
     ExplanationDiagnosticKind,
     ExplanationSection,
 )
 from forge.domain.source import SourceFile
+from forge.presentation.explanation import render_explanation
 
 
 def _payload(*claims: object, flow: list[object] | None = None) -> dict[str, object]:
@@ -76,6 +85,32 @@ def test_evidence_kind_remains_a_string_enum() -> None:
     assert isinstance(EvidenceKind.CALL, str)
 
 
+def test_every_diagnostic_kind_has_one_completeness_classification() -> None:
+    classifications = (
+        _OMISSION_DIAGNOSTICS,
+        _WARNING_DIAGNOSTICS,
+        _INFORMATIONAL_DIAGNOSTICS,
+        _VALIDATION_UNAVAILABLE_DIAGNOSTICS,
+    )
+
+    assert set().union(*classifications) == set(ExplanationDiagnosticKind)
+    assert sum(len(group) for group in classifications) == len(
+        set().union(*classifications)
+    )
+    assert all(
+        _processing_incomplete((ExplanationDiagnostic(None, kind),)) is True
+        for kind in _OMISSION_DIAGNOSTICS
+    )
+    assert all(
+        _processing_incomplete((ExplanationDiagnostic(None, kind),)) is None
+        for kind in _VALIDATION_UNAVAILABLE_DIAGNOSTICS
+    )
+    assert all(
+        _processing_incomplete((ExplanationDiagnostic(None, kind),)) is False
+        for kind in _WARNING_DIAGNOSTICS | _INFORMATIONAL_DIAGNOSTICS
+    )
+
+
 @pytest.mark.parametrize(
     ("start", "end"),
     [(0, 1), (3, 3), (2, 1), (True, 1), (1, False), ("1", 2)],
@@ -94,6 +129,10 @@ def test_invalid_evidence_ranges_are_discarded_and_marked_incomplete(
 
     assert result.purpose == ()
     assert result.incomplete
+    assert result.processing_incomplete is True
+    assert any(
+        diagnostic.kind in _OMISSION_DIAGNOSTICS for diagnostic in result.diagnostics
+    )
 
 
 def test_missing_evidence_is_discarded_and_context_gap_is_visible() -> None:
@@ -110,6 +149,7 @@ def test_missing_evidence_is_discarded_and_context_gap_is_visible() -> None:
     assert result.incomplete
     assert result.context_insufficient
     assert result.limitations
+    assert result.processing_incomplete is True
 
 
 def test_valid_one_based_range_is_preserved() -> None:
@@ -132,6 +172,7 @@ def test_valid_one_based_range_is_preserved() -> None:
     assert result.purpose[0].evidence[0].kind.value == "operation"
     assert result.purpose[0].evidence[0].target == "a = 1"
     assert not result.incomplete
+    assert result.processing_incomplete is False
 
 
 @pytest.mark.parametrize(
@@ -223,6 +264,7 @@ def test_empty_sections_are_distinguished_from_rejected_claims() -> None:
     )
 
     assert not result.incomplete
+    assert result.processing_incomplete is False
     assert [
         (diagnostic.section, diagnostic.kind, diagnostic.count)
         for diagnostic in result.diagnostics
@@ -230,6 +272,131 @@ def test_empty_sections_are_distinguished_from_rejected_claims() -> None:
         (ExplanationSection.PURPOSE, ExplanationDiagnosticKind.SECTION_EMPTY, 1),
         (ExplanationSection.SYMBOLS, ExplanationDiagnosticKind.SECTION_EMPTY, 1),
     ]
+
+
+def test_context_insufficiency_alone_keeps_processing_completeness_known() -> None:
+    source = SourceFile(Path("app.py"), "a = 1\n")
+    payload = _payload()
+    payload["context_insufficient"] = True
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.incomplete
+    assert result.context_insufficient
+    assert result.processing_incomplete is False
+    assert any(
+        diagnostic.kind is ExplanationDiagnosticKind.CONTEXT_INSUFFICIENT
+        for diagnostic in result.diagnostics
+    )
+    assert not any(
+        diagnostic.kind in _OMISSION_DIAGNOSTICS for diagnostic in result.diagnostics
+    )
+
+
+def test_valid_limitations_alone_are_not_processing_omissions() -> None:
+    source = SourceFile(Path("app.py"), "a = 1\n")
+    payload = _payload()
+    payload["limitations"] = ["Behavior depends on runtime configuration."]
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.incomplete
+    assert result.limitations == ("Behavior depends on runtime configuration.",)
+    assert result.processing_incomplete is False
+    assert not any(
+        diagnostic.kind in _OMISSION_DIAGNOSTICS for diagnostic in result.diagnostics
+    )
+
+
+def test_malformed_limitation_entries_are_known_field_omissions() -> None:
+    source = SourceFile(Path("app.py"), "a = 1\n")
+    payload = _payload()
+    payload["limitations"] = [None, ""]
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.processing_incomplete is True
+    assert (
+        None,
+        ExplanationDiagnosticKind.LIMITATIONS_MALFORMED,
+        2,
+    ) in tuple(
+        (diagnostic.section, diagnostic.kind, diagnostic.count)
+        for diagnostic in result.diagnostics
+    )
+
+
+def test_retained_claim_with_downgraded_confidence_is_not_an_omission() -> None:
+    source = SourceFile(Path("app.py"), "a = 1\nclient.send()\n")
+    claim = _claim(call_target="client.send", call_line=2)
+    claim["confidence"] = "unrecognized"
+
+    result = parse_explanation(
+        json.dumps(_payload(claim, flow=[_flow_call("client.send", 2)])),
+        source,
+        model="fake-model",
+        usage=TokenUsage(1, 1),
+    )
+
+    assert result.incomplete
+    assert result.purpose[0].confidence.value == "possible"
+    assert result.processing_incomplete is False
+    assert any(
+        diagnostic.kind is ExplanationDiagnosticKind.CONFIDENCE_UNRECOGNIZED
+        for diagnostic in result.diagnostics
+    )
+
+
+def test_non_python_empty_sections_make_validation_unknown_not_partial() -> None:
+    source = SourceFile(Path("app.ts"), "const count = 1;\n")
+
+    result = parse_explanation(
+        json.dumps(_payload()), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.incomplete
+    assert result.processing_incomplete is None
+    assert any(
+        diagnostic.kind is ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE
+        for diagnostic in result.diagnostics
+    )
+    assert not any(
+        diagnostic.kind in _OMISSION_DIAGNOSTICS for diagnostic in result.diagnostics
+    )
+
+
+def test_python_tokenization_failure_without_claims_is_unknown() -> None:
+    source = SourceFile(Path("app.py"), "value = (\n")
+
+    result = parse_explanation(
+        json.dumps(_payload()), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.processing_incomplete is None
+    assert any(
+        diagnostic.kind is ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE
+        for diagnostic in result.diagnostics
+    )
+
+
+def test_python_ast_unavailable_without_symbols_is_unknown() -> None:
+    source = SourceFile(Path("app.py"), "class Example:\n    if:\n")
+
+    result = parse_explanation(
+        json.dumps(_payload()), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.processing_incomplete is None
+    assert any(
+        diagnostic.kind is ExplanationDiagnosticKind.SYMBOL_VALIDATION_UNAVAILABLE
+        for diagnostic in result.diagnostics
+    )
 
 
 def test_missing_limitations_remains_an_incomplete_result() -> None:
@@ -247,6 +414,7 @@ def test_missing_limitations_remains_an_incomplete_result() -> None:
     assert result.incomplete
     assert result.purpose
     assert result.limitations == ()
+    assert result.processing_incomplete is True
     assert (None, ExplanationDiagnosticKind.LIMITATIONS_MISSING, 1) in tuple(
         (diagnostic.section, diagnostic.kind, diagnostic.count)
         for diagnostic in result.diagnostics
@@ -268,6 +436,7 @@ def test_missing_and_malformed_metadata_sections_are_reported_safely() -> None:
     assert result.incomplete
     assert result.context_insufficient
     assert result.limitations == ()
+    assert result.processing_incomplete is True
     assert [
         (diagnostic.section, diagnostic.kind, diagnostic.count)
         for diagnostic in result.diagnostics
@@ -294,6 +463,7 @@ def test_malformed_context_and_limitations_are_not_guessed_as_content_gaps() -> 
     assert result.incomplete
     assert result.context_insufficient
     assert result.limitations == ()
+    assert result.processing_incomplete is True
     assert [
         (diagnostic.section, diagnostic.kind, diagnostic.count)
         for diagnostic in result.diagnostics
@@ -737,6 +907,10 @@ def test_non_python_source_is_preserved_but_anchors_are_marked_unverified() -> N
     assert result.source is source
     assert result.purpose == ()
     assert result.incomplete
+    assert result.processing_incomplete is True
+    assert any(
+        diagnostic.kind in _OMISSION_DIAGNOSTICS for diagnostic in result.diagnostics
+    )
 
 
 def test_symbol_that_only_repeats_its_name_is_discarded() -> None:
@@ -882,6 +1056,10 @@ def test_symbol_claim_requires_unique_subject_and_in_scope_evidence(
 
     assert result.symbols == ()
     assert result.incomplete
+    assert result.processing_incomplete is True
+    assert any(
+        diagnostic.kind in _OMISSION_DIAGNOSTICS for diagnostic in result.diagnostics
+    )
 
 
 def test_missing_symbol_subject_is_discarded_and_marks_incomplete() -> None:
@@ -940,7 +1118,13 @@ def test_syntax_error_omits_symbols_with_a_visible_scope_limitation() -> None:
 
     assert result.symbols == ()
     assert result.incomplete
+    assert result.processing_incomplete is True
+    assert any(
+        diagnostic.kind is ExplanationDiagnosticKind.SYMBOL_VALIDATION_UNAVAILABLE
+        for diagnostic in result.diagnostics
+    )
     assert any("symbol scope validation" in item for item in result.limitations)
+    assert "symbol_validation_unavailable" not in render_explanation(result)
 
 
 def test_response_without_claims_or_limits_is_rejected() -> None:

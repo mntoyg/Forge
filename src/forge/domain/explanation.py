@@ -52,6 +52,8 @@ class ExplanationDiagnosticKind(StrEnum):
     CONTEXT_STATUS_MISSING = "context_status_missing"
     CONTEXT_STATUS_MALFORMED = "context_status_malformed"
     CONTEXT_INSUFFICIENT = "context_insufficient"
+    SOURCE_VALIDATION_UNAVAILABLE = "source_validation_unavailable"
+    SYMBOL_VALIDATION_UNAVAILABLE = "symbol_validation_unavailable"
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,7 +107,13 @@ class ExplanationClaim:
 
 @dataclass(frozen=True, slots=True)
 class ExplanationResult:
-    """A validated explanation, its source snapshot, and measured usage."""
+    """A validated explanation, its source snapshot, and measured usage.
+
+    ``processing_incomplete`` marks known parser omissions: true means an
+    omission diagnostic exists, false means validation found no omission, and
+    None means validation availability leaves completeness unknown. The legacy
+    ``incomplete`` field remains the broader text-output signal.
+    """
 
     source: SourceFile
     purpose: tuple[ExplanationClaim, ...]
@@ -117,3 +125,4 @@ class ExplanationResult:
     model: str
     usage: TokenUsage
     diagnostics: tuple[ExplanationDiagnostic, ...] = ()
+    processing_incomplete: bool | None = None

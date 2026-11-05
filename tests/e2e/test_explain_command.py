@@ -163,6 +163,7 @@ def test_non_python_source_keeps_single_call_but_marks_evidence_incomplete() -> 
     assert (
         "Evidence validation supports Python .py and .pyi files only" in result.stdout
     )
+    assert "source_validation_unavailable" not in result.stdout
     assert "   1 | value = 1" in provider.requests[0].messages[1].content
 
 
