@@ -19,6 +19,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Changed
 
+- Preserve the selected inspect root as a safe directory-name identifier in
+  JSON and reject Windows drive-relative paths in the JSON path validator.
 - Clarify JSON proposal error behavior for local `inspect` and define when
   completeness may be known from current result metadata.
 - Draft a versioned machine-readable JSON output contract for deferred FR-4.4;

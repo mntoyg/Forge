@@ -3,7 +3,7 @@
 import json
 from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 
 from forge.domain.project import ProjectOverview
 from forge.domain.source import AnalysisResult
@@ -101,7 +101,7 @@ def serialize_inspect_json(overview: ProjectOverview) -> str:
         "command": "inspect",
         "status": "success",
         "result": {
-            "root": ".",
+            "root": overview.root.name or ".",
             "guidance": [_safe_relative_path(path) for path in overview.guidance],
             "languages": [_fact(item.name, item.paths) for item in overview.languages],
             "tooling": [_fact(item.name, item.paths) for item in overview.tooling],
@@ -123,10 +123,12 @@ def _fact(name: str, paths: tuple[str, ...]) -> dict[str, object]:
 
 def _safe_relative_path(value: str) -> str:
     path = PurePosixPath(value.replace("\\", "/"))
+    windows_path = PureWindowsPath(value)
     if (
         path.is_absolute()
         or ".." in path.parts
-        or (path.parts and path.parts[0].endswith(":"))
+        or windows_path.drive
+        or windows_path.root
     ):
         raise ValueError("JSON result paths must be workspace-relative.")
     return path.as_posix()

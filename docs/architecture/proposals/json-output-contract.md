@@ -98,6 +98,7 @@ Use stable error codes such as `result_unavailable`, `input_unusable`, `not_conf
 
 - `schema_version` is an integer major version. Within v1, field removal/rename, type changes, enum meaning changes, or changed stream/exit semantics are breaking changes and require a new major schema version and owner review. Additive fields and new command/error/warning codes are allowed; consumers should ignore unknown fields/codes.
 - Use UTF-8, snake_case keys, stable lower-case enum values, ISO dates, and workspace-relative paths where available. Never promise that AI findings are complete or proven by citations.
+- For `inspect`, `result.root` is the selected project's final directory name, not its absolute local path. It identifies the selected root without exposing parent directories; callers needing globally unique identity should combine it with their own repository context.
 - Human output remains byte-for-byte behaviorally equivalent for existing cases, except help text documenting the option.
 - Deterministic fake-provider/temp-directory tests cover debug with findings and no findings (both exit 0), file and diff modes, optional history/location, partial whole-file warning, inspect omissions/completeness, JSON TTY and pipe output, no progress/prose on stdout, safe errors on stderr with empty stdout, and unchanged exit mapping. Assert one parseable JSON object and no secrets, prompt, or raw provider text.
 - No live provider call is needed for acceptance. Do not add `review` or `explain` support implicitly.

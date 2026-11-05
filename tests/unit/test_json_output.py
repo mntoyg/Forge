@@ -127,10 +127,18 @@ def test_debug_json_omits_unavailable_history_as_null() -> None:
 
 
 @pytest.mark.unit
-def test_debug_json_rejects_absolute_or_parent_paths() -> None:
-    for path in ("C:/private/app.py", "../outside.py"):
-        with pytest.raises(ValueError, match="workspace-relative"):
-            serialize_debug_json(DebugJsonInput(_debug(), path, DebugMode.FILE))
+@pytest.mark.parametrize(
+    "path",
+    [
+        "C:/private/app.py",
+        "C:folder\\file.py",
+        "../outside.py",
+        "\\\\server\\share\\file.py",
+    ],
+)
+def test_debug_json_rejects_unsafe_paths(path: str) -> None:
+    with pytest.raises(ValueError, match="workspace-relative"):
+        serialize_debug_json(DebugJsonInput(_debug(), path, DebugMode.FILE))
 
 
 @pytest.mark.unit
@@ -140,8 +148,9 @@ def test_debug_json_rejects_absolute_or_parent_paths() -> None:
 def test_inspect_json_uses_typed_omissions_and_scan_completeness(
     tmp_path: Path, scan_complete: bool, expected: str
 ) -> None:
+    selected_root = tmp_path / "workspace" / "selected-project"
     overview = ProjectOverview(
-        root=tmp_path / "private-project",
+        root=selected_root,
         guidance=("AGENTS.md",),
         languages=(ProjectFact("Python", ("src/app.py",)),),
         tooling=(),
@@ -163,11 +172,11 @@ def test_inspect_json_uses_typed_omissions_and_scan_completeness(
         {"code": "entry_limit"},
         {"code": "metadata_byte_limit", "path": "pyproject.toml"},
     ]
-    assert payload["result"]["root"] == "."
+    assert payload["result"]["root"] == "selected-project"
     assert payload["result"]["languages"] == [
         {"name": "Python", "evidence": ["src/app.py"]}
     ]
-    assert "private-project" not in encoded
+    assert str(selected_root) not in encoded
     assert "Do not serialize this prose" not in encoded
 
 

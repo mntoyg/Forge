@@ -40,10 +40,10 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 537 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
+| Local gate: 540 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | FR-4.4 Phase 1 adds `AnalysisResult.incomplete` for discarded debug entries and `ProjectOverview.scan_complete` from bounded project evidence | ADR-0019; Phase 2A serializers consume these fields; no CLI JSON mode is wired yet |
-| FR-4.4 Phase 2A serializes successful debug/inspect results in pure presentation functions | Direct serializer tests; debug scope/warning input is typed; inspect omissions have stable typed codes; CLI remains text-only |
+| FR-4.4 Phase 2A serializes successful debug/inspect results in pure presentation functions | Direct tests cover safe inspect root identity, structured omissions, and rejection of absolute, UNC, drive-relative, and traversal paths; CLI remains text-only |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
 | `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |

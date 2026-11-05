@@ -59,6 +59,8 @@ behavior.
 path, file/diff mode, and the CLI-computed whole-file warning. The inspect
 serializer uses typed `ProjectOverview` omissions and scan completeness. Both
 serialize successful results only; `review` and `explain` remain excluded.
+The inspect JSON `result.root` identifies the selected project by its final
+directory name; it never includes the absolute path or parent directories.
 
 ### Phase 2B — CLI format integration (next)
 
