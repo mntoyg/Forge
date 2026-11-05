@@ -1,4 +1,6 @@
 import json
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
@@ -77,6 +79,9 @@ def test_registered_help_discloses_provider_use_without_loading_config() -> None
 
     assert result.exit_code == ExitCode.OK
     assert "selected file is sent to the provider" in result.stdout
+    assert "--format" in result.stdout
+    assert "text" in result.stdout
+    assert "json" in result.stdout
     assert "Usage:" in result.stdout
 
 
@@ -102,6 +107,244 @@ def test_plain_cli_output_uses_one_fake_call_and_writes_no_files(
     assert "selected file is sent" not in result.stderr
     assert provider.call_count == 1
     assert path.read_bytes() == original
+
+
+@pytest.mark.e2e
+def test_text_remains_the_default_for_explain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "app.py").write_text(
+        "value = make_value()  # noqa: F821\n", encoding="utf-8"
+    )
+    monkeypatch.chdir(tmp_path)
+    provider = _provider()
+    app = _app(lambda: ExplainSource(FilesystemSourceReader(tmp_path), provider))
+
+    result = runner.invoke(app, ["app.py"])
+
+    assert result.exit_code == ExitCode.OK
+    assert result.stdout.startswith("app.py: explanation\n")
+    assert not result.stdout.lstrip().startswith("{")
+    assert provider.call_count == 1
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(
+    ("absolute", "plain", "color"),
+    [
+        (False, False, False),
+        (True, False, True),
+        (False, True, True),
+    ],
+    ids=["relative-pipe", "absolute-tty", "plain-json"],
+)
+def test_json_success_is_one_clean_line_and_uses_a_safe_selected_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    absolute: bool,
+    plain: bool,
+    color: bool,
+) -> None:
+    marker = "SOURCE_SENTINEL_DO_NOT_SERIALIZE"
+    source_path = tmp_path / "app.py"
+    source_path.write_text(
+        f"value = make_value()  # {marker}  # noqa: F821\n", encoding="utf-8"
+    )
+    monkeypatch.chdir(tmp_path)
+    provider_response = json.dumps(
+        {
+            "purpose": [
+                {
+                    "claim": "Sets a value.",
+                    "confidence": "likely",
+                    "evidence": [
+                        _anchor("operation", "value = make_value()", 1),
+                        _anchor("call", "make_value", 1),
+                    ],
+                }
+            ],
+            "flow": [
+                {
+                    "claim": "Calls make_value to obtain the value.",
+                    "confidence": "likely",
+                    "evidence": [_anchor("call", "make_value", 1)],
+                }
+            ],
+            "symbols": [],
+            "limitations": [],
+            "context_insufficient": False,
+            "raw_extra": "RAW_PROVIDER_RESPONSE_SENTINEL",
+        }
+    )
+    provider = FakeProvider(
+        response=CompletionResponse(
+            text=provider_response,
+            model="fake-model",
+            usage=TokenUsage(input_tokens=15, output_tokens=7),
+        )
+    )
+    app = _app(lambda: ExplainSource(FilesystemSourceReader(tmp_path), provider))
+    waiting_flags: list[bool] = []
+    original_waiting = explain_cli._waiting
+
+    @contextmanager
+    def record_waiting(path: Path, disable_spinner: bool) -> Iterator[None]:
+        waiting_flags.append(disable_spinner)
+        with original_waiting(path, disable_spinner):
+            yield
+
+    monkeypatch.setattr(explain_cli, "_waiting", record_waiting)
+    input_path = str(source_path) if absolute else "app.py"
+    args = [input_path, "--format", "json"]
+    if plain:
+        args.append("--plain")
+
+    result = runner.invoke(app, args, color=color)
+
+    assert result.exit_code == ExitCode.OK
+    payload = json.loads(result.stdout)
+    assert payload["command"] == "explain"
+    assert payload["result"]["path"] == "app.py"
+    assert payload["completeness"]["status"] == "complete"
+    assert result.stdout.endswith("\n")
+    assert result.stdout.count("\n") == 1
+    assert "\x1b[" not in result.stdout
+    assert "Explaining" not in result.stdout
+    assert "Explaining" not in result.stderr
+    assert result.stderr == ""
+    assert str(tmp_path) not in result.stdout
+    assert marker not in result.stdout
+    assert "RAW_PROVIDER_RESPONSE_SENTINEL" not in result.stdout
+    assert waiting_flags == [True]
+    assert provider.call_count == 1
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("path_kind", ["outside", "unresolvable"])
+def test_json_rejects_unsafe_or_unresolvable_paths_before_factory_or_provider(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    path_kind: str,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    provider = _provider()
+    factory_calls = 0
+
+    def factory() -> ExplainSource:
+        nonlocal factory_calls
+        factory_calls += 1
+        return ExplainSource(
+            FakeSourceReader(error=SourceNotFoundError("missing")), provider
+        )
+
+    app = _app(factory)
+    path = (
+        str(tmp_path.parent / "outside.py")
+        if path_kind == "outside"
+        else "unresolvable.py"
+    )
+    if path_kind == "unresolvable":
+        original_resolve = Path.resolve
+
+        def fail_selected_resolve(selected: Path, strict: bool = False) -> Path:
+            if selected == Path(path):
+                raise OSError("PATH_RESOLUTION_SENTINEL")
+            return original_resolve(selected, strict=strict)
+
+        monkeypatch.setattr(Path, "resolve", fail_selected_resolve)
+
+    result = runner.invoke(app, [path, "--format", "json"])
+
+    assert result.exit_code == ExitCode.BAD_INPUT
+    assert result.stdout == ""
+    assert result.stderr.endswith("\n")
+    assert result.stderr.count("\n") == 1
+    payload = json.loads(result.stderr)
+    assert payload["command"] == "explain"
+    assert payload["error"]["code"] == "input_unusable"
+    assert str(tmp_path) not in result.stderr
+    assert "outside.py" not in result.stderr
+    assert factory_calls == 0
+    assert provider.call_count == 0
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(
+    ("failure", "expected_exit", "expected_error_code", "marker"),
+    [
+        (
+            "unusable-response",
+            ExitCode.FAILED,
+            "result_unavailable",
+            "RAW_PROVIDER_RESPONSE_SENTINEL",
+        ),
+        (
+            "missing-source",
+            ExitCode.BAD_INPUT,
+            "input_unusable",
+            "SOURCE_SECRET_SENTINEL",
+        ),
+        (
+            "configuration",
+            ExitCode.NOT_CONFIGURED,
+            "not_configured",
+            "API_KEY_SENTINEL",
+        ),
+        (
+            "provider",
+            ExitCode.PROVIDER_FAILED,
+            "provider_failed",
+            "PROVIDER_SECRET_SENTINEL",
+        ),
+    ],
+    ids=["result-unavailable", "input-unusable", "not-configured", "provider-failed"],
+)
+def test_json_errors_keep_adr_0006_codes_and_never_leak_error_text(
+    failure: str,
+    expected_exit: ExitCode,
+    expected_error_code: str,
+    marker: str,
+) -> None:
+    if failure == "unusable-response":
+        provider = FakeProvider(
+            response=CompletionResponse(
+                text=marker, model="fake-model", usage=TokenUsage(1, 1)
+            )
+        )
+    else:
+        provider = _provider(
+            ProviderTimeoutError(marker) if failure == "provider" else None
+        )
+
+    if failure == "configuration":
+
+        def factory() -> ExplainSource:
+            raise ConfigurationError(f"FORGE_API_KEY={marker}")
+
+    else:
+        source_reader = (
+            FakeSourceReader(error=SourceNotFoundError(marker))
+            if failure == "missing-source"
+            else FakeSourceReader(source=SourceFile(Path("app.py"), "value = 1\n"))
+        )
+
+        def factory() -> ExplainSource:
+            return ExplainSource(source_reader, provider)
+
+    app = _app(factory)
+
+    result = runner.invoke(app, ["app.py", "--format", "json"])
+
+    assert result.exit_code == expected_exit
+    assert result.stdout == ""
+    assert result.stderr.endswith("\n")
+    assert result.stderr.count("\n") == 1
+    payload = json.loads(result.stderr)
+    assert payload["command"] == "explain"
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == expected_error_code
+    assert marker not in result.stderr
+    assert "FORGE_API_KEY" not in result.stderr
 
 
 @pytest.mark.e2e

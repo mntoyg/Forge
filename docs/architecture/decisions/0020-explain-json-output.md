@@ -63,10 +63,10 @@ validation uncertainty, so JSON completeness needs a distinct typed signal.
   JSON. Preserve parsed claim and limitation text as untrusted provider output;
   validated citations locate claims but do not prove semantic correctness.
 - Implement in reviewed stages. Stage A adds parser metadata and deterministic
-  tests, with presentation filtering to keep text output unchanged. Stage B
-  adds the JSON serializer and CLI `--format` behavior,
-  with deterministic serializer and CLI tests. Do not consider FR-4.4 explain
-  support complete until Stage B passes the repository gate.
+  tests, with presentation filtering to keep text output unchanged. Stage B1
+  adds the pure JSON serializer. Stage B2 adds CLI `--format` behavior with
+  deterministic end-to-end tests. FR-4.4 explain support is complete only
+  after all stages pass the repository gate.
 
 ## Alternatives considered
 
@@ -103,3 +103,11 @@ validation uncertainty, so JSON completeness needs a distinct typed signal.
   one-file behavior remain unchanged.
 - No serializer, CLI format option, live provider call, dependency, or exit
   behavior change is introduced in this stage.
+
+## Stage B2 implementation status
+
+Complete. `forge explain` now exposes `--format text|json`, validates the safe
+relative path before reading or provider setup, and uses the approved success
+and error serializers. Text remains the default, JSON suppresses progress, and
+ADR-0006 exit codes are unchanged. Fake-provider CLI tests and the repository
+quality gate verify the behavior. `review` remains excluded.

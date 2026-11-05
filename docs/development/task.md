@@ -107,11 +107,14 @@ evidence, metadata, warnings, omissions, completeness states, and rejected
 paths, including inconsistent completeness metadata that must fail closed.
 This stage does not expose JSON through the CLI.
 
-### Stage B2 — CLI integration (next; not started)
+### Stage B2 — CLI integration (complete)
 
-Add `--format text|json` for `forge explain` with the approved success and
-error streams, path preparation, privacy, and exit-code behavior. Do not start
-until the serializer stage is reviewed.
+`forge explain` accepts `--format text|json`; text remains the default and
+`--plain` is accepted as a redundant option in JSON mode. JSON mode validates a
+safe relative path before factory construction, suppresses the spinner, and
+emits one success line on stdout or a safe Forge error line on stderr with
+unchanged ADR-0006 codes. Deterministic e2e tests cover TTY/pipe, paths,
+privacy, all error classes, and unchanged text behavior.
 
 ## Deferred research: full review of long files
 

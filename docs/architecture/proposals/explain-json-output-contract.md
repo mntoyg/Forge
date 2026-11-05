@@ -2,8 +2,8 @@
 
 **Status: Accepted by the owner on 2026-11-05; implementation is staged under
 [ADR-0020](../decisions/0020-explain-json-output.md).** This remains the
-detailed schema reference. Stage A covers parser metadata only; JSON
-serialization and CLI wiring remain for a separate Stage B.
+detailed schema reference. Stages A (parser metadata), B1 (pure serialization),
+and B2 (CLI integration) are complete under that ADR.
 
 ## Scope and compatibility
 
@@ -226,10 +226,9 @@ stdout/stderr, safe-path, and unchanged exit-code requirements.
 Stage A adds result metadata and parser diagnostics with deterministic tests;
 presentation hides the new availability diagnostics to preserve text output.
 Stage B1 adds the pure presentation serializer and deterministic unit tests.
-Stage B2 is a separate implementation step for `--format text|json` CLI
-behavior, including success/error streams and end-to-end acceptance tests.
-Completion of Stages A and B1 does not mean explain JSON support is available
-to users.
+Stage B2 wires `--format text|json` into the CLI, including the approved
+success/error streams and end-to-end acceptance tests. Stages A, B1, and B2
+are complete; explain JSON is available through the command option.
 
 ## Acceptance tests after approval
 
@@ -259,12 +258,13 @@ Deterministic tests must prove:
 
 ### Implementation handoff
 
-Stage A and Stage B1 are complete. Stage B1 exposes only the pure
-`serialize_explanation_json(result, path)` presentation API; it does not add a
-CLI option or change command behavior. Stage B2 remains the next approved
-implementation stage.
+Stages A and B1 are complete. Stage B2 adds the `forge explain --format
+text|json` option and routes successful and Forge-error results through the
+accepted serializers. Text remains the default, and `--plain` is redundant in
+JSON mode. All three stages passed the repository quality gate; the detailed
+CLI behavior is verified by deterministic fake-provider end-to-end tests.
 
 The owner approval is recorded in ADR-0020. Stage A implements parser metadata
 and deterministic tests while preserving existing text output. Stage B1 adds
-the pure serializer without changing CLI behavior. Stage B2 remains a separate
-reviewed implementation step for CLI format and error-stream integration.
+the pure serializer. Stage B2 implements CLI format and error-stream
+integration without changing the default text behavior.

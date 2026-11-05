@@ -27,6 +27,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   tests; CLI integration remains Stage B2.
 - Fail closed when explain completeness metadata conflicts with omission or
   validation-availability diagnostics.
+- Add `forge explain --format text|json` with text as the default, safe relative
+  paths, one-line success/error envelopes, and unchanged ADR-0006 exit codes.
 
 ### Changed
 

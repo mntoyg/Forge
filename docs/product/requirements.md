@@ -64,10 +64,10 @@ Requirement IDs are stable. `MUST`, `SHOULD`, and `MAY` follow RFC 2119.
 | FR-4.4 | A machine-readable output mode SHOULD exist for scripting. | Done |
 | FR-4.5 | Output MUST say when a result may not cover the whole file. | Done |
 
-FR-4.4 v1 is implemented for `debug` and `inspect` under ADR-0019. ADR-0020
-approves adding `explain` additively; Stage A parser metadata is implemented,
-while the JSON serializer and CLI option remain Stage B and are not yet
-available.
+FR-4.4 v1 supports `debug` (including `--diff`), `inspect`, and `explain` under
+ADR-0019 and ADR-0020. Human-readable text remains the default. Selecting
+`--format json` emits one success object on stdout or a safe Forge error object
+on stderr, preserving ADR-0006 exit codes. `review` remains excluded.
 
 ## FR-5 - `forge inspect` (local project overview)
 

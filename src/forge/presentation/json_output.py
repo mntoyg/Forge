@@ -26,6 +26,7 @@ class JsonCommand(StrEnum):
 
     DEBUG = "debug"
     INSPECT = "inspect"
+    EXPLAIN = "explain"
 
 
 class JsonErrorCode(StrEnum):
