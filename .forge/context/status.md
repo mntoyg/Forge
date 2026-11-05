@@ -72,7 +72,8 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Owner review:** proposed [`forge explain` JSON contract](../../docs/architecture/proposals/explain-json-output-contract.md); approve the additive schema and candidate ADR before implementation.
+1. **Owner review:** [explain JSON proposal](../../docs/architecture/proposals/explain-json-output-contract.md);
+   review omission mappings and safe paths, then approve its schema and ADR.
 2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
    deterministic checks validate declaration scope, not semantic entailment.
    Live quality evaluation still needs explicit approval.

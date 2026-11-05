@@ -22,6 +22,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   ADR-0019.
 - Draft a separate `forge explain` JSON contract; owner approval and a new ADR
   are required before implementation. FR-4.4 v1 remains debug/inspect only.
+- Clarify the pending explain JSON proposal with diagnostic classifications,
+  stable completeness objects, validation-availability signals, and safe paths.
 
 ### Changed
 

@@ -93,36 +93,111 @@ untrusted provider output.
 
 ## Completeness and context semantics
 
-`ExplanationResult.incomplete` currently aggregates more than processing
-omissions: the parser sets it for invalid or omitted claims and metadata, but
-also for model-reported context insufficiency and non-Python evidence
-validation limits. It must not be copied directly to
-`completeness.status`. Likewise, `context_insufficient` is an uncertainty
-signal; it does not prove that the bounded source read was incomplete.
+`ExplanationResult.incomplete` is a legacy text-facing aggregate, not a JSON
+completeness signal. The parser sets it for omitted claims and required fields,
+but also for valid provider limitations, a retained claim whose invalid
+confidence is downgraded to `possible`, context insufficiency, unsupported
+source validation, and unavailable Python symbol-scope validation. Keep that
+field and existing text rendering unchanged; do not copy it to
+`completeness.status`.
 
-Before implementation, add one additive typed signal to `ExplanationResult`:
-`processing_incomplete: bool | None`. The parser sets it to `true` when claims,
-evidence, or required response fields were omitted or could not be validated;
-`false` when those processing steps completed without a known omission; and
-`null` only when the signal is unavailable. This separates the serialization
-decision without changing the existing `incomplete` field or its text-rendering
-behavior. Owner review is required for this model addition.
+Before implementation, add the proposed typed
+`ExplanationResult.processing_incomplete: bool | None` plus two safe diagnostic
+kinds, `SOURCE_VALIDATION_UNAVAILABLE` and
+`SYMBOL_VALIDATION_UNAVAILABLE`. They close current parser paths that set
+`incomplete` without a diagnostic when there are no claims to reject. The new
+signal means **known parser omissions**, not semantic completeness:
 
-Map it as follows:
+- `true` means at least one claim or required response field was discarded or
+  unavailable, with an omission diagnostic that gives a stable omission code.
+- `false` means all required fields and submitted claims were handled and
+  validated to the supported level. It does not mean the explanation is
+  exhaustive or correct.
+- `null` means validation availability prevents determining whether an
+  omission occurred and no known omission already establishes `partial`.
 
-- `processing_incomplete == true` -> `completeness.status: "partial"` and
-  stable omission entries derived from the typed diagnostics.
-- `processing_incomplete == false` -> `"complete"`; a true
-  `context_insufficient` may add a `context_insufficient` warning, but does
-  not change completeness. `complete` means bounded reading and the declared
-  parsing/validation work completed without known omissions; it does not mean
-  the explanation covers every behavior or is semantically correct.
-- `processing_incomplete is null` -> `"unknown"`.
+Apply precedence: any known omission -> `partial`; otherwise unavailable
+validation -> `unknown`; otherwise -> `complete`. This ensures every `partial`
+result has at least one structured omission. Do not infer completeness from
+empty claim arrays or confidence values. Context insufficiency and valid
+limitations describe uncertainty/coverage caveats, not parser omissions.
 
-Never infer completeness from empty claim arrays, a false context flag, or
-confidence values. Do not report source-read incompleteness when the reader
-successfully returned the bounded complete file. Context insufficiency is a
-model uncertainty report, not a completeness verdict.
+### Diagnostic classification and stable objects
+
+The following table covers every current `ExplanationDiagnosticKind`. The JSON
+`result.diagnostics` keeps safe `{section, kind, count}` records. Completeness
+warnings have exactly `{code, section}`; `section` is `purpose`, `flow`,
+`symbols`, or null. Omission objects have exactly `{code, section, count}`;
+`count` is the sum of corresponding typed diagnostic counts (diagnostic
+occurrences, not claims or findings). Aggregate omissions by code and section.
+Deduplicate warnings by code and section; sort both arrays by code, then
+section (null first). No claim text, target, line, or model-supplied reason is
+placed in these objects.
+
+| Diagnostic kind | Classification | Completeness code / effect |
+| --- | --- | --- |
+| `SECTION_EMPTY` | Informational only | No warning or omission; an explicitly empty list is not a discarded claim. |
+| `SECTION_MISSING`, `SECTION_MALFORMED` | Processing omission | `section_unavailable` with that section and combined count. |
+| `CLAIM_MALFORMED` | Processing omission | `claim_unavailable` with section and count. |
+| `SUBJECT_UNAVAILABLE` | Processing omission | `symbol_unavailable`, section `symbols`. |
+| `EVIDENCE_MALFORMED`, `EVIDENCE_KIND_UNSUPPORTED`, `EVIDENCE_TARGET_SHAPE_UNSUPPORTED`, `EVIDENCE_TARGET_NOT_FOUND`, `EVIDENCE_SOURCE_SHAPE_MISMATCH`, `EVIDENCE_VALIDATION_UNAVAILABLE`, `CALL_TARGET_IS_DECLARATION`, `CALL_EXPRESSION_NOT_FOUND`, `SYMBOL_OPERATION_DISALLOWED`, `EVIDENCE_OUT_OF_SCOPE`, `PURPOSE_CALL_NOT_IN_FLOW` | Processing omission | `claim_evidence_unavailable` with section and combined count. These diagnostics arise when the associated claim is discarded. |
+| `NAME_ONLY` | Processing omission | `symbol_description_unavailable`, section `symbols`. |
+| `CONFIDENCE_UNRECOGNIZED` | Non-omission warning | `confidence_downgraded`; the claim is retained as `possible`. |
+| `LIMITATIONS_MISSING`, `LIMITATIONS_FIELD_MALFORMED` | Processing omission | `limitations_unavailable`, section null. |
+| `LIMITATIONS_MALFORMED` | Processing omission | `limitation_entry_unavailable`, section null, count of invalid entries. |
+| Non-empty typed `limitations` tuple | Non-omission warning | `limitation_present`, section null; wording may be parser-generated or provider-authored. |
+| `CONTEXT_STATUS_MISSING`, `CONTEXT_STATUS_MALFORMED` | Processing omission | `context_status_unavailable`, section null. |
+| `CONTEXT_INSUFFICIENT` | Non-omission warning | `context_insufficient`; never an omission by itself. |
+| Proposed `SOURCE_VALIDATION_UNAVAILABLE` | Non-omission warning / availability signal | `source_validation_unavailable`; if no other omission exists, status is `unknown`. |
+| Proposed `SYMBOL_VALIDATION_UNAVAILABLE` | Non-omission warning / availability signal | `symbol_validation_unavailable`; if no other omission exists, status is `unknown`. |
+
+Valid non-empty `limitations` are not currently diagnostics. The proposed
+`limitation_present` warning comes from this typed tuple; do not parse
+limitation prose into codes or omissions. The tuple may include the parser's
+generic context-limit statement as well as provider-authored statements, so
+this code does not assert who supplied the wording. Unsupported non-Python
+validation and Python tokenization failure set the new source-validation
+diagnostic. Python syntax failure that prevents AST symbol-scope checks sets
+the symbol-validation diagnostic. If an actual claim is discarded on either
+path, its existing claim/evidence diagnostic still creates a known omission,
+so the result is `partial`; the availability warning may also be present.
+
+If `incomplete` is true but diagnostics are empty or consist only of
+informational/warning kinds, do not invent a claim count or evidence. Emit
+`unknown` when a proposed validation-availability diagnostic explains the
+uncertainty; emit `complete` with warnings when only context, valid limitations,
+or a retained downgraded-confidence claim explains the legacy flag. This
+classification must be backed by the new typed signal and diagnostic kinds,
+not inferred from `incomplete` or human-readable prose.
+
+Examples (other envelope fields omitted):
+
+For a context-insufficient-only result, legacy `result.incomplete` remains
+true, while JSON completeness is `complete` with warnings because no parser
+omission is known. The parser currently supplies a generic limitation
+statement in this case, so both warning codes are present.
+
+```json
+{"completeness":{"status":"complete","warnings":[{"code":"context_insufficient","section":null},{"code":"limitation_present","section":null}],"omissions":[]}}
+```
+
+```json
+{"completeness":{"status":"partial","warnings":[],"omissions":[{"code":"claim_evidence_unavailable","section":"flow","count":1}]}}
+```
+
+### Safe source path
+
+The JSON path is always a deterministic, workspace-relative POSIX path derived
+from the resolved selected file and the resolved invocation working directory
+(the current `SourceReader` workspace). For a relative input, resolve it
+against that workspace first; for an absolute input inside the workspace,
+strip the workspace prefix by computing the relative path. Normalize separators
+to `/` and reject any result that is empty, absolute, contains a drive prefix,
+or has a `..` component. Compute this safe path before the use case/provider
+call and pass it as typed presentation input; never fall back to the basename,
+absolute path, workspace root, or parent path. If a safe relative path cannot
+be derived, fail closed with the existing `input_unusable` error envelope and
+exit code 2 before reading or calling the provider.
 
 ## CLI, streams, and errors
 
@@ -154,10 +229,13 @@ The owner should decide:
    additive command under the existing compatibility rule.
 2. Whether the proposed `processing_incomplete` metadata and the separation of
    processing completeness from the existing `incomplete` flag are acceptable.
-3. Whether `limitations` should expose the parsed statements as proposed, given
+3. Whether the proposed mapping of every current diagnostic kind, including
+   the two new validation-availability kinds, is sufficient and whether valid
+   provider-reported limitations should remain warnings.
+4. Whether `limitations` should expose the parsed statements as proposed, given
    they are untrusted model text, while excluding source excerpts and raw
    provider responses.
-4. Whether existing `--plain` remains accepted (and redundant) in JSON mode or
+5. Whether existing `--plain` remains accepted (and redundant) in JSON mode or
    is rejected as a text-only option.
 
 ## Acceptance tests after approval

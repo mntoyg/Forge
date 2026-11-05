@@ -88,8 +88,9 @@ review and explain remain excluded.
 [`explain-json-output-contract.md`](../architecture/proposals/explain-json-output-contract.md)
 proposes a separate additive JSON contract for `forge explain`. It is marked
 **Proposed — awaiting owner approval**. Implementation requires owner approval
-and a new accepted ADR first; FR-4.4 v1 remains limited to `debug` and
-`inspect`.
+and a new accepted ADR first. The proposal maps every current parser diagnostic
+to an omission, warning, or informational category, and defines a fail-closed
+relative-path rule. FR-4.4 v1 remains limited to `debug` and `inspect`.
 
 ## Deferred research: full review of long files
 
