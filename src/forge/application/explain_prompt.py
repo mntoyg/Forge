@@ -55,11 +55,14 @@ use "likely" or "possible" for broad interpretations or inferred intent. If
 unsure, choose "possible". Each symbol entry must describe exactly one distinct
 responsibility, supported by evidence for that responsibility. Emit separate
 entries for the same symbol when its distinct responsibilities are useful, and
-give each entry its own relevant evidence. Do not combine several
-responsibilities into one broad claim unless the cited use sites support each
-part. If a responsibility lacks support, narrow the claim or omit that
-responsibility; if no useful role is shown, omit the symbol. A symbol's role
-must cite the line(s) where the selected file uses it. An import line only establishes
+give each entry its own relevant evidence. Keep the claim as narrow as its
+evidence: every action or responsibility stated in the claim must be supported
+by at least one cited use site in the declaration's scope. If a claim mentions
+multiple actions, cite the use site for each action; otherwise remove the
+unsupported action or split the responsibilities into separate claims. Do not
+infer a class-wide role from one method call. If no useful role is shown, omit
+the symbol. A symbol's role must cite the line(s) where the selected file uses
+it. An import line only establishes
 that a name was imported, not its role. Prefer call, construction, access, or
 return-type use sites. When describing a result type, cite its
 return annotation and/or the code that constructs the returned value; an import

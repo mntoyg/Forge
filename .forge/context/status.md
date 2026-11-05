@@ -46,6 +46,7 @@ verification - correct it or delete it instead.
 | FR-4.4 JSON for debug/inspect/explain is complete; explain has safe path preflight and unchanged exit mapping | ADR-0019/0020; serializer unit and fake-provider CLI e2e tests; full gate |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
+| `forge explain` prompt requires each symbol responsibility to be supported by an in-scope use site; invalid Purpose targets and narrowly scoped symbol claims have fake-provider regression coverage | `uv run python scripts/check.py`, 2026-11-05: 591 passed, 1 Windows symlink skip |
 | `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |
 | Latest user-shared live output showed valid Main flow and symbols but omitted Purpose because its call target did not match the cited lines | User-provided result; no live call during this follow-up |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
@@ -72,9 +73,10 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
-   deterministic checks validate declaration scope, not semantic entailment.
-   Live quality evaluation still needs explicit approval.
+1. **Evaluate `forge explain` symbol quality with a live provider.** The prompt
+   now asks for one responsibility per claim and evidence for every stated
+   action; ADR-0015 validation still checks scope, not semantic entailment.
+   Live evaluation costs the owner and needs explicit approval.
 2. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
    measurement and accept a new ADR before implementation.
 

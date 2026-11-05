@@ -58,6 +58,11 @@ def test_prompt_includes_only_the_complete_numbered_source_snapshot() -> None:
     assert "distinct responsibility" in request.messages[0].content
     assert "Each symbol entry must describe exactly one" in prompt
     assert "Emit separate entries for the same symbol" in prompt
+    assert (
+        "every action or responsibility stated in the claim must be supported" in prompt
+    )
+    assert "cite the use site for each action" in prompt
+    assert "Do not infer a class-wide role from one method call" in prompt
     assert "A call anchor must identify an actual call expression" in prompt
     assert "never a function or method declaration" in prompt
     assert "Each symbols entry must include `symbol`" in request.messages[0].content

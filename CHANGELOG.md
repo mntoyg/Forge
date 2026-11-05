@@ -32,6 +32,9 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Changed
 
+- Tighten `forge explain` symbol guidance so each stated responsibility is
+  supported by an in-scope use site, with focused fake-provider regression
+  coverage for invalid Purpose evidence and narrow symbol roles.
 - Render the debug `--format text|json` option in command help and emit a plain,
   stable usage diagnostic when `--plain` conflicts with JSON output.
 - Verify rendered debug help through the real CLI subprocess, removing ANSI

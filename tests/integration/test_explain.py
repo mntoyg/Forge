@@ -326,6 +326,99 @@ def test_provider_backed_purpose_reuses_main_flow_call_anchor(
 
 
 @pytest.mark.integration
+def test_provider_backed_explanation_omits_bad_purpose_and_keeps_narrow_symbol(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    source_text = (
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        source = self._reader.read(path)\n"
+        "        response = self._provider.complete(source)\n"
+        "        return parse_explanation(response.text)\n"
+    )
+    (workspace / "explain.py").write_bytes(source_text.encode())
+    payload = {
+        "purpose": [
+            {
+                "claim": "Handles all explanation work.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._provider.explain",
+                        "start_line": 4,
+                        "end_line": 4,
+                    }
+                ],
+            }
+        ],
+        "flow": [
+            {
+                "claim": "Reads the selected source through the injected reader.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._reader.read",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            },
+            {
+                "claim": "Sends the source to the configured provider.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._provider.complete",
+                        "start_line": 4,
+                        "end_line": 4,
+                    }
+                ],
+            },
+        ],
+        "symbols": [
+            {
+                "symbol": "ExplainSource",
+                "claim": "Reads the selected path through the injected reader.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._reader.read",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            }
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider = _provider(json.dumps(payload))
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+    notes = rendered.split("Analysis notes:\n", 1)[1].split("Incomplete:", 1)[0]
+
+    assert provider.call_count == 1
+    system_prompt = provider.requests[0].messages[0].content
+    assert "every action or responsibility stated in the claim" in system_prompt
+    assert "cite the use site for each action" in system_prompt
+    assert result.purpose == ()
+    assert len(result.symbols) == 1
+    assert result.symbols[0].text == (
+        "Reads the selected path through the injected reader."
+    )
+    assert "target did not match executable tokens in the cited lines" in notes
+    assert "Handles all explanation work." not in rendered
+    assert "Reads the selected path through the injected reader." in rendered
+
+
+@pytest.mark.integration
 def test_provider_backed_purpose_with_other_valid_call_is_omitted_safely(
     tmp_path: Path,
 ) -> None:
