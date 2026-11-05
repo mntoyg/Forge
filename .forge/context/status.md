@@ -72,8 +72,7 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Review FR-4.4 v1 acceptance** and decide whether `review` or `explain`
-   warrant future machine-readable contracts.
+1. **Owner review:** proposed [`forge explain` JSON contract](../../docs/architecture/proposals/explain-json-output-contract.md); approve the additive schema and candidate ADR before implementation.
 2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
    deterministic checks validate declaration scope, not semantic entailment.
    Live quality evaluation still needs explicit approval.
@@ -83,7 +82,7 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Latest Codex meter: 16% over 7 days; daily use is unavailable.
+  Latest Codex meter: 17% over 7 days; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.

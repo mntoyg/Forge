@@ -20,6 +20,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   inspect omissions now carry stable codes and optional relative paths.
 - Add typed completeness metadata for debug parsing and inspect scans under
   ADR-0019.
+- Draft a separate `forge explain` JSON contract; owner approval and a new ADR
+  are required before implementation. FR-4.4 v1 remains debug/inspect only.
 
 ### Changed
 

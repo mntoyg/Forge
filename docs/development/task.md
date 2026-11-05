@@ -83,6 +83,14 @@ Deterministic CLI tests verify all mappings, single-line stderr JSON, empty
 stdout, and unchanged text streams. FR-4.4 v1 covers debug and inspect only;
 review and explain remain excluded.
 
+## Proposed follow-up: `forge explain` JSON output
+
+[`explain-json-output-contract.md`](../architecture/proposals/explain-json-output-contract.md)
+proposes a separate additive JSON contract for `forge explain`. It is marked
+**Proposed — awaiting owner approval**. Implementation requires owner approval
+and a new accepted ADR first; FR-4.4 v1 remains limited to `debug` and
+`inspect`.
+
 ## Deferred research: full review of long files
 
 ADR-0013 is suspended because measured marked windows missed findings near the
