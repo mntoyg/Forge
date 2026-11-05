@@ -11,6 +11,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Added
 
+- Add successful `--format text|json` output for `debug` and `inspect`; text
+  remains the default and JSON error envelopes are deferred to Phase 2B2.
 - Add pure presentation JSON serializers for successful debug and inspect
   results. Debug accepts typed mode, safe path, and size-warning context;
   inspect omissions now carry stable codes and optional relative paths.

@@ -4,6 +4,7 @@ These drive the Typer application the way a user would. They must not require
 network access or an API key.
 """
 
+import json
 from pathlib import Path
 
 import pytest
@@ -63,10 +64,40 @@ def test_inspect_reports_local_project_evidence_without_provider_configuration(
     result = runner.invoke(app, ["inspect"])
 
     assert result.exit_code == 0
+    assert result.stdout.startswith("Project overview:")
+    assert not result.stdout.lstrip().startswith("{")
     assert "AGENTS.md" in result.stdout
     assert "Python" in result.stdout
     assert "pyproject.toml" in result.stdout
     assert "untrusted guidance" not in result.stdout
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("color", [False, True], ids=["pipe", "tty"])
+def test_inspect_json_writes_one_object_for_the_selected_directory(
+    tmp_path: Path, color: bool
+) -> None:
+    project = tmp_path / "nested" / "selected-project"
+    project.mkdir(parents=True)
+    (project / "pyproject.toml").write_text(
+        "[tool.pytest.ini_options]\n", encoding="utf-8"
+    )
+    (project / "app.py").write_text("pass\n", encoding="utf-8")
+
+    result = runner.invoke(
+        app, ["inspect", str(project), "--format", "json"], color=color
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["command"] == "inspect"
+    assert payload["result"]["root"] == "selected-project"
+    assert str(project) not in result.stdout
+    assert result.stdout.endswith("\n")
+    assert result.stdout.count("\n") == 1
+    assert "\x1b[" not in result.stdout
+    assert "Project overview:" not in result.stdout
+    assert result.stderr == ""
 
 
 @pytest.mark.e2e

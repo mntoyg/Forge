@@ -62,11 +62,17 @@ serialize successful results only; `review` and `explain` remain excluded.
 The inspect JSON `result.root` identifies the selected project by its final
 directory name; it never includes the absolute path or parent directories.
 
-### Phase 2B — CLI format integration (next)
+### Phase 2B1 — successful JSON CLI output (complete)
 
-Add `--format json` to the approved commands, wire the pure serializers, and
-preserve text default, exit codes, and stdout/stderr boundaries. Add
-deterministic CLI tests for success, errors, and completeness mapping.
+`debug` and `inspect` accept `--format text|json`; text remains the default.
+Successful JSON runs emit one UTF-8 JSON line and suppress progress output.
+`debug --plain --format json` is a usage error. Errors retain their existing
+text diagnostics and exit mapping in this interim phase. FR-4.4 is not complete.
+
+### Phase 2B2 — JSON error output (next)
+
+Add safe error envelopes on stderr with empty stdout while preserving ADR-0006
+exit codes, then complete deterministic error-path tests and review FR-4.4.
 
 ## Deferred research: full review of long files
 

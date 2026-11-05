@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-11-05 on `main`; Phase 1 FR-4.4 metadata checks passed.
+**Last verified:** 2026-11-05 on `main`; FR-4.4 Phase 2B1 successful JSON output passes the local gate.
 Version `0.1.0` is published on GitHub Releases and PyPI. The owner verified
 installation with `uvx --from mntoyg-forge==0.1.0 forge --version` (`forge 0.1.0`).
 The repository was recreated on 2026-09-06 - see below.
@@ -40,10 +40,10 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 540 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
+| Local gate: 547 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | FR-4.4 Phase 1 adds `AnalysisResult.incomplete` for discarded debug entries and `ProjectOverview.scan_complete` from bounded project evidence | ADR-0019; Phase 2A serializers consume these fields; no CLI JSON mode is wired yet |
-| FR-4.4 Phase 2A serializes successful debug/inspect results in pure presentation functions | Direct tests cover safe inspect root identity, structured omissions, and rejection of absolute, UNC, drive-relative, and traversal paths; CLI remains text-only |
+| FR-4.4 Phase 2B1 adds successful `--format text|json` output for debug/inspect | E2E tests cover modes, warning mapping, selected inspect root, TTY/color and pipe output; JSON errors are still text under Phase 2B2 |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
 | `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |
@@ -72,9 +72,8 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Phase 2B — wire serializers to `--format json`** for `debug`/`debug
-   --diff` and `inspect`; keep text default, preserve exit codes and stream
-   behavior, and add deterministic CLI tests.
+1. **Phase 2B2 — add JSON error envelopes** for `debug` and `inspect`; retain
+   ADR-0006 exit codes, then complete FR-4.4 acceptance and CLI error tests.
 2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
    deterministic checks validate declaration scope, not semantic entailment.
    Live quality evaluation still needs explicit approval.
@@ -84,7 +83,7 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Latest Codex meter: 14% over 7 days; daily use is unavailable.
+  Latest Codex meter: 15% over 7 days; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.

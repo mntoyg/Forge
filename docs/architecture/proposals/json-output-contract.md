@@ -115,6 +115,11 @@ prose. `review` and `explain` remain excluded from v1.
 
 No accepted ADR needs to change if serialization remains a CLI/presentation concern, provider-internal JSON remains separate, and exit semantics stay unchanged. FR-4.4 remains deferred until the user-facing JSON mode is implemented.
 
+Phase 2B1 wires `--format text|json` to successful `debug` and `inspect`
+results. In this interim phase, errors keep their existing text diagnostics and
+ADR-0006 exit mapping; JSON error envelopes and their stderr behavior are
+Phase 2B2. FR-4.4 remains incomplete until Phase 2B2 is delivered.
+
 ## Post-approval implementation breakdown
 
 1. Record owner choices; update FR-4.4 and add/adjust a decision record if the accepted public contract requires it. Stop if an ADR conflict is unresolved.

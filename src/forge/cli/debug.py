@@ -14,15 +14,21 @@ import sys
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 import typer
 from rich.console import Console
 
 from forge.cli.exit_codes import ExitCode, exit_code_for
+from forge.cli.output import write_json_line
 from forge.domain.errors import ForgeError
 from forge.domain.source import AnalysisResult
 from forge.presentation.findings import render_plain, render_rich
+from forge.presentation.json_output import (
+    DebugJsonInput,
+    DebugMode,
+    serialize_debug_json,
+)
 
 Analyze = Callable[..., AnalysisResult]
 """What the command needs: something that turns a path into a result.
@@ -88,6 +94,7 @@ def debug(
     *,
     plain: bool = False,
     changes_only: bool = False,
+    output_format: Literal["text", "json"] = "text",
 ) -> ExitCode:
     """Run the analysis and print it. Returns the exit code, never raises.
 
@@ -100,17 +107,30 @@ def debug(
         changes_only: Review only the lines with uncommitted changes.
     """
     try:
-        with _waiting(_progress_console(plain), path):
+        with _waiting(_progress_console(plain or output_format == "json"), path):
             result = analyze(path, changes_only=changes_only)
     except ForgeError as error:
         # Diagnostics go to stderr so that a piped stdout carries results only.
         print(f"forge: {error}", file=sys.stderr)
         return exit_code_for(error)
 
+    partial = _size_warning(result, changes_only=changes_only)
+    if output_format == "json":
+        write_json_line(
+            serialize_debug_json(
+                DebugJsonInput(
+                    analysis=result,
+                    path=_safe_relative_source_path(result.source_path),
+                    mode=DebugMode.DIFF if changes_only else DebugMode.FILE,
+                    whole_file_size_warning=partial is not None,
+                )
+            )
+        )
+        return ExitCode.OK
+
     use_plain = plain or not sys.stdout.isatty()
     print(render_plain(result) if use_plain else render_rich(result), end="")
 
-    partial = _size_warning(result, changes_only=changes_only)
     if partial is not None:
         # Same stream as the errors, and after the result rather than before
         # it: a caveat is read last, and a piped stdout still carries results
@@ -121,6 +141,14 @@ def debug(
         print(f"forge: {partial}", file=sys.stderr)
 
     return ExitCode.OK
+
+
+def _safe_relative_source_path(path: Path) -> str:
+    """Keep an analysed path relative, falling back to its basename outside cwd."""
+    try:
+        return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except (OSError, RuntimeError, ValueError):
+        return path.name or "source"
 
 
 def _size_warning(result: AnalysisResult, *, changes_only: bool) -> str | None:
@@ -216,5 +244,19 @@ def register(app: typer.Typer, analyze: Analyze) -> None:
                 help="Review only the lines changed since the last commit.",
             ),
         ] = False,
+        output_format: Annotated[
+            Literal["text", "json"],
+            typer.Option("--format", help="Output format: text or json."),
+        ] = "text",
     ) -> None:
-        raise typer.Exit(code=debug(analyze, path, plain=plain, changes_only=diff))
+        if plain and output_format == "json":
+            raise typer.BadParameter("--plain can only be used with --format text.")
+        raise typer.Exit(
+            code=debug(
+                analyze,
+                path,
+                plain=plain,
+                changes_only=diff,
+                output_format=output_format,
+            )
+        )

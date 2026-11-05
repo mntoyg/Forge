@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 import typer
+from rich.console import Console
 from typer.testing import CliRunner
 
 from forge.application.analyze import AnalyzeSourceFile
@@ -99,6 +100,7 @@ def test_findings_are_reported_and_still_exit_zero() -> None:
     assert result.exit_code == ExitCode.OK
     assert "Divides without guarding zero" in result.stdout
     assert "Off-by-one in the slice" in result.stdout
+    assert not result.stdout.lstrip().startswith("{")
 
 
 @pytest.mark.e2e
@@ -137,6 +139,87 @@ def test_plain_output_has_no_box_drawing() -> None:
     assert "Divides without guarding zero" in result.stdout
     assert "line 2" in result.stdout
     assert not set("┏┓┗┛━┃│─") & set(result.stdout)
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize("color", [False, True], ids=["pipe", "tty"])
+def test_json_success_writes_one_clean_object_and_suppresses_progress(
+    color: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    progress_args: list[bool] = []
+    original_progress_console = debug_cli._progress_console
+
+    def progress_console(plain: bool) -> Console | None:
+        progress_args.append(plain)
+        return original_progress_console(plain)
+
+    monkeypatch.setattr(debug_cli, "_progress_console", progress_console)
+    result = runner.invoke(
+        _app(_analyzing(*FINDINGS)),
+        ["app.py", "--format", "json"],
+        color=color,
+    )
+
+    assert result.exit_code == ExitCode.OK
+    payload = json.loads(result.stdout)
+    assert payload["command"] == "debug"
+    assert payload["result"]["mode"] == "file"
+    assert payload["result"]["path"] == "app.py"
+    assert result.stdout.endswith("\n")
+    assert result.stdout.count("\n") == 1
+    assert "\x1b[" not in result.stdout
+    assert "Divides without guarding zero" in result.stdout
+    assert result.stderr == ""
+    assert progress_args == [True]
+
+
+@pytest.mark.e2e
+def test_json_diff_preserves_mode_and_does_not_add_whole_file_warning() -> None:
+    analyze = AnalyzeSourceFile(
+        FakeSourceReader(source=SOURCE),
+        FakeProvider(
+            response=CompletionResponse(
+                text=json.dumps({"findings": [FINDINGS[0]]}),
+                model="fake-model",
+                usage=TokenUsage(input_tokens=44_295, output_tokens=8),
+            )
+        ),
+        FakeRepositoryInspector(changed=frozenset({2})),
+    )
+
+    result = runner.invoke(_app(analyze), ["app.py", "--diff", "--format", "json"])
+
+    assert result.exit_code == ExitCode.OK
+    payload = json.loads(result.stdout)
+    assert payload["result"]["mode"] == "diff"
+    assert payload["completeness"]["status"] == "complete"
+    assert payload["completeness"]["warnings"] == []
+    assert result.stderr == ""
+
+
+@pytest.mark.e2e
+def test_json_file_mode_maps_whole_file_warning_into_completeness() -> None:
+    result = runner.invoke(
+        _app(_analyzing_a_long_file(*FINDINGS)),
+        ["app.py", "--format", "json"],
+    )
+
+    assert result.exit_code == ExitCode.OK
+    payload = json.loads(result.stdout)
+    assert payload["completeness"]["status"] == "partial"
+    assert payload["completeness"]["warnings"] == [{"code": "whole_file_size_limit"}]
+    assert result.stderr == ""
+
+
+@pytest.mark.e2e
+def test_plain_and_json_formats_are_rejected_together() -> None:
+    result = runner.invoke(
+        _app(_analyzing(*FINDINGS)),
+        ["app.py", "--plain", "--format", "json"],
+    )
+
+    assert result.exit_code != ExitCode.OK
+    assert "--plain can only be used with --format text" in result.stderr
 
 
 # --- exit code 1: ran, but produced no result ------------------------------
@@ -346,6 +429,7 @@ def test_the_help_text_actually_reaches_the_user() -> None:
 
     assert result.exit_code == 0
     assert "Analyse a source file" in result.stdout
+    assert "--format" in result.stdout
 
 
 # --- history reaches the user -----------------------------------------------
