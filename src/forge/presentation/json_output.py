@@ -5,6 +5,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import PurePosixPath, PureWindowsPath
 
+from forge.domain.explanation import (
+    ExplanationClaim,
+    ExplanationDiagnosticKind,
+    ExplanationResult,
+)
 from forge.domain.project import ProjectOverview
 from forge.domain.source import AnalysisResult
 
@@ -150,6 +155,189 @@ def serialize_inspect_json(overview: ProjectOverview) -> str:
         },
     }
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+_EXPLANATION_OMISSIONS = {
+    ExplanationDiagnosticKind.SECTION_MISSING: ("section_unavailable", True),
+    ExplanationDiagnosticKind.SECTION_MALFORMED: ("section_unavailable", True),
+    ExplanationDiagnosticKind.CLAIM_MALFORMED: ("claim_unavailable", True),
+    ExplanationDiagnosticKind.SUBJECT_UNAVAILABLE: ("symbol_unavailable", True),
+    ExplanationDiagnosticKind.EVIDENCE_MALFORMED: ("claim_evidence_unavailable", True),
+    ExplanationDiagnosticKind.EVIDENCE_KIND_UNSUPPORTED: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.EVIDENCE_TARGET_SHAPE_UNSUPPORTED: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.EVIDENCE_TARGET_NOT_FOUND: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.EVIDENCE_SOURCE_SHAPE_MISMATCH: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.EVIDENCE_VALIDATION_UNAVAILABLE: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.CALL_TARGET_IS_DECLARATION: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.CALL_EXPRESSION_NOT_FOUND: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.SYMBOL_OPERATION_DISALLOWED: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.EVIDENCE_OUT_OF_SCOPE: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.PURPOSE_CALL_NOT_IN_FLOW: (
+        "claim_evidence_unavailable",
+        True,
+    ),
+    ExplanationDiagnosticKind.NAME_ONLY: ("symbol_description_unavailable", True),
+    ExplanationDiagnosticKind.LIMITATIONS_MISSING: ("limitations_unavailable", False),
+    ExplanationDiagnosticKind.LIMITATIONS_FIELD_MALFORMED: (
+        "limitations_unavailable",
+        False,
+    ),
+    ExplanationDiagnosticKind.LIMITATIONS_MALFORMED: (
+        "limitation_entry_unavailable",
+        False,
+    ),
+    ExplanationDiagnosticKind.CONTEXT_STATUS_MISSING: (
+        "context_status_unavailable",
+        False,
+    ),
+    ExplanationDiagnosticKind.CONTEXT_STATUS_MALFORMED: (
+        "context_status_unavailable",
+        False,
+    ),
+}
+
+_EXPLANATION_WARNINGS = {
+    ExplanationDiagnosticKind.CONFIDENCE_UNRECOGNIZED: "confidence_downgraded",
+    ExplanationDiagnosticKind.CONTEXT_INSUFFICIENT: "context_insufficient",
+    ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE: "source_validation_unavailable",
+    ExplanationDiagnosticKind.SYMBOL_VALIDATION_UNAVAILABLE: "symbol_validation_unavailable",
+}
+
+
+def serialize_explanation_json(result: ExplanationResult, path: str) -> str:
+    """Serialize validated explanation data without accessing its source or environment."""
+    safe_path = _safe_relative_path(path)
+    if not path.strip() or safe_path == ".":
+        raise ValueError("JSON result paths must be workspace-relative.")
+
+    warning_keys: set[tuple[str, str | None]] = set()
+    omission_counts: dict[tuple[str, str | None], int] = {}
+    diagnostics = []
+    for diagnostic in result.diagnostics:
+        section = diagnostic.section.value if diagnostic.section is not None else None
+        diagnostics.append(
+            {
+                "section": section,
+                "kind": diagnostic.kind.value,
+                "count": diagnostic.count,
+            }
+        )
+        if diagnostic.kind in _EXPLANATION_OMISSIONS:
+            code, include_section = _EXPLANATION_OMISSIONS[diagnostic.kind]
+            key = (code, section if include_section else None)
+            omission_counts[key] = omission_counts.get(key, 0) + diagnostic.count
+        elif diagnostic.kind in _EXPLANATION_WARNINGS:
+            warning_keys.add((_EXPLANATION_WARNINGS[diagnostic.kind], section))
+
+    if result.context_insufficient:
+        warning_keys.add(("context_insufficient", None))
+    if result.limitations:
+        warning_keys.add(("limitation_present", None))
+
+    warnings = [
+        {"code": code, "section": section}
+        for code, section in sorted(
+            warning_keys, key=lambda item: (item[0], item[1] or "")
+        )
+    ]
+    omissions = [
+        {"code": code, "section": section, "count": count}
+        for (code, section), count in sorted(
+            omission_counts.items(), key=lambda item: (item[0][0], item[0][1] or "")
+        )
+    ]
+    if omissions:
+        completeness = "partial"
+    elif result.processing_incomplete is None:
+        completeness = "unknown"
+    else:
+        completeness = "complete"
+
+    payload = {
+        "schema_version": 1,
+        "command": "explain",
+        "status": "success",
+        "result": {
+            "path": safe_path,
+            "purpose": [
+                _explanation_claim(item, include_symbol=False)
+                for item in result.purpose
+            ],
+            "main_flow": [
+                _explanation_claim(item, include_symbol=False) for item in result.flow
+            ],
+            "important_symbols": [
+                _explanation_claim(item, include_symbol=True) for item in result.symbols
+            ],
+            "limitations": list(result.limitations),
+            "context_insufficient": result.context_insufficient,
+            "incomplete": result.incomplete,
+            "model": result.model,
+            "usage": {
+                "input_tokens": result.usage.input_tokens,
+                "output_tokens": result.usage.output_tokens,
+            },
+            "diagnostics": diagnostics,
+        },
+        "completeness": {
+            "status": completeness,
+            "warnings": warnings,
+            "omissions": omissions,
+        },
+    }
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+def _explanation_claim(
+    claim: ExplanationClaim, *, include_symbol: bool
+) -> dict[str, object]:
+    """Convert a validated domain claim to its approved JSON fields."""
+    if include_symbol and claim.symbol is None:
+        raise ValueError("An important-symbol claim must identify its symbol.")
+
+    value: dict[str, object] = {
+        "text": claim.text,
+        "confidence": claim.confidence.value,
+        "evidence": [
+            {
+                "kind": item.kind.value,
+                "target": item.target,
+                "start_line": item.start_line,
+                "end_line": item.end_line,
+            }
+            for item in claim.evidence
+        ],
+    }
+    if include_symbol:
+        value["symbol"] = claim.symbol
+    return value
 
 
 def _fact(name: str, paths: tuple[str, ...]) -> dict[str, object]:

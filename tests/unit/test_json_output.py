@@ -7,6 +7,15 @@ from pathlib import Path
 import pytest
 
 from forge.domain.ai import TokenUsage
+from forge.domain.explanation import (
+    EvidenceAnchor,
+    EvidenceKind,
+    ExplanationClaim,
+    ExplanationDiagnostic,
+    ExplanationDiagnosticKind,
+    ExplanationResult,
+    ExplanationSection,
+)
 from forge.domain.project import (
     ProjectFact,
     ProjectOmission,
@@ -21,11 +30,13 @@ from forge.domain.source import (
     Finding,
     Location,
     Severity,
+    SourceFile,
 )
 from forge.presentation.json_output import (
     DebugJsonInput,
     DebugMode,
     serialize_debug_json,
+    serialize_explanation_json,
     serialize_inspect_json,
 )
 
@@ -195,3 +206,227 @@ def test_inspect_json_rejects_unsafe_fact_paths(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="workspace-relative"):
         serialize_inspect_json(overview)
+
+
+@pytest.mark.unit
+def test_explain_json_serializes_validated_claims_and_complete_envelope() -> None:
+    sensitive_marker = "SENTINEL_SECRET_DO_NOT_EMIT"
+    claim = ExplanationClaim(
+        "Coordinates the operation.",
+        Confidence.LIKELY,
+        (EvidenceAnchor(EvidenceKind.CALL, "provider.complete", 4, 5),),
+    )
+    symbol = ExplanationClaim(
+        "Validates the returned explanation.",
+        Confidence.POSSIBLE,
+        (EvidenceAnchor(EvidenceKind.RETURN_VALUE, "parse_result", 8, 9),),
+        symbol="ExplainSource",
+    )
+    result = ExplanationResult(
+        source=SourceFile(Path("private/source.py"), sensitive_marker),
+        purpose=(claim,),
+        flow=(claim,),
+        symbols=(symbol,),
+        limitations=("The explanation may omit behavior outside this file.",),
+        context_insufficient=False,
+        incomplete=False,
+        model="configured-model",
+        usage=TokenUsage(120, 30),
+        diagnostics=(
+            ExplanationDiagnostic(
+                ExplanationSection.FLOW, ExplanationDiagnosticKind.SECTION_EMPTY
+            ),
+        ),
+        processing_incomplete=False,
+    )
+
+    encoded = serialize_explanation_json(result, "src/explain.py")
+    payload = json.loads(encoded)
+
+    assert payload["schema_version"] == 1
+    assert payload["command"] == "explain"
+    assert payload["status"] == "success"
+    assert payload["result"]["path"] == "src/explain.py"
+    assert payload["result"]["purpose"][0]["evidence"] == [
+        {
+            "kind": "call",
+            "target": "provider.complete",
+            "start_line": 4,
+            "end_line": 5,
+        }
+    ]
+    assert payload["result"]["important_symbols"][0]["symbol"] == "ExplainSource"
+    assert payload["result"]["limitations"] == [
+        "The explanation may omit behavior outside this file."
+    ]
+    assert payload["result"]["usage"] == {"input_tokens": 120, "output_tokens": 30}
+    assert payload["result"]["diagnostics"] == [
+        {"section": "flow", "kind": "section_empty", "count": 1}
+    ]
+    assert payload["completeness"] == {
+        "status": "complete",
+        "warnings": [{"code": "limitation_present", "section": None}],
+        "omissions": [],
+    }
+    assert sensitive_marker not in encoded
+    assert "private/source.py" not in encoded
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("processing_incomplete", "diagnostics", "expected_status", "expected_omissions"),
+    [
+        (
+            True,
+            (
+                ExplanationDiagnostic(
+                    ExplanationSection.PURPOSE,
+                    ExplanationDiagnosticKind.CLAIM_MALFORMED,
+                    2,
+                ),
+            ),
+            "partial",
+            [{"code": "claim_unavailable", "section": "purpose", "count": 2}],
+        ),
+        (False, (), "complete", []),
+        (
+            None,
+            (
+                ExplanationDiagnostic(
+                    None, ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE
+                ),
+            ),
+            "unknown",
+            [],
+        ),
+    ],
+)
+def test_explain_json_maps_processing_completeness(
+    processing_incomplete: bool | None,
+    diagnostics: tuple[ExplanationDiagnostic, ...],
+    expected_status: str,
+    expected_omissions: list[dict[str, object]],
+) -> None:
+    result = ExplanationResult(
+        source=SourceFile(Path("source.py"), "source"),
+        purpose=(),
+        flow=(),
+        symbols=(),
+        limitations=(),
+        context_insufficient=False,
+        incomplete=processing_incomplete is True,
+        model="configured-model",
+        usage=TokenUsage(1, 1),
+        diagnostics=diagnostics,
+        processing_incomplete=processing_incomplete,
+    )
+
+    payload = json.loads(serialize_explanation_json(result, "source.py"))
+
+    assert payload["completeness"]["status"] == expected_status
+    assert payload["completeness"]["omissions"] == expected_omissions
+
+
+@pytest.mark.unit
+def test_explain_json_rejects_important_symbol_without_a_subject() -> None:
+    result = ExplanationResult(
+        source=SourceFile(Path("source.py"), "source"),
+        purpose=(),
+        flow=(),
+        symbols=(
+            ExplanationClaim(
+                "A role description.",
+                Confidence.LIKELY,
+                (EvidenceAnchor(EvidenceKind.OPERATION, "call", 1, 1),),
+            ),
+        ),
+        limitations=(),
+        context_insufficient=False,
+        incomplete=False,
+        model="configured-model",
+        usage=TokenUsage(1, 1),
+        processing_incomplete=False,
+    )
+
+    with pytest.raises(ValueError, match="must identify its symbol"):
+        serialize_explanation_json(result, "source.py")
+
+
+@pytest.mark.unit
+def test_explain_json_aggregates_omissions_and_sorts_stable_metadata() -> None:
+    result = ExplanationResult(
+        source=SourceFile(Path("source.py"), "source"),
+        purpose=(),
+        flow=(),
+        symbols=(),
+        limitations=(),
+        context_insufficient=False,
+        incomplete=True,
+        model="configured-model",
+        usage=TokenUsage(1, 1),
+        diagnostics=(
+            ExplanationDiagnostic(
+                ExplanationSection.FLOW, ExplanationDiagnosticKind.EVIDENCE_OUT_OF_SCOPE
+            ),
+            ExplanationDiagnostic(
+                ExplanationSection.FLOW,
+                ExplanationDiagnosticKind.EVIDENCE_TARGET_NOT_FOUND,
+                2,
+            ),
+            ExplanationDiagnostic(
+                ExplanationSection.PURPOSE, ExplanationDiagnosticKind.CLAIM_MALFORMED
+            ),
+            ExplanationDiagnostic(
+                ExplanationSection.SYMBOLS,
+                ExplanationDiagnosticKind.CONFIDENCE_UNRECOGNIZED,
+            ),
+            ExplanationDiagnostic(None, ExplanationDiagnosticKind.CONTEXT_INSUFFICIENT),
+        ),
+        processing_incomplete=True,
+    )
+
+    completeness = json.loads(serialize_explanation_json(result, "source.py"))[
+        "completeness"
+    ]
+
+    assert completeness == {
+        "status": "partial",
+        "warnings": [
+            {"code": "confidence_downgraded", "section": "symbols"},
+            {"code": "context_insufficient", "section": None},
+        ],
+        "omissions": [
+            {"code": "claim_evidence_unavailable", "section": "flow", "count": 3},
+            {"code": "claim_unavailable", "section": "purpose", "count": 1},
+        ],
+    }
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "path",
+    [
+        "",
+        ".",
+        "C:/private/source.py",
+        "C:folder\\source.py",
+        "../source.py",
+        "\\\\server\\share\\source.py",
+    ],
+)
+def test_explain_json_rejects_unsafe_paths(path: str) -> None:
+    result = ExplanationResult(
+        source=SourceFile(Path("source.py"), "source"),
+        purpose=(),
+        flow=(),
+        symbols=(),
+        limitations=(),
+        context_insufficient=False,
+        incomplete=False,
+        model="configured-model",
+        usage=TokenUsage(1, 1),
+        processing_incomplete=False,
+    )
+
+    with pytest.raises(ValueError, match="workspace-relative"):
+        serialize_explanation_json(result, path)

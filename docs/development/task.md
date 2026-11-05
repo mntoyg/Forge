@@ -98,11 +98,19 @@ warnings, informational sections, and unavailable validation. The legacy
 `incomplete` flag and text output are unchanged; new availability diagnostics
 are metadata-only in this stage.
 
-### Stage B — JSON serializer and CLI (not started)
+### Stage B1 — pure JSON serializer (complete)
 
-Add the pure explain serializer and `--format text|json` integration with the
-approved streams, path, privacy, error, and exit-code contract. Stage A does
-not add user-facing JSON output.
+Added `serialize_explanation_json(result, path)` in presentation with the
+approved v1 envelope, diagnostic aggregation, completeness mapping, and safe
+relative-path validation. Deterministic unit tests cover serialized claims,
+evidence, metadata, warnings, omissions, completeness states, and rejected
+paths. This stage does not expose JSON through the CLI.
+
+### Stage B2 — CLI integration (next; not started)
+
+Add `--format text|json` for `forge explain` with the approved success and
+error streams, path preparation, privacy, and exit-code behavior. Do not start
+until the serializer stage is reviewed.
 
 ## Deferred research: full review of long files
 

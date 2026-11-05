@@ -21,7 +21,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - Add typed completeness metadata for debug parsing and inspect scans under
   ADR-0019.
 - Accept the additive `forge explain` JSON contract under ADR-0020 and add its
-  typed parser completeness metadata; serializer and CLI remain Stage B.
+  typed parser completeness metadata before serializer and CLI implementation.
+- Add the pure presentation-layer explain JSON success serializer with safe
+  paths, typed diagnostics, completeness mapping, and deterministic unit
+  tests; CLI integration remains Stage B2.
 
 ### Changed
 

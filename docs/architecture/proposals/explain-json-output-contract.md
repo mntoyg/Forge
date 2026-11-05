@@ -225,10 +225,11 @@ stdout/stderr, safe-path, and unchanged exit-code requirements.
 
 Stage A adds result metadata and parser diagnostics with deterministic tests;
 presentation hides the new availability diagnostics to preserve text output.
-Stage B is a separate implementation step for the pure serializer and
-`--format text|json` CLI behavior, including success/error streams and
-acceptance tests. Completion of Stage A does not mean explain JSON support is
-available to users.
+Stage B1 adds the pure presentation serializer and deterministic unit tests.
+Stage B2 is a separate implementation step for `--format text|json` CLI
+behavior, including success/error streams and end-to-end acceptance tests.
+Completion of Stages A and B1 does not mean explain JSON support is available
+to users.
 
 ## Acceptance tests after approval
 
@@ -256,7 +257,14 @@ Deterministic tests must prove:
 7. A fake provider is called at most once with only the selected source; the
    serializer performs no filesystem, provider, environment, or Git access.
 
+### Implementation handoff
+
+Stage A and Stage B1 are complete. Stage B1 exposes only the pure
+`serialize_explanation_json(result, path)` presentation API; it does not add a
+CLI option or change command behavior. Stage B2 remains the next approved
+implementation stage.
+
 The owner approval is recorded in ADR-0020. Stage A implements parser metadata
-and deterministic tests while preserving existing text output. It does not add
-a serializer or CLI format option; Stage B remains a separate reviewed
-implementation step.
+and deterministic tests while preserving existing text output. Stage B1 adds
+the pure serializer without changing CLI behavior. Stage B2 remains a separate
+reviewed implementation step for CLI format and error-stream integration.

@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-11-05 on `main`; FR-4.4 debug/inspect JSON and explain Stage A are gate-verified.
+**Last verified:** 2026-11-05 on `main`; FR-4.4 debug/inspect JSON and explain Stage A/B1 are gate-verified.
 Version `0.1.0` is published on GitHub Releases and PyPI. The owner verified
 installation with `uvx --from mntoyg-forge==0.1.0 forge --version` (`forge 0.1.0`).
 The repository was recreated on 2026-09-06 - see below.
@@ -40,9 +40,9 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 565 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
+| Local gate: 576 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
-| FR-4.4 JSON for debug/inspect is complete; ADR-0020 Stage A explain metadata is complete and Stage B serializer/CLI is pending | ADR-0019/0020; debug/inspect retain text default and exit mapping |
+| FR-4.4 JSON for debug/inspect is complete; explain Stage A metadata and Stage B1 pure serializer are complete; Stage B2 CLI is pending | ADR-0019/0020; deterministic serializer tests; explain still has no JSON CLI option |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
 | `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |
@@ -71,8 +71,8 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. Stage B: add explain serializer and CLI format behavior under ADR-0020 as a
-   separate reviewed change; Stage A does not expose JSON to users.
+1. Stage B2: add explain CLI format behavior under ADR-0020; Stage B1 adds no
+   CLI option and does not expose JSON to users.
 2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
    deterministic checks validate declaration scope, not semantic entailment.
    Live quality evaluation still needs explicit approval.
@@ -82,7 +82,7 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Latest Codex meter: 18% over 7 days; daily use is unavailable.
+  Latest meter at Stage B1 start: 19% over 7 days; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.
