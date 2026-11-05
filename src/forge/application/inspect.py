@@ -9,6 +9,8 @@ from forge.domain.errors import SourceNotFoundError, SourceUnreadableError
 from forge.domain.project import (
     ProjectEvidenceReader,
     ProjectFact,
+    ProjectOmission,
+    ProjectOmissionCode,
     ProjectOverview,
 )
 
@@ -106,10 +108,17 @@ class InspectProject:
             "Ignore filtering uses project .gitignore rules and built-in exclusions; Git info/global excludes are not consulted.",
             *evidence.omissions,
         ]
+        structured_omissions = [
+            ProjectOmission(ProjectOmissionCode.GIT_GLOBAL_EXCLUDES_NOT_CONSULTED),
+            *evidence.structured_omissions,
+        ]
         if not any(Path(path).name in _TOOL_CONFIGS for path in paths):
             checked = ", ".join(sorted(_TOOL_CONFIGS))
             omissions.append(
                 f"No supported project metadata file was found; checked: {checked}."
+            )
+            structured_omissions.append(
+                ProjectOmission(ProjectOmissionCode.NO_SUPPORTED_METADATA)
             )
         if not evidence.complete:
             omissions.append("The project scan stopped at a safety limit.")
@@ -123,6 +132,7 @@ class InspectProject:
             directories=evidence.directories,
             omissions=tuple(dict.fromkeys(omissions)),
             scan_complete=evidence.complete,
+            structured_omissions=tuple(dict.fromkeys(structured_omissions)),
         )
 
 

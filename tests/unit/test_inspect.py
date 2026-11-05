@@ -98,6 +98,10 @@ def test_inspect_explains_when_no_supported_metadata_is_present(tmp_path: Path) 
         omission.startswith("No supported project metadata file was found;")
         for omission in overview.omissions
     )
+    assert any(
+        item.code.value == "no_supported_metadata"
+        for item in overview.structured_omissions
+    )
     assert not overview.languages
 
 

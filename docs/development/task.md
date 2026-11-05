@@ -49,15 +49,22 @@ The owner-approved FR-4.4 v1 scope and Phase 1 metadata are recorded in
 [ADR-0019](../architecture/decisions/0019-json-output-phase-1-metadata.md).
 The detailed contract remains in
 [`json-output-contract.md`](../architecture/proposals/json-output-contract.md).
-Phase 1 adds typed parser and scan completeness metadata only; it does not add
-JSON output or change text behavior.
+Phase 1 adds typed parser and scan completeness metadata. Phase 2A adds pure
+presentation serializers; it does not add CLI format options or change text
+behavior.
 
-### Phase 2 — JSON serialization and CLI format
+### Phase 2A — successful-result serializers (complete)
 
-Add the approved JSON format option and serializer for `debug` (including
-`--diff`) and `inspect`. Preserve text as the default, existing exit codes, and
-stdout/stderr boundaries. Add deterministic tests for success, errors, and
-completeness mapping. `review` and `explain` remain excluded from v1.
+`serialize_debug_json(DebugJsonInput)` receives the analysis, safe relative
+path, file/diff mode, and the CLI-computed whole-file warning. The inspect
+serializer uses typed `ProjectOverview` omissions and scan completeness. Both
+serialize successful results only; `review` and `explain` remain excluded.
+
+### Phase 2B — CLI format integration (next)
+
+Add `--format json` to the approved commands, wire the pure serializers, and
+preserve text default, exit codes, and stdout/stderr boundaries. Add
+deterministic CLI tests for success, errors, and completeness mapping.
 
 ## Deferred research: full review of long files
 

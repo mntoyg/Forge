@@ -11,8 +11,11 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Added
 
+- Add pure presentation JSON serializers for successful debug and inspect
+  results. Debug accepts typed mode, safe path, and size-warning context;
+  inspect omissions now carry stable codes and optional relative paths.
 - Add typed completeness metadata for debug parsing and inspect scans under
-  ADR-0019; JSON serialization remains Phase 2.
+  ADR-0019.
 
 ### Changed
 

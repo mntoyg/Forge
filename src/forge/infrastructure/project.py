@@ -6,7 +6,13 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from forge.domain.project import ProjectEvidence, ProjectEvidenceReader, ProjectFile
+from forge.domain.project import (
+    ProjectEvidence,
+    ProjectEvidenceReader,
+    ProjectFile,
+    ProjectOmission,
+    ProjectOmissionCode,
+)
 
 MAX_ENTRIES = 500
 MAX_FILES = 200
@@ -130,6 +136,7 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
         file_paths: list[str] = []
         directories: set[str] = set()
         omissions: list[str] = []
+        structured_omissions: list[ProjectOmission] = []
         byte_count = 0
         entries_seen = 0
         complete = True
@@ -139,7 +146,11 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
         ) -> None:
             nonlocal byte_count, entries_seen, complete
             local_rules = self._read_ignore_rules(
-                directory, resolved_root, omissions, byte_count
+                directory,
+                resolved_root,
+                omissions,
+                structured_omissions,
+                byte_count,
             )
             if local_rules is None:
                 complete = False
@@ -156,6 +167,12 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
                 omissions.append(
                     f"Could not read directory: {_relative(directory, resolved_root)}"
                 )
+                structured_omissions.append(
+                    ProjectOmission(
+                        ProjectOmissionCode.DIRECTORY_UNREADABLE,
+                        _relative(directory, resolved_root),
+                    )
+                )
                 complete = False
                 return
 
@@ -163,6 +180,9 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
                 if entries_seen >= MAX_ENTRIES:
                     complete = False
                     omissions.append(f"Stopped at the {MAX_ENTRIES}-entry scan limit.")
+                    structured_omissions.append(
+                        ProjectOmission(ProjectOmissionCode.ENTRY_LIMIT)
+                    )
                     return
                 entries_seen += 1
                 path = Path(entry.path)
@@ -183,12 +203,22 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
                             omissions.append(
                                 f"Deeper directory content not inspected (depth limit {MAX_DEPTH}): {relative}"
                             )
+                            structured_omissions.append(
+                                ProjectOmission(
+                                    ProjectOmissionCode.DEPTH_LIMIT, relative
+                                )
+                            )
                             complete = False
                         continue
                     if not entry.is_file(follow_symlinks=False):
                         continue
                 except OSError:
                     omissions.append(f"Could not inspect path: {relative}")
+                    structured_omissions.append(
+                        ProjectOmission(
+                            ProjectOmissionCode.PATH_UNINSPECTABLE, relative
+                        )
+                    )
                     complete = False
                     continue
 
@@ -199,17 +229,30 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
                     continue
                 if len(files) >= MAX_FILES:
                     omissions.append(f"Stopped after {MAX_FILES} metadata files.")
+                    structured_omissions.append(
+                        ProjectOmission(ProjectOmissionCode.METADATA_FILE_LIMIT)
+                    )
                     complete = False
                     return
                 try:
                     size = entry.stat(follow_symlinks=False).st_size
                 except OSError:
                     omissions.append(f"Could not inspect metadata file: {relative}")
+                    structured_omissions.append(
+                        ProjectOmission(
+                            ProjectOmissionCode.METADATA_UNREADABLE, relative
+                        )
+                    )
                     complete = False
                     continue
                 if size > MAX_BYTES or byte_count + size > MAX_BYTES:
                     omissions.append(
                         f"Skipped metadata beyond the {MAX_BYTES:,}-byte read limit: {relative}"
+                    )
+                    structured_omissions.append(
+                        ProjectOmission(
+                            ProjectOmissionCode.METADATA_BYTE_LIMIT, relative
+                        )
                     )
                     complete = False
                     continue
@@ -220,11 +263,21 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
                         omissions.append(
                             f"Skipped metadata beyond the {MAX_BYTES:,}-byte read limit: {relative}"
                         )
+                        structured_omissions.append(
+                            ProjectOmission(
+                                ProjectOmissionCode.METADATA_BYTE_LIMIT, relative
+                            )
+                        )
                         complete = False
                         continue
                     content = raw.decode("utf-8")
                 except (OSError, UnicodeDecodeError):
                     omissions.append(f"Could not read UTF-8 metadata: {relative}")
+                    structured_omissions.append(
+                        ProjectOmission(
+                            ProjectOmissionCode.METADATA_UNREADABLE, relative
+                        )
+                    )
                     complete = False
                     continue
                 files.append(ProjectFile(relative, content))
@@ -239,6 +292,7 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
             entries_seen=entries_seen,
             complete=complete,
             omissions=tuple(dict.fromkeys(omissions)),
+            structured_omissions=tuple(dict.fromkeys(structured_omissions)),
         )
 
     @staticmethod
@@ -246,6 +300,7 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
         directory: Path,
         root: Path,
         omissions: list[str],
+        structured_omissions: list[ProjectOmission],
         bytes_read: int,
     ) -> tuple[tuple[_IgnoreRule, ...], int] | None:
         ignore_file = directory / ".gitignore"
@@ -255,12 +310,24 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
             omissions.append(
                 f"Skipped directory because ignore rules are a symlink: {_relative(directory, root)}"
             )
+            structured_omissions.append(
+                ProjectOmission(
+                    ProjectOmissionCode.IGNORE_RULES_UNAVAILABLE,
+                    _relative(ignore_file, root),
+                )
+            )
             return None
         try:
             size = ignore_file.stat().st_size
             if size > MAX_GITIGNORE_BYTES or bytes_read + size > MAX_BYTES:
                 omissions.append(
                     f"Ignored-file rules too large to read: {_relative(ignore_file, root)}"
+                )
+                structured_omissions.append(
+                    ProjectOmission(
+                        ProjectOmissionCode.IGNORE_RULES_BYTE_LIMIT,
+                        _relative(ignore_file, root),
+                    )
                 )
                 return None
             with ignore_file.open("rb") as stream:
@@ -274,11 +341,23 @@ class FilesystemProjectEvidenceReader(ProjectEvidenceReader):
                 omissions.append(
                     f"Ignored-file rules too large to read: {_relative(ignore_file, root)}"
                 )
+                structured_omissions.append(
+                    ProjectOmission(
+                        ProjectOmissionCode.IGNORE_RULES_BYTE_LIMIT,
+                        _relative(ignore_file, root),
+                    )
+                )
                 return None
             lines = raw_content.decode("utf-8").splitlines()
         except (OSError, UnicodeDecodeError):
             omissions.append(
                 f"Could not read ignored-file rules: {_relative(ignore_file, root)}"
+            )
+            structured_omissions.append(
+                ProjectOmission(
+                    ProjectOmissionCode.IGNORE_RULES_UNAVAILABLE,
+                    _relative(ignore_file, root),
+                )
             )
             return None
 

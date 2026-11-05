@@ -78,6 +78,9 @@ def test_reader_reports_incomplete_scan_when_entry_limit_is_reached(
     assert not evidence.complete
     assert evidence.entries_seen == 2
     assert any("entry" in omission for omission in evidence.omissions)
+    assert {item.code.value for item in evidence.structured_omissions} == {
+        "entry_limit"
+    }
 
 
 @pytest.mark.integration
@@ -94,6 +97,10 @@ def test_reader_reports_metadata_omitted_at_total_byte_limit(
     assert not evidence.complete
     assert not evidence.files
     assert any("byte read limit" in omission for omission in evidence.omissions)
+    assert any(
+        item.code.value == "metadata_byte_limit" and item.path == "pyproject.toml"
+        for item in evidence.structured_omissions
+    )
 
 
 @pytest.mark.integration

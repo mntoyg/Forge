@@ -40,9 +40,10 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 529 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
+| Local gate: 537 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
-| FR-4.4 Phase 1 adds `AnalysisResult.incomplete` for discarded debug entries and `ProjectOverview.scan_complete` from bounded project evidence | Unit tests cover complete/incomplete states; ADR-0019; no JSON output behavior added |
+| FR-4.4 Phase 1 adds `AnalysisResult.incomplete` for discarded debug entries and `ProjectOverview.scan_complete` from bounded project evidence | ADR-0019; Phase 2A serializers consume these fields; no CLI JSON mode is wired yet |
+| FR-4.4 Phase 2A serializes successful debug/inspect results in pure presentation functions | Direct serializer tests; debug scope/warning input is typed; inspect omissions have stable typed codes; CLI remains text-only |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
 | `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |
@@ -71,9 +72,9 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Phase 2 — implement the approved FR-4.4 JSON serializer and CLI format
-   option** for `debug`/`debug --diff` and `inspect`, using ADR-0019 metadata.
-   Keep text default, preserve exit codes, and add deterministic CLI tests.
+1. **Phase 2B — wire serializers to `--format json`** for `debug`/`debug
+   --diff` and `inspect`; keep text default, preserve exit codes and stream
+   behavior, and add deterministic CLI tests.
 2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
    deterministic checks validate declaration scope, not semantic entailment.
    Live quality evaluation still needs explicit approval.
@@ -83,7 +84,7 @@ order, say why rather than silently reordering.
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Latest Codex meter: 12% over 7 days; daily use is unavailable.
+  Latest Codex meter: 14% over 7 days; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.

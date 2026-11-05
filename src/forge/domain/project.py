@@ -5,7 +5,10 @@ snapshot contains a shallow tree and selected metadata; it is never an
 instruction source and it is never sent to a provider.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from typing import Protocol
 
@@ -29,6 +32,7 @@ class ProjectEvidence:
     entries_seen: int
     complete: bool
     omissions: tuple[str, ...] = ()
+    structured_omissions: tuple[ProjectOmission, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +41,30 @@ class ProjectFact:
 
     name: str
     paths: tuple[str, ...]
+
+
+class ProjectOmissionCode(StrEnum):
+    """Stable categories for known gaps in bounded inspect evidence."""
+
+    DIRECTORY_UNREADABLE = "directory_unreadable"
+    ENTRY_LIMIT = "entry_limit"
+    DEPTH_LIMIT = "depth_limit"
+    PATH_UNINSPECTABLE = "path_uninspectable"
+    METADATA_FILE_LIMIT = "metadata_file_limit"
+    METADATA_BYTE_LIMIT = "metadata_byte_limit"
+    METADATA_UNREADABLE = "metadata_unreadable"
+    IGNORE_RULES_UNAVAILABLE = "ignore_rules_unavailable"
+    IGNORE_RULES_BYTE_LIMIT = "ignore_rules_byte_limit"
+    NO_SUPPORTED_METADATA = "no_supported_metadata"
+    GIT_GLOBAL_EXCLUDES_NOT_CONSULTED = "git_global_excludes_not_consulted"
+
+
+@dataclass(frozen=True, slots=True)
+class ProjectOmission:
+    """A structured omission with an optional workspace-relative path."""
+
+    code: ProjectOmissionCode
+    path: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +80,7 @@ class ProjectOverview:
     omissions: tuple[str, ...]
     scan_complete: bool
     """True when the bounded evidence scan completed within its declared scope."""
+    structured_omissions: tuple[ProjectOmission, ...] = ()
 
 
 class ProjectEvidenceReader(Protocol):
