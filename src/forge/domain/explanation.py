@@ -45,6 +45,7 @@ class ExplanationDiagnosticKind(StrEnum):
     EVIDENCE_OUT_OF_SCOPE = "evidence_out_of_scope"
     PURPOSE_CALL_NOT_IN_FLOW = "purpose_call_not_in_flow"
     NAME_ONLY = "name_only"
+    SYMBOL_ACTION_EVIDENCE_INSUFFICIENT = "symbol_action_evidence_insufficient"
     CONFIDENCE_UNRECOGNIZED = "confidence_unrecognized"
     LIMITATIONS_MISSING = "limitations_missing"
     LIMITATIONS_FIELD_MALFORMED = "limitations_field_malformed"

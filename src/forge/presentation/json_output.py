@@ -205,6 +205,10 @@ _EXPLANATION_OMISSIONS = {
         True,
     ),
     ExplanationDiagnosticKind.NAME_ONLY: ("symbol_description_unavailable", True),
+    ExplanationDiagnosticKind.SYMBOL_ACTION_EVIDENCE_INSUFFICIENT: (
+        "symbol_action_evidence_insufficient",
+        True,
+    ),
     ExplanationDiagnosticKind.LIMITATIONS_MISSING: ("limitations_unavailable", False),
     ExplanationDiagnosticKind.LIMITATIONS_FIELD_MALFORMED: (
         "limitations_unavailable",

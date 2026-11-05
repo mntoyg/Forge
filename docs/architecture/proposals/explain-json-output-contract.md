@@ -142,6 +142,7 @@ placed in these objects.
 | `SUBJECT_UNAVAILABLE` | Processing omission | `symbol_unavailable`, section `symbols`. |
 | `EVIDENCE_MALFORMED`, `EVIDENCE_KIND_UNSUPPORTED`, `EVIDENCE_TARGET_SHAPE_UNSUPPORTED`, `EVIDENCE_TARGET_NOT_FOUND`, `EVIDENCE_SOURCE_SHAPE_MISMATCH`, `EVIDENCE_VALIDATION_UNAVAILABLE`, `CALL_TARGET_IS_DECLARATION`, `CALL_EXPRESSION_NOT_FOUND`, `SYMBOL_OPERATION_DISALLOWED`, `EVIDENCE_OUT_OF_SCOPE`, `PURPOSE_CALL_NOT_IN_FLOW` | Processing omission | `claim_evidence_unavailable` with section and combined count. These diagnostics arise when the associated claim is discarded. |
 | `NAME_ONLY` | Processing omission | `symbol_description_unavailable`, section `symbols`. |
+| `SYMBOL_ACTION_EVIDENCE_INSUFFICIENT` | Processing omission | `symbol_action_evidence_insufficient`, section `symbols`. |
 | `CONFIDENCE_UNRECOGNIZED` | Non-omission warning | `confidence_downgraded`; the claim is retained as `possible`. |
 | `LIMITATIONS_MISSING`, `LIMITATIONS_FIELD_MALFORMED` | Processing omission | `limitations_unavailable`, section null. |
 | `LIMITATIONS_MALFORMED` | Processing omission | `limitation_entry_unavailable`, section null, count of invalid entries. |
@@ -169,6 +170,18 @@ uncertainty; emit `complete` with warnings when only context, valid limitations,
 or a retained downgraded-confidence claim explains the legacy flag. This
 classification must be backed by the new typed signal and diagnostic kinds,
 not inferred from `incomplete` or human-readable prose.
+
+For symbol claims only, the parser applies a narrow structural guard to common
+English coordinated-action forms where `and` may be followed by `then` before
+a recognized action verb plus an explicit determiner. It requires at least one
+non-overlapping validated line range per detected coordinated action plus one
+for the initial clause. The guard compares counts; it does not assign any range
+to a specific action. If the evidence ranges fall short, the entire claim is
+omitted with `SYMBOL_ACTION_EVIDENCE_INSUFFICIENT`. This deliberately bounded
+vocabulary can miss other ways to combine actions. Multiple non-overlapping
+ranges still do not prove semantic support or entailment. A noun phrase such
+as “source and request metadata” is not treated as a second action unless it
+matches the verb-plus-determiner form.
 
 Examples (other envelope fields omitted):
 

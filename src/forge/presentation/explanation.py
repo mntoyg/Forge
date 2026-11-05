@@ -182,6 +182,11 @@ def _diagnostic_text(diagnostic: ExplanationDiagnostic) -> str:
             f"{count} symbol claim{plural} {verb} omitted because the claim only "
             "repeated the symbol name."
         )
+    if kind is ExplanationDiagnosticKind.SYMBOL_ACTION_EVIDENCE_INSUFFICIENT:
+        return (
+            f"{count} symbol claim{plural} {verb} omitted because coordinated "
+            "actions did not have enough separate cited line ranges."
+        )
     if kind is ExplanationDiagnosticKind.CONFIDENCE_UNRECOGNIZED:
         return (
             f"{count} {claim_type} claim{plural} had an unrecognized "

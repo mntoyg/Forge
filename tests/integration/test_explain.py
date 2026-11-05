@@ -10,6 +10,7 @@ from forge.domain.ai import CompletionResponse, TokenUsage
 from forge.domain.errors import SourceTooLargeError
 from forge.infrastructure.source import FilesystemSourceReader
 from forge.presentation.explanation import render_explanation
+from forge.presentation.json_output import serialize_explanation_json
 from tests.support.fakes import FakeProvider
 
 
@@ -241,6 +242,70 @@ def test_explain_claims_use_distinct_responsibility_evidence_from_snapshot(
     assert "Evidence: call target `parse_explanation`, lines 6-6" in rendered
     assert "6 |         result = parse_explanation(response.text, source)" in rendered
     assert "Performs an extra validation pass after parsing." not in rendered
+
+
+@pytest.mark.integration
+def test_explain_omits_compound_symbol_role_with_only_one_cited_action(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path
+    source_text = (
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        source = self._reader.read(path)\n"
+        "        answer = self._provider.complete(source)\n"
+        "        return answer\n"
+    )
+    (workspace / "explain.py").write_bytes(source_text.encode())
+    claim_text = (
+        "PRIVATE_COMPOUND_SYMBOL_CLAIM: Read one safe source snapshot and "
+        "request one evidence-backed answer."
+    )
+    payload = {
+        "purpose": [],
+        "flow": [],
+        "symbols": [
+            {
+                "symbol": "ExplainSource",
+                "claim": claim_text,
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._reader.read",
+                        "start_line": 3,
+                        "end_line": 3,
+                    }
+                ],
+            }
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider_response = json.dumps(payload)
+    provider = _provider(provider_response)
+    use_case = ExplainSource(FilesystemSourceReader(workspace), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+    serialized = serialize_explanation_json(result, "explain.py")
+    json_result = json.loads(serialized)
+
+    assert provider.call_count == 1
+    assert result.symbols == ()
+    assert result.incomplete
+    assert result.processing_incomplete is True
+    assert (
+        "1 symbol claim was omitted because coordinated actions did not have "
+        "enough separate cited line ranges."
+    ) in rendered
+    assert claim_text not in rendered
+    assert "PRIVATE_COMPOUND_SYMBOL_CLAIM" not in serialized
+    assert "self._reader.read" not in rendered
+    assert "self._reader.read" not in serialized
+    assert "symbol_action_evidence_insufficient" in serialized
+    assert provider_response not in serialized
+    assert json_result["completeness"]["status"] == "partial"
 
 
 @pytest.mark.integration

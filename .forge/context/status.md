@@ -40,15 +40,15 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 590 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
+| Local gate: 595 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
 | `forge explain --help` renders provider disclosure and `--format text|json` | Real CLI subprocess test normalizes ANSI styling; full local gate passes |
 | FR-4.4 JSON for debug/inspect/explain is complete; explain has safe path preflight and unchanged exit mapping | ADR-0019/0020; serializer unit and fake-provider CLI e2e tests; full gate |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
-| `forge explain` prompt requires each symbol responsibility to be supported by an in-scope use site; invalid Purpose targets and narrowly scoped symbol claims have fake-provider regression coverage | `uv run python scripts/check.py`, 2026-11-05: 591 passed, 1 Windows symlink skip |
+| `forge explain` drops recognized coordinated symbol actions when evidence has too few distinct line ranges; structural checks still do not prove semantic entailment | Parser and fake-provider integration tests; `uv run python scripts/check.py`, 2026-11-05: 595 passed, 1 Windows symlink skip |
 | `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |
-| Live `forge explain --format json` after the prompt change still omitted Purpose (`evidence_target_not_found`) and returned a two-responsibility `ExplainSource` symbol claim backed only by the reader call | One owner-approved call on 2026-11-05: gpt-4o-mini-2024-07-18, 1,447 input / 403 output tokens; prompt alone did not resolve these quality issues |
+| Latest approved live `forge explain` result omitted Purpose for an invalid target; the compound symbol claim with one reader anchor is now guarded by a deterministic parser check | Owner-approved call on 2026-11-05; no live call in this change |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
@@ -73,11 +73,11 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Address the remaining `forge explain` quality gap.** The live result still
-   omits Purpose for an invalid target and gives `ExplainSource` multiple roles
-   with only one cited call. ADR-0015 validates scope, not semantic entailment;
-   decide whether to tighten the prompt further or add conservative rejection
-   for compound symbol claims before another paid evaluation.
+1. **Review remaining `forge explain` quality limits.** The parser rejects
+   recognized coordinated symbol actions when evidence has too few distinct
+   ranges, but this structural check cannot prove semantic entailment. The
+   latest approved live result also omitted Purpose for an invalid target.
+   Any further provider evaluation needs explicit owner approval.
 2. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
    measurement and accept a new ADR before implementation.
 

@@ -68,6 +68,9 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   responsibilities as separate claims with their own usage-site evidence,
   rejecting method declarations as call evidence, and capping provider
   `certain` confidence labels at `likely`.
+- Omit symbol claims with recognized coordinated actions when they cite too few
+  distinct line ranges, with a fixed safe text and JSON diagnostic. This
+  structural guard does not prove semantic support.
 - Prompt provider-backed `forge explain` Purpose claims to reuse the exact
   provider-call anchor from Main flow. The parser now requires every Purpose
   claim to include a locally valid call anchor matching an independently

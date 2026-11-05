@@ -55,6 +55,7 @@ _OMISSION_DIAGNOSTICS = frozenset(
         ExplanationDiagnosticKind.EVIDENCE_OUT_OF_SCOPE,
         ExplanationDiagnosticKind.PURPOSE_CALL_NOT_IN_FLOW,
         ExplanationDiagnosticKind.NAME_ONLY,
+        ExplanationDiagnosticKind.SYMBOL_ACTION_EVIDENCE_INSUFFICIENT,
         ExplanationDiagnosticKind.LIMITATIONS_MISSING,
         ExplanationDiagnosticKind.LIMITATIONS_FIELD_MALFORMED,
         ExplanationDiagnosticKind.LIMITATIONS_MALFORMED,
@@ -75,6 +76,15 @@ _WARNING_DIAGNOSTICS = frozenset(
     }
 )
 _INFORMATIONAL_DIAGNOSTICS = frozenset({ExplanationDiagnosticKind.SECTION_EMPTY})
+_COORDINATED_SYMBOL_ACTION = re.compile(
+    r"\band\s+(?:then\s+)?(?:to\s+)?(?:"
+    r"analy[sz](?:e|es|ed)|builds?|calls?|checks?|collects?|constructs?|"
+    r"creates?|delegates?|emits?|filters?|handles?|invokes?|loads?|maps?|"
+    r"normalizes?|parses?|prepares?|reads?|renders?|requests?|resolves?|"
+    r"sends?|serializes?|submits?|updates?|validates?|writes?"
+    r")\s+(?:a|an|the|one|another|this|that|each|its|their)\b",
+    re.IGNORECASE,
+)
 
 
 def parse_explanation(
@@ -343,6 +353,10 @@ def _claim(
         text, tuple(evidence), source, symbol=symbol
     ):
         return None, ExplanationDiagnosticKind.NAME_ONLY
+    if symbol is not None and not _has_sufficient_symbol_action_evidence(
+        text, tuple(evidence)
+    ):
+        return None, ExplanationDiagnosticKind.SYMBOL_ACTION_EVIDENCE_INSUFFICIENT
 
     confidence = item.get("confidence")
     try:
@@ -368,6 +382,33 @@ def _claim(
             else None
         ),
     )
+
+
+def _has_sufficient_symbol_action_evidence(
+    text: str, evidence: tuple[EvidenceAnchor, ...]
+) -> bool:
+    """Require distinct cited lines for explicitly coordinated symbol actions.
+
+    This narrow structural guard recognizes common English action verbs after
+    ``and`` (optionally followed by ``then``) only when an explicit determiner
+    follows. It reduces a claim only when fewer non-overlapping evidence ranges
+    than detected actions are supplied; it does not map actions to ranges or
+    prove semantic support.
+    """
+    coordinated = len(_COORDINATED_SYMBOL_ACTION.findall(text))
+    if not coordinated:
+        return True
+    evidence_ranges = sorted(
+        {(anchor.start_line, anchor.end_line) for anchor in evidence},
+        key=lambda span: (span[1], span[0]),
+    )
+    non_overlapping_count = 0
+    previous_end = 0
+    for start, end in evidence_ranges:
+        if start > previous_end:
+            non_overlapping_count += 1
+            previous_end = end
+    return non_overlapping_count >= coordinated + 1
 
 
 def _symbol_scope(
