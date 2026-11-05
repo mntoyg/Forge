@@ -11,6 +11,7 @@ There is therefore one test per code.
 
 import json
 import os
+import re
 import subprocess
 import sys
 from collections.abc import Callable
@@ -443,9 +444,10 @@ def test_the_help_text_actually_reaches_the_user() -> None:
     )
 
     assert result.returncode == 0
-    assert "Analyse a source file" in result.stdout
-    assert "--format" in result.stdout
-    assert "text|json" in result.stdout
+    visible_help = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", result.stdout)
+    assert "Analyse a source file" in visible_help
+    assert "--format" in visible_help
+    assert "text|json" in visible_help
 
 
 # --- history reaches the user -----------------------------------------------
