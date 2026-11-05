@@ -48,7 +48,7 @@ verification - correct it or delete it instead.
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
 | `forge explain` prompt requires each symbol responsibility to be supported by an in-scope use site; invalid Purpose targets and narrowly scoped symbol claims have fake-provider regression coverage | `uv run python scripts/check.py`, 2026-11-05: 591 passed, 1 Windows symlink skip |
 | `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |
-| Latest user-shared live output showed valid Main flow and symbols but omitted Purpose because its call target did not match the cited lines | User-provided result; no live call during this follow-up |
+| Live `forge explain --format json` after the prompt change still omitted Purpose (`evidence_target_not_found`) and returned a two-responsibility `ExplainSource` symbol claim backed only by the reader call | One owner-approved call on 2026-11-05: gpt-4o-mini-2024-07-18, 1,447 input / 403 output tokens; prompt alone did not resolve these quality issues |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
 | `forge debug` finds the defects a file is known to have | Live, gpt-4o-mini: 3 of 3 in `examples/buggy_division.py` (617 in / 236 out), 4 of 4 in `examples/retry_backoff.js` (846 in / 354 out) |
 | A file with no defects returns none | Live: `examples/safe_statistics.py`, 987 in / **8 out**. The whole reply was an empty list |
@@ -73,10 +73,11 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Evaluate `forge explain` symbol quality with a live provider.** The prompt
-   now asks for one responsibility per claim and evidence for every stated
-   action; ADR-0015 validation still checks scope, not semantic entailment.
-   Live evaluation costs the owner and needs explicit approval.
+1. **Address the remaining `forge explain` quality gap.** The live result still
+   omits Purpose for an invalid target and gives `ExplainSource` multiple roles
+   with only one cited call. ADR-0015 validates scope, not semantic entailment;
+   decide whether to tighten the prompt further or add conservative rejection
+   for compound symbol claims before another paid evaluation.
 2. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
    measurement and accept a new ADR before implementation.
 
