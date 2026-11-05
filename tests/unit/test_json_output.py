@@ -299,6 +299,16 @@ def test_explain_json_serializes_validated_claims_and_complete_envelope() -> Non
             "unknown",
             [],
         ),
+        (
+            False,
+            (
+                ExplanationDiagnostic(
+                    None, ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE
+                ),
+            ),
+            "unknown",
+            [],
+        ),
     ],
 )
 def test_explain_json_maps_processing_completeness(
@@ -325,6 +335,39 @@ def test_explain_json_maps_processing_completeness(
 
     assert payload["completeness"]["status"] == expected_status
     assert payload["completeness"]["omissions"] == expected_omissions
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "diagnostics",
+    [
+        (),
+        (
+            ExplanationDiagnostic(
+                None, ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE
+            ),
+        ),
+    ],
+)
+def test_explain_json_rejects_incomplete_flag_without_stable_omission(
+    diagnostics: tuple[ExplanationDiagnostic, ...],
+) -> None:
+    result = ExplanationResult(
+        source=SourceFile(Path("source.py"), "source"),
+        purpose=(),
+        flow=(),
+        symbols=(),
+        limitations=(),
+        context_insufficient=False,
+        incomplete=True,
+        model="configured-model",
+        usage=TokenUsage(1, 1),
+        diagnostics=diagnostics,
+        processing_incomplete=True,
+    )
+
+    with pytest.raises(ValueError, match="needs a stable omission diagnostic"):
+        serialize_explanation_json(result, "source.py")
 
 
 @pytest.mark.unit

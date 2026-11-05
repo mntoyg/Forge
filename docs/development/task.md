@@ -104,7 +104,8 @@ Added `serialize_explanation_json(result, path)` in presentation with the
 approved v1 envelope, diagnostic aggregation, completeness mapping, and safe
 relative-path validation. Deterministic unit tests cover serialized claims,
 evidence, metadata, warnings, omissions, completeness states, and rejected
-paths. This stage does not expose JSON through the CLI.
+paths, including inconsistent completeness metadata that must fail closed.
+This stage does not expose JSON through the CLI.
 
 ### Stage B2 — CLI integration (next; not started)
 

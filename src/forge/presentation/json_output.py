@@ -275,7 +275,18 @@ def serialize_explanation_json(result: ExplanationResult, path: str) -> str:
     ]
     if omissions:
         completeness = "partial"
-    elif result.processing_incomplete is None:
+    elif result.processing_incomplete is True:
+        raise ValueError(
+            "An incomplete explanation needs a stable omission diagnostic."
+        )
+    elif result.processing_incomplete is None or any(
+        diagnostic.kind
+        in {
+            ExplanationDiagnosticKind.SOURCE_VALIDATION_UNAVAILABLE,
+            ExplanationDiagnosticKind.SYMBOL_VALIDATION_UNAVAILABLE,
+        }
+        for diagnostic in result.diagnostics
+    ):
         completeness = "unknown"
     else:
         completeness = "complete"

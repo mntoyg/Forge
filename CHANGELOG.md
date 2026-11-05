@@ -25,6 +25,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 - Add the pure presentation-layer explain JSON success serializer with safe
   paths, typed diagnostics, completeness mapping, and deterministic unit
   tests; CLI integration remains Stage B2.
+- Fail closed when explain completeness metadata conflicts with omission or
+  validation-availability diagnostics.
 
 ### Changed
 
