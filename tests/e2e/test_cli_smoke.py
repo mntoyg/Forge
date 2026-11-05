@@ -111,6 +111,33 @@ def test_inspect_reports_a_clear_error_for_a_missing_directory(
 
 
 @pytest.mark.e2e
+@pytest.mark.parametrize(
+    "existing_file", [False, True], ids=["missing", "not-directory"]
+)
+def test_inspect_json_errors_are_safe_single_line_envelopes(
+    tmp_path: Path, existing_file: bool
+) -> None:
+    target = tmp_path / "PATH_SECRET_SENTINEL"
+    if existing_file:
+        target.write_text("local file", encoding="utf-8")
+
+    result = runner.invoke(app, ["inspect", str(target), "--format", "json"])
+
+    assert result.exit_code == 2
+    assert result.stdout == ""
+    assert result.stderr.endswith("\n")
+    assert result.stderr.count("\n") == 1
+    payload = json.loads(result.stderr)
+    assert payload["schema_version"] == 1
+    assert payload["command"] == "inspect"
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == "input_unusable"
+    assert payload["error"]["message"]
+    assert str(target) not in result.stderr
+    assert "PATH_SECRET_SENTINEL" not in result.stderr
+
+
+@pytest.mark.e2e
 def test_version_works_without_any_configuration() -> None:
     """Configuration is loaded per command, not at import.
 

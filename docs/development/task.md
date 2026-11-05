@@ -68,13 +68,20 @@ directory name; it never includes the absolute path or parent directories.
 Successful JSON runs emit one UTF-8 JSON line and suppress progress output.
 The `debug --help` output documents the option, and
 `debug --plain --format json` emits a plain usage error on stderr with exit 2.
-Other errors retain their existing text diagnostics and exit mapping in this
-interim phase. FR-4.4 is not complete.
+Forge errors in JSON mode emit one safe JSON error envelope on stderr with
+empty stdout and the existing ADR-0006 exit code. Text-mode output and errors
+remain unchanged; framework parsing errors keep their text behavior.
 
-### Phase 2B2 — JSON error output (next)
+### Phase 2B2 — JSON error output (complete)
 
-Add safe error envelopes on stderr with empty stdout while preserving ADR-0006
-exit codes, then complete deterministic error-path tests and review FR-4.4.
+`debug` serializes Forge errors for ADR-0006 exit codes 1-4 as
+`result_unavailable`, `input_unusable`, `not_configured`, and `provider_failed`.
+`inspect` serializes its real local input errors as `input_unusable`; it has no
+provider/configuration error path. Error messages are fixed, concise text and
+never include exception, provider, prompt, secret, or environment strings.
+Deterministic CLI tests verify all mappings, single-line stderr JSON, empty
+stdout, and unchanged text streams. FR-4.4 v1 covers debug and inspect only;
+review and explain remain excluded.
 
 ## Deferred research: full review of long files
 

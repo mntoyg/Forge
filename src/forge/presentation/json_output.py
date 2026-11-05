@@ -1,4 +1,4 @@
-"""Pure JSON serialization for successful debug and inspect results."""
+"""Pure JSON serialization for successful results and safe command errors."""
 
 import json
 from dataclasses import dataclass
@@ -14,6 +14,30 @@ class DebugMode(StrEnum):
 
     FILE = "file"
     DIFF = "diff"
+
+
+class JsonCommand(StrEnum):
+    """Commands included in the approved v1 JSON output contract."""
+
+    DEBUG = "debug"
+    INSPECT = "inspect"
+
+
+class JsonErrorCode(StrEnum):
+    """Stable JSON error codes corresponding to ADR-0006 exit-code classes."""
+
+    RESULT_UNAVAILABLE = "result_unavailable"
+    INPUT_UNUSABLE = "input_unusable"
+    NOT_CONFIGURED = "not_configured"
+    PROVIDER_FAILED = "provider_failed"
+
+
+_ERROR_MESSAGES = {
+    JsonErrorCode.RESULT_UNAVAILABLE: "Forge could not produce a usable result.",
+    JsonErrorCode.INPUT_UNUSABLE: "The requested input could not be used.",
+    JsonErrorCode.NOT_CONFIGURED: "Forge is not configured for this command.",
+    JsonErrorCode.PROVIDER_FAILED: "The configured provider could not complete the request.",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +107,17 @@ def serialize_debug_json(value: DebugJsonInput) -> str:
             "warnings": warnings,
             "omissions": omissions,
         },
+    }
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+
+
+def serialize_error_json(command: JsonCommand, code: JsonErrorCode) -> str:
+    """Serialize a safe v1 error without accepting exception or provider text."""
+    payload = {
+        "schema_version": 1,
+        "command": command.value,
+        "status": "error",
+        "error": {"code": code.value, "message": _ERROR_MESSAGES[code]},
     }
     return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
 

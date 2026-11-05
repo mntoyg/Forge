@@ -1,6 +1,6 @@
 # Machine-readable JSON output contract (FR-4.4)
 
-**Status:** Owner-approved v1 direction and detailed schema reference. Phase 1 result metadata is recorded in ADR-0019. JSON serialization and CLI format options remain Phase 2; FR-4.4 stays deferred until that user-facing mode is implemented.
+**Status:** Owner-approved v1 contract, implemented for `debug` and `inspect` through Phase 2B2. Phase 1 result metadata is recorded in ADR-0019. FR-4.4 v1 is complete; `review` and `explain` remain excluded.
 
 ## Purpose and current behavior
 
@@ -8,12 +8,15 @@ FR-4.1 through FR-4.3 keep human-readable output as the default, send results to
 
 | Command | Result and diagnostics today | Error behavior |
 | --- | --- | --- |
-| `debug` / `debug --diff` | `AnalysisResult`: source path, findings, model/usage, optional history, and Phase 1 `incomplete` flag for discarded parser entries (no count). Whole-file safety warning is separate stderr text; diff is silent. | Typed input/config/provider failures map to ADR-0006 exit codes; error text to stderr. |
-| `inspect` | `ProjectOverview`: root, guidance, languages, tools, checks, directories, prose omissions, and Phase 1 `scan_complete` copied from `ProjectEvidence.complete`. | Local path/filesystem failures are caught as `ForgeError`, printed to stderr, and mapped by the existing CLI exit-code function. `inspect` does not call a provider or require provider configuration. |
+| `debug` / `debug --diff` | `AnalysisResult`: source path, findings, model/usage, optional history, and Phase 1 `incomplete` flag for discarded parser entries (no count). Whole-file safety warning is separate stderr text in text mode and structured in successful JSON. | Typed failures use ADR-0006 exit codes; JSON mode emits a safe error envelope for `ForgeError`, while text mode retains existing diagnostics. |
+| `inspect` | `ProjectOverview`: root, guidance, languages, tools, checks, directories, prose omissions, and Phase 1 `scan_complete` copied from `ProjectEvidence.complete`. | Local path/filesystem `ForgeError`s use the existing exit mapping; JSON mode emits a safe error envelope. `inspect` does not call a provider or require provider configuration. |
 | `review` | Before consent, a `ReviewPlan` is printed; after consent, `ReviewResult` has findings, typed path omissions and an incomplete flag. Non-TTY confirmation does not call provider. | No changes exits 1; decline exits 0; analysis errors use existing mapping. |
 | `explain` | `ExplanationResult`: claims, source evidence, limitations, context-insufficient/incomplete flags and safe typed diagnostics. Successful incomplete results exit 0. | Errors to stderr with existing mapping. |
 
-Human renderers and CLI orchestration currently own stream, TTY, spinner, consent and error presentation. Application result models are the source for a future serializer; do not serialize rendered prose or provider response text.
+Human renderers and CLI orchestration own stream, TTY, spinner, consent, and
+error presentation. Pure JSON serializers live in the presentation layer and
+consume application result models; never serialize rendered prose or provider
+response text.
 
 ## Recommendation and scope
 
@@ -23,11 +26,11 @@ The owner-approved scope excludes `review`: its plan-before-consent and post-con
 
 Alternatives considered: (a) debug only, with the smallest compatibility surface but no inspect output; (b) all four commands, with uniform launch support but additional review-consent and explain-evidence decisions. The owner selected debug and inspect for v1; review and explain are excluded.
 
-## Proposed CLI and stream contract
+## Approved CLI and stream contract
 
 - `--format text|json`; default `text`. `--plain` remains a text-rendering option and conflicts with `--format json` (argument error). JSON works on TTYs and pipes identically.
 - A successful command writes exactly one UTF-8 JSON object followed by newline to stdout. No spinner, Rich markup, progress, or prose is written to stdout in JSON mode. Suppress progress UI in JSON mode; any diagnostic warning belongs in the JSON envelope.
-- A command failure writes one safe JSON error object to stderr and nothing to stdout. Preserve ADR-0006 exit codes: 0 usable result (including zero findings), 1 no usable result/provider response, 2 unusable input, 3 not configured, 4 provider failure. Findings never affect exit status. Syntax/help errors that occur before format selection may retain the CLI framework's existing text behavior; confirm this edge with the owner.
+- A `ForgeError` command failure writes one safe JSON error object to stderr and nothing to stdout. Preserve ADR-0006 exit codes: 0 usable result (including zero findings), 1 no usable result/provider response, 2 unusable input, 3 not configured, 4 provider failure. Findings never affect exit status. Syntax/help/parameter errors that occur before format selection retain the CLI framework's existing text behavior. Unexpected non-`ForgeError` exceptions are not converted into public JSON diagnostics.
 - In text mode, preserve all existing output, TTY, warning, consent, and exit behavior.
 
 ## Version 1 envelope
@@ -92,7 +95,16 @@ Example error (stderr; stdout empty; exit code remains the ADR-0006 value):
 }
 ```
 
-Use stable error codes such as `result_unavailable`, `input_unusable`, `not_configured`, and `provider_failed`; keep messages safe and concise. The code is descriptive and does not replace the exit code.
+Use stable error codes `result_unavailable`, `input_unusable`, `not_configured`, and `provider_failed`; keep messages safe and concise. The code is descriptive and does not replace the exit code. The implementation uses these generic messages so exception details cannot leak paths, provider response text, prompts, credentials, or environment data:
+
+| Exit code | Error code | Safe message |
+| --- | --- | --- |
+| 1 | `result_unavailable` | `Forge could not produce a usable result.` |
+| 2 | `input_unusable` | `The requested input could not be used.` |
+| 3 | `not_configured` | `Forge is not configured for this command.` |
+| 4 | `provider_failed` | `The configured provider could not complete the request.` |
+
+`inspect` can currently emit only the exit-2 `input_unusable` class. It has no provider or configuration failure path.
 
 ## Compatibility and acceptance criteria
 
@@ -106,23 +118,22 @@ Use stable error codes such as `result_unavailable`, `input_unusable`, `not_conf
 ## Phase 2 implementation notes
 
 The owner-approved scope, text default, completeness meanings, and Phase 1
-metadata are fixed by ADR-0019. Phase 2 adds the proposed `--format json`
-surface and serializer only for debug and inspect. Preserve the ADR-0006 exit
-mapping and text behavior; keep errors on stderr and results on stdout. Before
-implementation is considered complete, review exact error/warning codes and
-ensure completeness is derived from the typed fields above, never rendered
-prose. `review` and `explain` remain excluded from v1.
+metadata are fixed by ADR-0019. Phase 2 added the `--format json` surface and
+serializers only for debug and inspect. The CLI preserves ADR-0006 exit mapping
+and text behavior; errors go to stderr and results to stdout. Completeness is
+derived from typed fields, never rendered prose. `review` and `explain` remain
+excluded from v1.
 
-No accepted ADR needs to change if serialization remains a CLI/presentation concern, provider-internal JSON remains separate, and exit semantics stay unchanged. FR-4.4 remains deferred until the user-facing JSON mode is implemented.
+No accepted ADR needed to change: serialization remains a CLI/presentation concern, provider-internal JSON remains separate, and exit semantics stay unchanged. FR-4.4 v1 is implemented for its approved command scope.
 
 Phase 2B1 wires `--format text|json` to successful `debug` and `inspect`
-results. In this interim phase, errors keep their existing text diagnostics and
-ADR-0006 exit mapping; JSON error envelopes and their stderr behavior are
-Phase 2B2. FR-4.4 remains incomplete until Phase 2B2 is delivered.
+results. Phase 2B2 adds safe `ForgeError` envelopes on stderr with empty stdout,
+preserving text mode and ADR-0006 exit mapping. Deterministic error-path tests
+cover every reachable error class in v1.
 
-## Post-approval implementation breakdown
+## Implementation record
 
-1. Record owner choices; update FR-4.4 and add/adjust a decision record if the accepted public contract requires it. Stop if an ADR conflict is unresolved.
-2. Add the CLI format option and a presentation-layer serializer/envelope; preserve text and existing exit mapping.
-3. Add only owner-approved result metadata for completeness/omissions, then wire debug and inspect serialization.
-4. Add deterministic fake/temp-repository tests, user docs, changelog/status updates; run the full gate and review the diff before delivery.
+Phases 1, 2A, 2B1, and 2B2 were implemented with the approved scope and
+without dependencies or ADR changes. Fake-provider and temporary-directory
+tests cover successful output, structured completeness, and safe error
+envelopes. `review` and `explain` remain out of v1.

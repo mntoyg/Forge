@@ -33,6 +33,7 @@ from forge.domain.errors import (
     NotARepositoryError,
     PathOutsideWorkspaceError,
     ProviderRateLimitError,
+    ProviderResponseError,
     ProviderTimeoutError,
     SourceNotFoundError,
     SourceTooLargeError,
@@ -300,6 +301,73 @@ def test_a_missing_api_key_exits_three() -> None:
     )
 
     assert result.exit_code == ExitCode.NOT_CONFIGURED
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(
+    ("error", "expected_exit", "expected_code"),
+    [
+        (
+            ProviderResponseError("RAW_PROVIDER_RESPONSE_SENTINEL"),
+            ExitCode.FAILED,
+            "result_unavailable",
+        ),
+        (
+            SourceNotFoundError("PATH_SECRET_SENTINEL"),
+            ExitCode.BAD_INPUT,
+            "input_unusable",
+        ),
+        (
+            ConfigurationError("FORGE_API_KEY=CONFIG_SECRET_SENTINEL"),
+            ExitCode.NOT_CONFIGURED,
+            "not_configured",
+        ),
+        (
+            ProviderRateLimitError("RAW_PROVIDER_ERROR_SECRET_SENTINEL"),
+            ExitCode.PROVIDER_FAILED,
+            "provider_failed",
+        ),
+    ],
+    ids=["result-unavailable", "input-unusable", "not-configured", "provider-failed"],
+)
+def test_json_errors_are_safe_single_line_envelopes(
+    error: Exception, expected_exit: ExitCode, expected_code: str
+) -> None:
+    result = runner.invoke(_app(_failing(error)), ["app.py", "--format", "json"])
+
+    assert result.exit_code == expected_exit
+    assert result.stdout == ""
+    assert result.stderr.endswith("\n")
+    assert result.stderr.count("\n") == 1
+    payload = json.loads(result.stderr)
+    assert payload["schema_version"] == 1
+    assert payload["command"] == "debug"
+    assert payload["status"] == "error"
+    assert payload["error"]["code"] == expected_code
+    assert payload["error"]["message"]
+    assert str(error) not in result.stderr
+    assert "SENTINEL" not in result.stderr
+
+
+@pytest.mark.e2e
+@pytest.mark.parametrize(
+    ("error", "expected_exit"),
+    [
+        (ProviderResponseError("raw provider response"), ExitCode.FAILED),
+        (SourceNotFoundError("missing file"), ExitCode.BAD_INPUT),
+        (ConfigurationError("missing API key"), ExitCode.NOT_CONFIGURED),
+        (ProviderRateLimitError("provider busy"), ExitCode.PROVIDER_FAILED),
+    ],
+    ids=["result-unavailable", "input-unusable", "not-configured", "provider-failed"],
+)
+def test_text_errors_keep_their_existing_stderr_and_exit_code(
+    error: Exception, expected_exit: ExitCode
+) -> None:
+    result = runner.invoke(_app(_failing(error)), ["app.py"])
+
+    assert result.exit_code == expected_exit
+    assert result.stdout == ""
+    assert result.stderr == f"forge: {error}\n"
 
 
 # --- exit code 4: the provider failed --------------------------------------

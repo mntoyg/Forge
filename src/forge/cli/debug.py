@@ -20,13 +20,14 @@ import typer
 from rich.console import Console
 
 from forge.cli.exit_codes import ExitCode, exit_code_for
-from forge.cli.output import write_json_line
+from forge.cli.output import write_json_error_line, write_json_line
 from forge.domain.errors import ForgeError
 from forge.domain.source import AnalysisResult
 from forge.presentation.findings import render_plain, render_rich
 from forge.presentation.json_output import (
     DebugJsonInput,
     DebugMode,
+    JsonCommand,
     serialize_debug_json,
 )
 
@@ -113,9 +114,13 @@ def debug(
         with _waiting(_progress_console(plain or output_format == "json"), path):
             result = analyze(path, changes_only=changes_only)
     except ForgeError as error:
-        # Diagnostics go to stderr so that a piped stdout carries results only.
-        print(f"forge: {error}", file=sys.stderr)
-        return exit_code_for(error)
+        code = exit_code_for(error)
+        if output_format == "json":
+            write_json_error_line(JsonCommand.DEBUG, code)
+        else:
+            # Diagnostics go to stderr so that a piped stdout carries results only.
+            print(f"forge: {error}", file=sys.stderr)
+        return code
 
     partial = _size_warning(result, changes_only=changes_only)
     if output_format == "json":

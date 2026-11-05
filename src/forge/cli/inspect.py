@@ -8,9 +8,9 @@ import typer
 
 from forge.application.inspect import InspectProject
 from forge.cli.exit_codes import exit_code_for
-from forge.cli.output import write_json_line
+from forge.cli.output import write_json_error_line, write_json_line
 from forge.domain.errors import ForgeError
-from forge.presentation.json_output import serialize_inspect_json
+from forge.presentation.json_output import JsonCommand, serialize_inspect_json
 from forge.presentation.project import render_project_overview
 
 
@@ -38,8 +38,12 @@ def register(app: typer.Typer, inspect: InspectProject) -> None:
         try:
             overview = inspect(directory)
         except ForgeError as error:
-            print(f"forge: {error}", file=sys.stderr)
-            raise typer.Exit(code=exit_code_for(error)) from error
+            code = exit_code_for(error)
+            if output_format == "json":
+                write_json_error_line(JsonCommand.INSPECT, code)
+            else:
+                print(f"forge: {error}", file=sys.stderr)
+            raise typer.Exit(code=code) from error
         if output_format == "json":
             write_json_line(serialize_inspect_json(overview))
             return
