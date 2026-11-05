@@ -1,4 +1,8 @@
 import json
+import os
+import re
+import subprocess
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -18,7 +22,6 @@ from forge.domain.errors import (
 )
 from forge.domain.source import SourceFile
 from forge.infrastructure.source import FilesystemSourceReader
-from forge.main import app as forge_app
 from tests.support.fakes import FakeProvider, FakeSourceReader
 
 runner = CliRunner()
@@ -75,14 +78,23 @@ def _app(factory: object) -> typer.Typer:
 
 @pytest.mark.e2e
 def test_registered_help_discloses_provider_use_without_loading_config() -> None:
-    result = runner.invoke(forge_app, ["explain", "--help"])
+    environment = {**os.environ, "PYTHONUTF8": "1"}
+    result = subprocess.run(
+        [sys.executable, "-m", "forge.main", "explain", "--help"],
+        capture_output=True,
+        check=False,
+        cwd=Path(__file__).resolve().parents[2],
+        encoding="utf-8",
+        env=environment,
+    )
 
-    assert result.exit_code == ExitCode.OK
-    assert "selected file is sent to the provider" in result.stdout
-    assert "--format" in result.stdout
-    assert "text" in result.stdout
-    assert "json" in result.stdout
-    assert "Usage:" in result.stdout
+    assert result.returncode == ExitCode.OK
+    visible_help = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", result.stdout)
+    assert "selected file is sent to the provider" in visible_help
+    assert "--format" in visible_help
+    assert "text" in visible_help
+    assert "json" in visible_help
+    assert "Usage:" in visible_help
 
 
 @pytest.mark.e2e

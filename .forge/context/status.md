@@ -42,6 +42,7 @@ verification - correct it or delete it instead.
 | --- | --- |
 | Local gate: 590 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
+| `forge explain --help` renders provider disclosure and `--format text|json` | Real CLI subprocess test normalizes ANSI styling; full local gate passes |
 | FR-4.4 JSON for debug/inspect/explain is complete; explain has safe path preflight and unchanged exit mapping | ADR-0019/0020; serializer unit and fake-provider CLI e2e tests; full gate |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |

@@ -36,6 +36,8 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   stable usage diagnostic when `--plain` conflicts with JSON output.
 - Verify rendered debug help through the real CLI subprocess, removing ANSI
   styling before asserting visible format options across operating systems.
+- Verify rendered explain help through the real CLI subprocess and normalize
+  ANSI styling before checking provider disclosure and format options.
 - Preserve the selected inspect root as a safe directory-name identifier in
   JSON and reject Windows drive-relative paths in the JSON path validator.
 - Clarify JSON proposal error behavior for local `inspect` and define when
