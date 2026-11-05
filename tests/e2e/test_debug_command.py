@@ -10,6 +10,9 @@ There is therefore one test per code.
 """
 
 import json
+import os
+import subprocess
+import sys
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -34,7 +37,6 @@ from forge.domain.errors import (
     SourceTooLargeError,
 )
 from forge.domain.source import ChangeRecord, FileHistory, SourceFile
-from forge.main import app as forge_app
 from tests.support.fakes import (
     FakeProvider,
     FakeRepositoryInspector,
@@ -427,11 +429,20 @@ def test_the_help_text_actually_reaches_the_user() -> None:
     """The assertions above read a constant; this proves Typer renders it.
 
     Without it, the help could stop being attached to the command and every
-    other help test would still pass.
+    other help test would still pass. Run the real entry point so Rich's
+    terminal rendering is captured the way it is for a user, not by CliRunner.
     """
-    result = runner.invoke(forge_app, ["debug", "--help"], color=False)
+    environment = {**os.environ, "PYTHONUTF8": "1"}
+    result = subprocess.run(
+        [sys.executable, "-m", "forge.main", "debug", "--help"],
+        capture_output=True,
+        check=False,
+        cwd=Path(__file__).resolve().parents[2],
+        encoding="utf-8",
+        env=environment,
+    )
 
-    assert result.exit_code == 0
+    assert result.returncode == 0
     assert "Analyse a source file" in result.stdout
     assert "--format" in result.stdout
     assert "text|json" in result.stdout
