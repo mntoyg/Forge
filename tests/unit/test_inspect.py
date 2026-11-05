@@ -63,6 +63,27 @@ def test_inspect_reports_facts_with_paths_and_only_existing_checks(
         "uv run pytest",
     }
     assert overview.directories == ("src", "web")
+    assert overview.scan_complete is True
+
+
+@pytest.mark.unit
+def test_inspect_propagates_an_incomplete_bounded_scan(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+    evidence = ProjectEvidence(
+        root=root,
+        files=(),
+        file_paths=(),
+        directories=(),
+        entries_seen=500,
+        complete=False,
+        omissions=("Stopped at the scan limit.",),
+    )
+
+    overview = InspectProject(_Evidence(evidence))(root)
+
+    assert overview.scan_complete is False
+    assert "The project scan stopped at a safety limit." in overview.omissions
 
 
 @pytest.mark.unit

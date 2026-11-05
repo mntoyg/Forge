@@ -45,15 +45,19 @@ single-file capability. Keep future work within its accepted scope.
 
 ## Following feature: machine-readable output
 
-FR-4.4 remains deferred. Review
-[`json-output-contract.md`](../architecture/proposals/json-output-contract.md)
-and obtain owner acceptance before implementation. The draft recommends
-`debug` (including `--diff`) and `inspect` for v1, with `review` and `explain`
-deferred.
+The owner-approved FR-4.4 v1 scope and Phase 1 metadata are recorded in
+[ADR-0019](../architecture/decisions/0019-json-output-phase-1-metadata.md).
+The detailed contract remains in
+[`json-output-contract.md`](../architecture/proposals/json-output-contract.md).
+Phase 1 adds typed parser and scan completeness metadata only; it does not add
+JSON output or change text behavior.
 
-After approval: record the accepted contract/ADR if needed; add a presentation
-serializer and CLI format option; preserve any explicitly approved result
-metadata; add deterministic fake-provider tests and docs; then run the full gate.
+### Phase 2 — JSON serialization and CLI format
+
+Add the approved JSON format option and serializer for `debug` (including
+`--diff`) and `inspect`. Preserve text as the default, existing exit codes, and
+stdout/stderr boundaries. Add deterministic tests for success, errors, and
+completeness mapping. `review` and `explain` remain excluded from v1.
 
 ## Deferred research: full review of long files
 

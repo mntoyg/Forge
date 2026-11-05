@@ -224,12 +224,18 @@ class AnalysisResult:
     findings: tuple[Finding, ...]
     model: str
     usage: TokenUsage
+    incomplete: bool
+    """True when parsing discarded one or more raw finding entries.
+
+    This tracks known parser omissions only; it does not mean the model's
+    analysis was exhaustive or correct.
+    """
     history: FileHistory | None = None
     """What version control knows about the cited lines, when it knows anything.
 
     Optional because it is context around the answer rather than part of it.
     Outside a repository, or for a file git has never seen, there is nothing to
-    say - and a result with no history is still a complete result.
+    say - and no history does not make an otherwise usable result incomplete.
     """
 
     @property

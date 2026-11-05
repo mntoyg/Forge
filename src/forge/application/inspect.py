@@ -122,6 +122,7 @@ class InspectProject:
             checks=checks,
             directories=evidence.directories,
             omissions=tuple(dict.fromkeys(omissions)),
+            scan_complete=evidence.complete,
         )
 
 

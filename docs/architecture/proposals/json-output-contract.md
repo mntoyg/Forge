@@ -1,6 +1,6 @@
-# Draft: machine-readable JSON output (FR-4.4)
+# Machine-readable JSON output contract (FR-4.4)
 
-**Status:** Draft for product-owner review. FR-4.4 remains deferred; this proposal is not approval to implement.
+**Status:** Owner-approved v1 direction and detailed schema reference. Phase 1 result metadata is recorded in ADR-0019. JSON serialization and CLI format options remain Phase 2; FR-4.4 stays deferred until that user-facing mode is implemented.
 
 ## Purpose and current behavior
 
@@ -8,8 +8,8 @@ FR-4.1 through FR-4.3 keep human-readable output as the default, send results to
 
 | Command | Result and diagnostics today | Error behavior |
 | --- | --- | --- |
-| `debug` / `debug --diff` | `AnalysisResult`: source path, findings, model/usage and optional file history. Whole-file safety warning is separate stderr text; diff is silent. Invalid individual provider findings may be discarded without a count in the result. | Typed input/config/provider failures map to ADR-0006 exit codes; error text to stderr. |
-| `inspect` | `ProjectOverview`: root, guidance, languages, tools, checks, directories and prose omissions. Scanner completeness is available on the reader's `ProjectEvidence` but is not retained on `ProjectOverview`. | Local path/filesystem failures are caught as `ForgeError`, printed to stderr, and mapped by the existing CLI exit-code function. `inspect` does not call a provider or require provider configuration. |
+| `debug` / `debug --diff` | `AnalysisResult`: source path, findings, model/usage, optional history, and Phase 1 `incomplete` flag for discarded parser entries (no count). Whole-file safety warning is separate stderr text; diff is silent. | Typed input/config/provider failures map to ADR-0006 exit codes; error text to stderr. |
+| `inspect` | `ProjectOverview`: root, guidance, languages, tools, checks, directories, prose omissions, and Phase 1 `scan_complete` copied from `ProjectEvidence.complete`. | Local path/filesystem failures are caught as `ForgeError`, printed to stderr, and mapped by the existing CLI exit-code function. `inspect` does not call a provider or require provider configuration. |
 | `review` | Before consent, a `ReviewPlan` is printed; after consent, `ReviewResult` has findings, typed path omissions and an incomplete flag. Non-TTY confirmation does not call provider. | No changes exits 1; decline exits 0; analysis errors use existing mapping. |
 | `explain` | `ExplanationResult`: claims, source evidence, limitations, context-insufficient/incomplete flags and safe typed diagnostics. Successful incomplete results exit 0. | Errors to stderr with existing mapping. |
 
@@ -17,11 +17,11 @@ Human renderers and CLI orchestration currently own stream, TTY, spinner, consen
 
 ## Recommendation and scope
 
-Recommend an explicit `--format json` option first for `forge debug` (including `--diff`) and `forge inspect`. These results are single-phase and map naturally to stable envelopes; debug covers findings and inspect provides useful deterministic repository facts. Keep text as default.
+The owner-approved v1 scope is `forge debug` (including `--diff`) and `forge inspect`, with human-readable text as the default. These single-phase results map naturally to stable envelopes; debug covers findings and inspect provides useful deterministic repository facts.
 
-Exclude `review` initially: its plan-before-consent and post-consent result are two distinct phases, and a JSON consent protocol needs an owner decision. Exclude `explain` initially: its nested evidence/excerpts and safe diagnostics need a separate schema review. Add them only in later, independently reviewed scope.
+The owner-approved scope excludes `review`: its plan-before-consent and post-consent result are two distinct phases, and a JSON consent protocol would widen the contract. It also excludes `explain`, whose nested evidence, excerpts, and safe diagnostics require separate scope. Any later expansion needs independent review.
 
-Alternatives: (a) debug only, smallest compatibility surface but omits useful inspect output; (b) all four commands, uniform at launch but expands scope and forces decisions about review consent and explain evidence before needed. Owner approval is required for the recommendation and exclusions.
+Alternatives considered: (a) debug only, with the smallest compatibility surface but no inspect output; (b) all four commands, with uniform launch support but additional review-consent and explain-evidence decisions. The owner selected debug and inspect for v1; review and explain are excluded.
 
 ## Proposed CLI and stream contract
 
@@ -69,18 +69,17 @@ Example debug result (field names are proposed):
     "model": "configured-model",
     "usage": {"input_tokens": 1200, "output_tokens": 180}
   },
-  "completeness": {"status": "unknown", "warnings": [], "omissions": []}
+  "completeness": {"status": "complete", "warnings": [], "omissions": []}
 }
 ```
 
-The example uses `unknown` because current `AnalysisResult` does not say whether `parse_findings` discarded malformed individual entries. The `history` value, when present, contains its existing recent-commit records and window. `location` is null when absent. `mode` is `file` or `diff`. Do not expose prompt text, raw provider response, credentials, or unredacted environment/config values.
+This example assumes Phase 2 serialization sees `AnalysisResult.incomplete == false` and no whole-file size caveat. `complete` means no known processing omission within the declared scope, not that the model found every issue. The `history` value, when present, contains its existing recent-commit records and window. `location` is null when absent. `mode` is `file` or `diff`. Do not expose prompt text, raw provider response, credentials, or unredacted environment/config values.
 
 ### Completeness using current data and proposed metadata
 
-- **Debug, current code:** `_size_warning` gives affirmative evidence for `partial` on a whole-file run above the input-token threshold; `--diff` remains silent under ADR-0012. In every other case use `unknown`: `parse_findings` silently drops malformed individual entries, and neither its tuple result nor `AnalysisResult` records whether that happened. Do not emit `complete` from an empty findings list, absence of a size warning, or a diff run.
-- **Inspect, current code:** use `unknown`. The reader's `ProjectEvidence.complete` indicates whether the bounded scan finished, but `InspectProject` does not carry it into `ProjectOverview`; free-text omissions are not a stable substitute and must not be classified by parsing prose. `inspect` is local and has no provider/configuration failure mode.
-- **Smallest typed change for owner approval:** carry one `incomplete: bool` signal with the result. For debug, set it when `parse_findings` discards any raw finding, and propagate it to `AnalysisResult`; for inspect, propagate the reader's `ProjectEvidence.complete` as an explicit completeness field on `ProjectOverview` (or equivalent). Emit `partial` for a known debug size warning, a dropped debug finding, or an inspect scan marked incomplete. Emit `complete` only when the relevant typed signal confirms no known processing omission within the command's declared bounded scope. Emit `unknown` whenever that signal is unavailable. This proposes no rejection counts and does not imply AI coverage or correctness.
-- Represent known partial conditions with stable warning/omission codes and safe relative paths where available. For diff, do not invent the ADR-0012 whole-file warning. For inspect, bounded exclusions and the fact that the command inspects selected metadata are part of its declared scope, not a claim to have read every repository file.
+- **Debug:** Phase 1 adds `AnalysisResult.incomplete`, true if parsing discarded one or more raw entries, with no count. Emit `partial` if this flag is true or `_size_warning` applies to the whole-file run. Otherwise emit `complete` within the declared scope. ADR-0012 still suppresses the size caveat for `--diff`; parser omissions can still make a diff result partial. Never infer completeness from an empty findings list or imply AI coverage/correctness.
+- **Inspect:** Phase 1 adds `ProjectOverview.scan_complete`, copied from `ProjectEvidence.complete`. Emit `partial` when false and `complete` when true, describing only completion of the bounded scan. Bounded exclusions and selected metadata scope do not claim that every repository file was read. `inspect` remains local and has no provider/configuration failure mode.
+- Use `unknown` only when the relevant typed signal is unavailable. Represent known partial conditions with stable warning/omission codes and safe relative paths where available. Do not parse prose to determine completeness or expose finding rejection counts.
 
 Example error (stderr; stdout empty; exit code remains the ADR-0006 value):
 
@@ -103,15 +102,17 @@ Use stable error codes such as `result_unavailable`, `input_unusable`, `not_conf
 - Deterministic fake-provider/temp-directory tests cover debug with findings and no findings (both exit 0), file and diff modes, optional history/location, partial whole-file warning, inspect omissions/completeness, JSON TTY and pipe output, no progress/prose on stdout, safe errors on stderr with empty stdout, and unchanged exit mapping. Assert one parseable JSON object and no secrets, prompt, or raw provider text.
 - No live provider call is needed for acceptance. Do not add `review` or `explain` support implicitly.
 
-## Owner decisions required before implementation
+## Phase 2 implementation notes
 
-1. Accept initial scope (`debug` + `inspect`) or choose debug-only/all four.
-2. Accept `--format json`, its conflict with `--plain`, and text help/argument-error behavior.
-3. Accept the envelope, `complete|partial|unknown` meaning, stable warning/error codes, and stderr JSON with empty stdout on command errors.
-4. Approve or reject the minimal typed completeness signals: a debug incomplete flag when findings are discarded and an inspect scan-complete flag propagated from `ProjectEvidence`. Do not expose a rejected-claim count; the current parser does not provide one. Until approved metadata exists, use `unknown` except for affirmative partial evidence already available to the CLI.
-5. Confirm unchanged ADR-0006 exits and the exclusion of review consent and explain evidence in v1.
+The owner-approved scope, text default, completeness meanings, and Phase 1
+metadata are fixed by ADR-0019. Phase 2 adds the proposed `--format json`
+surface and serializer only for debug and inspect. Preserve the ADR-0006 exit
+mapping and text behavior; keep errors on stderr and results on stdout. Before
+implementation is considered complete, review exact error/warning codes and
+ensure completeness is derived from the typed fields above, never rendered
+prose. `review` and `explain` remain excluded from v1.
 
-No accepted ADR needs to change if serialization remains a CLI/presentation concern, provider-internal JSON remains separate, and exit semantics stay unchanged. FR-4.4 remains deferred until owner acceptance.
+No accepted ADR needs to change if serialization remains a CLI/presentation concern, provider-internal JSON remains separate, and exit semantics stay unchanged. FR-4.4 remains deferred until the user-facing JSON mode is implemented.
 
 ## Post-approval implementation breakdown
 

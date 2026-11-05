@@ -6,7 +6,7 @@
 >
 > Read it after `project.md` and before starting any task.
 
-**Last verified:** 2026-11-05 on `main`; quality gate passed (525 passed, 1 skipped).
+**Last verified:** 2026-11-05 on `main`; Phase 1 FR-4.4 metadata checks passed.
 Version `0.1.0` is published on GitHub Releases and PyPI. The owner verified
 installation with `uvx --from mntoyg-forge==0.1.0 forge --version` (`forge 0.1.0`).
 The repository was recreated on 2026-09-06 - see below.
@@ -40,8 +40,9 @@ verification - correct it or delete it instead.
 
 | Fact | How it was verified |
 | --- | --- |
-| Local gate: 525 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
+| Local gate: 529 passed, 1 skipped; Black, Ruff, and mypy pass | `uv run python scripts/check.py`, 2026-11-05; Windows symlink test skips locally |
 | `forge inspect [directory]` reports bounded local evidence; Git global excludes are outside its scan | Unit, integration, and CLI tests; full gate passes |
+| FR-4.4 Phase 1 adds `AnalysisResult.incomplete` for discarded debug entries and `ProjectOverview.scan_complete` from bounded project evidence | Unit tests cover complete/incomplete states; ADR-0019; no JSON output behavior added |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
 | `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |
@@ -70,9 +71,9 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Owner review required:** review
-   `docs/architecture/proposals/json-output-contract.md` and accept or request
-   changes before implementation of deferred FR-4.4.
+1. **Phase 2 — implement the approved FR-4.4 JSON serializer and CLI format
+   option** for `debug`/`debug --diff` and `inspect`, using ADR-0019 metadata.
+   Keep text default, preserve exit codes, and add deterministic CLI tests.
 2. **Review AST-bound symbol output in `forge explain`.** ADR-0015 is accepted;
    deterministic checks validate declaration scope, not semantic entailment.
    Live quality evaluation still needs explicit approval.

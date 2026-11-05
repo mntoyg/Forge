@@ -9,6 +9,11 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ## [Unreleased]
 
+### Added
+
+- Add typed completeness metadata for debug parsing and inspect scans under
+  ADR-0019; JSON serialization remains Phase 2.
+
 ### Changed
 
 - Clarify JSON proposal error behavior for local `inspect` and define when

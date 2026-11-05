@@ -50,6 +50,8 @@ class ProjectOverview:
     checks: tuple[ProjectFact, ...]
     directories: tuple[str, ...]
     omissions: tuple[str, ...]
+    scan_complete: bool
+    """True when the bounded evidence scan completed within its declared scope."""
 
 
 class ProjectEvidenceReader(Protocol):

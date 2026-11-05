@@ -21,6 +21,9 @@
 | [0014](../../docs/architecture/decisions/0014-bounded-multi-file-change-review.md) | Bounded multi-file change review | Accepted | Separate `forge review`; one confirmed call, 16,000-byte prompt cap, no ADR-0013 windows. |
 | [0015](../../docs/architecture/decisions/0015-explain-symbol-evidence-scope.md) | Bind explain symbol claims to Python declaration scope | Accepted | A symbol claim names one unique class/function declaration; typed evidence must fall within its AST range. This checks scope, not semantic entailment. |
 | [0016](../../docs/architecture/decisions/0016-bind-purpose-call-evidence-to-main-flow.md) | Bind Purpose evidence to Main flow | Accepted | Every accepted Purpose claim needs a locally valid call anchor that exactly matches an independently validated Main flow call anchor. |
+| [0017](../../docs/architecture/decisions/0017-package-distribution-channels.md) | Choose Python package distribution channels | Accepted | Keep GitHub Releases and publish to PyPI through Trusted Publishing. |
+| [0018](../../docs/architecture/decisions/0018-pypi-distribution-name.md) | Select the PyPI distribution name | Accepted | Use `mntoyg-forge` as the distribution name; keep `forge` as the command and import. |
+| [0019](../../docs/architecture/decisions/0019-json-output-phase-1-metadata.md) | Prepare completeness metadata for JSON output | Accepted | Debug carries parser omission state; inspect carries bounded scan completeness. FR-4.4 v1 serialization is limited to debug and inspect; text and exit codes stay unchanged. |
 
 ## How to use these
 

@@ -60,6 +60,7 @@ def test_a_clean_run_returns_findings_with_their_provenance() -> None:
     assert result.source_path == Path("app.py")
     assert result.model == "fake-model"
     assert result.usage.total_tokens == 140
+    assert result.incomplete is False
 
 
 @pytest.mark.unit
@@ -70,6 +71,20 @@ def test_a_file_with_no_defects_is_a_successful_result() -> None:
 
     assert result.findings == ()
     assert not result.has_findings
+    assert result.incomplete is False
+
+
+@pytest.mark.unit
+def test_a_dropped_provider_finding_marks_the_analysis_incomplete() -> None:
+    analyze = AnalyzeSourceFile(
+        FakeSourceReader(source=SOURCE),
+        _provider(FINDING, {"summary": "missing detail"}),
+    )
+
+    result = analyze(Path("app.py"))
+
+    assert len(result.findings) == 1
+    assert result.incomplete is True
 
 
 @pytest.mark.unit

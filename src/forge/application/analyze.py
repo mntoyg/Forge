@@ -72,7 +72,8 @@ class AnalyzeSourceFile:
         source = self._reader.read(path)
         changed = self._changed_lines(path) if changes_only else None
         response = self._provider.complete(build_request(source, changed))
-        findings = parse_findings(response.text, source)
+        parsed = parse_findings(response.text, source)
+        findings = parsed.findings
 
         return AnalysisResult(
             source_path=source.path,
@@ -80,6 +81,7 @@ class AnalyzeSourceFile:
             model=response.model,
             usage=response.usage,
             history=self._history(path, findings),
+            incomplete=parsed.incomplete,
         )
 
     def _history(self, path: Path, findings: tuple[Finding, ...]) -> FileHistory | None:

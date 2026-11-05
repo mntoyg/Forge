@@ -14,6 +14,7 @@ reviewer at all.
 
 import json
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -35,14 +36,27 @@ in something unexpected - without pasting an essay into a terminal.
 """
 
 
-def parse_findings(text: str, source: SourceFile) -> tuple[Finding, ...]:
+@dataclass(frozen=True, slots=True)
+class ParsedFindings:
+    """Accepted findings and whether any raw finding entry was discarded.
+
+    ``incomplete`` is true only for parser omissions. It does not describe
+    whether the model found every issue in the source.
+    """
+
+    findings: tuple[Finding, ...]
+    incomplete: bool
+
+
+def parse_findings(text: str, source: SourceFile) -> ParsedFindings:
     """Extract findings from a model reply.
 
     ``source`` is needed to validate line numbers: a location is only
     meaningful against the file it points into.
 
-    Returns an empty tuple when the model reports no defects - that is a
-    successful analysis, not a failure.
+    Returns accepted findings and a flag indicating whether any raw entry was
+    discarded. An empty findings tuple with ``incomplete=False`` is a
+    successful report of no findings, not a failure.
 
     Raises:
         ProviderResponseError: the reply is not usable JSON, or does not have
@@ -62,12 +76,15 @@ def parse_findings(text: str, source: SourceFile) -> tuple[Finding, ...]:
             "not a list."
         )
 
-    findings = [
-        finding
-        for item in raw_findings
-        if (finding := _to_finding(item, source)) is not None
-    ]
-    return tuple(findings)
+    findings: list[Finding] = []
+    incomplete = False
+    for item in raw_findings:
+        finding = _to_finding(item, source)
+        if finding is None:
+            incomplete = True
+        else:
+            findings.append(finding)
+    return ParsedFindings(findings=tuple(findings), incomplete=incomplete)
 
 
 def parse_review_findings(text: str, changes: ChangeSet) -> ParsedReview:

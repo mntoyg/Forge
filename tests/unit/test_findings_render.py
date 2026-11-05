@@ -48,6 +48,7 @@ def _result(*findings: Finding, history: FileHistory | None = None) -> AnalysisR
         findings=findings,
         model="gpt-4o-mini",
         usage=USAGE,
+        incomplete=False,
         history=history,
     )
 
@@ -218,6 +219,7 @@ def test_long_detail_is_wrapped_not_truncated() -> None:
         ),
         model="m",
         usage=USAGE,
+        incomplete=False,
     )
 
     output = render_rich(result, width=60)

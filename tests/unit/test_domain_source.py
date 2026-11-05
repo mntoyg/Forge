@@ -137,7 +137,11 @@ def test_numbering_covers_every_line_exactly_once() -> None:
 @pytest.mark.unit
 def test_a_result_with_no_findings_reports_so() -> None:
     result = AnalysisResult(
-        source_path=Path("a.py"), findings=(), model="m", usage=USAGE
+        source_path=Path("a.py"),
+        findings=(),
+        model="m",
+        usage=USAGE,
+        incomplete=False,
     )
 
     assert not result.has_findings
@@ -156,6 +160,7 @@ def test_findings_are_ordered_most_serious_first() -> None:
         ),
         model="m",
         usage=USAGE,
+        incomplete=False,
     )
 
     assert [f.summary for f in result.by_severity()] == [
@@ -176,6 +181,7 @@ def test_equally_serious_findings_are_ordered_most_confident_first() -> None:
         ),
         model="m",
         usage=USAGE,
+        incomplete=False,
     )
 
     assert [f.summary for f in result.by_severity()] == [
@@ -191,7 +197,11 @@ def test_ordering_does_not_drop_or_duplicate_findings() -> None:
         _finding(f"finding {i}", Severity.MEDIUM, line=i) for i in range(1, 6)
     )
     result = AnalysisResult(
-        source_path=Path("a.py"), findings=findings, model="m", usage=USAGE
+        source_path=Path("a.py"),
+        findings=findings,
+        model="m",
+        usage=USAGE,
+        incomplete=False,
     )
 
     assert sorted(f.summary for f in result.by_severity()) == sorted(
@@ -207,6 +217,7 @@ def test_a_result_carries_the_model_and_what_it_cost() -> None:
         findings=(),
         model="gpt-4o-mini-2024-07-18",
         usage=TokenUsage(input_tokens=1200, output_tokens=300),
+        incomplete=False,
     )
 
     assert result.model == "gpt-4o-mini-2024-07-18"
@@ -275,10 +286,14 @@ def test_a_commit_count_cannot_be_negative() -> None:
 
 
 @pytest.mark.unit
-def test_a_result_with_no_history_is_still_a_complete_result() -> None:
+def test_a_result_with_no_history_is_still_usable() -> None:
     """Outside a repository there is nothing to say, and that is not a failure."""
     result = AnalysisResult(
-        source_path=Path("a.py"), findings=(), model="m", usage=USAGE
+        source_path=Path("a.py"),
+        findings=(),
+        model="m",
+        usage=USAGE,
+        incomplete=False,
     )
 
     assert result.history is None

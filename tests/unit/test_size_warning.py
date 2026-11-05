@@ -37,6 +37,7 @@ def _result(input_tokens: int, *findings: Finding) -> AnalysisResult:
         findings=findings,
         model="gpt-4o-mini",
         usage=TokenUsage(input_tokens=input_tokens, output_tokens=8),
+        incomplete=False,
     )
 
 
