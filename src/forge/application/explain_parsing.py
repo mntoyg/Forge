@@ -387,28 +387,20 @@ def _claim(
 def _has_sufficient_symbol_action_evidence(
     text: str, evidence: tuple[EvidenceAnchor, ...]
 ) -> bool:
-    """Require distinct cited lines for explicitly coordinated symbol actions.
+    """Require distinct validated evidence targets for coordinated actions.
 
     This narrow structural guard recognizes common English action verbs after
     ``and`` (optionally followed by ``then``) only when an explicit determiner
-    follows. It reduces a claim only when fewer non-overlapping evidence ranges
-    than detected actions are supplied; it does not map actions to ranges or
-    prove semantic support.
+    follows. Each (kind, target) pair counts once, regardless of line range;
+    distinct targets can count even when their anchors share a source line.
+    The count is not mapped to individual actions and does not prove semantic
+    support.
     """
     coordinated = len(_COORDINATED_SYMBOL_ACTION.findall(text))
     if not coordinated:
         return True
-    evidence_ranges = sorted(
-        {(anchor.start_line, anchor.end_line) for anchor in evidence},
-        key=lambda span: (span[1], span[0]),
-    )
-    non_overlapping_count = 0
-    previous_end = 0
-    for start, end in evidence_ranges:
-        if start > previous_end:
-            non_overlapping_count += 1
-            previous_end = end
-    return non_overlapping_count >= coordinated + 1
+    distinct_targets = {(anchor.kind, anchor.target) for anchor in evidence}
+    return len(distinct_targets) >= coordinated + 1
 
 
 def _symbol_scope(

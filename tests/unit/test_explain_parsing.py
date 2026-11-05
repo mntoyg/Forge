@@ -960,7 +960,7 @@ def test_symbol_that_only_repeats_its_name_is_discarded() -> None:
     assert result.incomplete
 
 
-def test_compound_symbol_actions_need_distinct_evidence_lines() -> None:
+def test_compound_symbol_actions_need_distinct_evidence_targets() -> None:
     source = SourceFile(
         Path("app.py"),
         "class ExplainSource:\n"
@@ -1008,7 +1008,7 @@ def test_compound_symbol_actions_need_distinct_evidence_lines() -> None:
     serialized = json.loads(serialize_explanation_json(result, "app.py"))
     assert (
         "1 symbol claim was omitted because coordinated actions did not have "
-        "enough separate cited line ranges."
+        "enough distinct validated evidence anchors."
     ) in rendered
     assert "request one evidence-backed answer" not in rendered
     assert "self._reader.read" not in rendered
@@ -1022,7 +1022,7 @@ def test_compound_symbol_actions_need_distinct_evidence_lines() -> None:
     ]
 
 
-def test_compound_symbol_actions_are_kept_with_distinct_evidence_lines() -> None:
+def test_compound_symbol_actions_are_kept_with_distinct_evidence_targets() -> None:
     source = SourceFile(
         Path("app.py"),
         "class ExplainSource:\n"
@@ -1061,6 +1061,118 @@ def test_compound_symbol_actions_are_kept_with_distinct_evidence_lines() -> None
     assert len(result.symbols) == 1
     assert not result.incomplete
     assert result.processing_incomplete is False
+
+
+def test_compound_symbol_actions_accept_distinct_call_targets_on_same_line() -> None:
+    source = SourceFile(
+        Path("app.py"),
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        source = self._reader.read(path); answer = self._provider.complete(source)\n"
+        "        return answer\n",
+    )
+    payload = _payload()
+    payload["symbols"] = [
+        {
+            "symbol": "ExplainSource",
+            "claim": "Reads a source snapshot and requests an answer.",
+            "confidence": "likely",
+            "evidence": [
+                {
+                    "kind": "call",
+                    "target": "self._reader.read",
+                    "start_line": 3,
+                    "end_line": 3,
+                },
+                {
+                    "kind": "call",
+                    "target": "self._provider.complete",
+                    "start_line": 3,
+                    "end_line": 3,
+                },
+            ],
+        }
+    ]
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert len(result.symbols) == 1
+    assert not result.incomplete
+    assert result.processing_incomplete is False
+
+
+def test_repeating_one_call_target_at_different_lines_does_not_add_evidence() -> None:
+    source = SourceFile(
+        Path("app.py"),
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        first = self._reader.read(path)\n"
+        "        second = self._reader.read(path)\n",
+    )
+    payload = _payload()
+    payload["symbols"] = [
+        {
+            "symbol": "ExplainSource",
+            "claim": "Reads a source snapshot and requests an answer.",
+            "confidence": "likely",
+            "evidence": [
+                {
+                    "kind": "call",
+                    "target": "self._reader.read",
+                    "start_line": 3,
+                    "end_line": 3,
+                },
+                {
+                    "kind": "call",
+                    "target": "self._reader.read",
+                    "start_line": 4,
+                    "end_line": 4,
+                },
+            ],
+        }
+    ]
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert result.symbols == ()
+    assert result.incomplete
+    assert result.processing_incomplete is True
+
+
+def test_single_action_symbol_claim_remains_valid_with_one_anchor() -> None:
+    source = SourceFile(
+        Path("app.py"),
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        return self._reader.read(path)\n",
+    )
+    payload = _payload()
+    payload["symbols"] = [
+        {
+            "symbol": "ExplainSource",
+            "claim": "Reads the selected source snapshot.",
+            "confidence": "likely",
+            "evidence": [
+                {
+                    "kind": "call",
+                    "target": "self._reader.read",
+                    "start_line": 3,
+                    "end_line": 3,
+                }
+            ],
+        }
+    ]
+
+    result = parse_explanation(
+        json.dumps(payload), source, model="fake-model", usage=TokenUsage(1, 1)
+    )
+
+    assert len(result.symbols) == 1
+    assert not result.incomplete
 
 
 def test_compound_noun_phrase_is_not_mistaken_for_two_symbol_actions() -> None:

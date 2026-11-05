@@ -46,7 +46,7 @@ verification - correct it or delete it instead.
 | FR-4.4 JSON for debug/inspect/explain is complete; explain has safe path preflight and unchanged exit mapping | ADR-0019/0020; serializer unit and fake-provider CLI e2e tests; full gate |
 | `forge review` bounds current and Git-base data before reads and maps changed lines from the source snapshot plus its Git base blob, without rereading the working tree | Integration tests cover byte limits, staged/unstaged changes, renames, changed/grown files, and zero provider calls on mismatch |
 | `forge explain` requires every Purpose claim to have a locally valid call anchor exactly matching a validated Main flow call; invalid evidence retains its specific diagnostic | Deterministic parser, integration, and CLI tests; `uv run python scripts/check.py`, 2026-11-04 |
-| `forge explain` drops recognized coordinated symbol actions when evidence has too few distinct line ranges; structural checks still do not prove semantic entailment | Parser and fake-provider integration tests; `uv run python scripts/check.py`, 2026-11-05: 595 passed, 1 Windows symlink skip |
+| `forge explain` drops recognized coordinated symbol actions when evidence has too few distinct `(kind, target)` anchors; distinct targets may share a line, repeated targets count once, and structural checks do not prove semantic entailment | Parser and fake-provider integration tests; full quality gate |
 | `mntoyg-forge==0.1.0` installs from PyPI and runs as `forge 0.1.0` | Owner ran `uvx --from mntoyg-forge==0.1.0 forge --version`; release workflow run 41933271391 passed build, PyPI publish, and GitHub Release jobs |
 | Latest approved live `forge explain` result omitted Purpose for an invalid target; the compound symbol claim with one reader anchor is now guarded by a deterministic parser check | Owner-approved call on 2026-11-05; no live call in this change |
 | Setup instructions state which commands need an API key | `docs/development/setup.md` links to the provider setup in `docs/guides/getting-started.md` |
@@ -73,18 +73,17 @@ verification - correct it or delete it instead.
 In order. The reasoning matters more than the list - if you disagree with the
 order, say why rather than silently reordering.
 
-1. **Review remaining `forge explain` quality limits.** The parser rejects
-   recognized coordinated symbol actions when evidence has too few distinct
-   ranges, but this structural check cannot prove semantic entailment. The
-   latest approved live result also omitted Purpose for an invalid target.
-   Any further provider evaluation needs explicit owner approval.
+1. **Review remaining `forge explain` quality limits.** Coordinated symbol
+   claims with too few unique `(kind, target)` anchors are omitted; counts do
+   not prove semantic support. Latest live output omitted Purpose for an
+   invalid target. Provider evaluation needs owner approval.
 2. **Re-decide long-file review.** ADR-0013 is suspended; run the attention
    measurement and accept a new ADR before implementation.
 
 ## Blocked, or needs a human
 
 - AI usage cap: at most 14 percentage points of the weekly plan per local day.
-  Latest meter: 21% over 7 days; daily use is unavailable.
+  Latest meter: 24% over 7 days; daily use is unavailable.
 - `mntoyg/Forge` is public; `mntoyg/Forge-archive` remains private.
 - A live provider run costs the user money and needs their key. Do not run
   `forge debug` against a real provider without being asked.

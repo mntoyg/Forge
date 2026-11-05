@@ -297,7 +297,7 @@ def test_explain_omits_compound_symbol_role_with_only_one_cited_action(
     assert result.processing_incomplete is True
     assert (
         "1 symbol claim was omitted because coordinated actions did not have "
-        "enough separate cited line ranges."
+        "enough distinct validated evidence anchors."
     ) in rendered
     assert claim_text not in rendered
     assert "PRIVATE_COMPOUND_SYMBOL_CLAIM" not in serialized
@@ -306,6 +306,115 @@ def test_explain_omits_compound_symbol_role_with_only_one_cited_action(
     assert "symbol_action_evidence_insufficient" in serialized
     assert provider_response not in serialized
     assert json_result["completeness"]["status"] == "partial"
+
+
+@pytest.mark.integration
+def test_explain_keeps_compound_symbol_with_distinct_same_line_targets(
+    tmp_path: Path,
+) -> None:
+    source_text = (
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        source = self._reader.read(path); answer = self._provider.complete(source)\n"
+        "        return answer\n"
+    )
+    (tmp_path / "explain.py").write_bytes(source_text.encode())
+    payload = {
+        "purpose": [],
+        "flow": [],
+        "symbols": [
+            {
+                "symbol": "ExplainSource",
+                "claim": "Reads a source snapshot and requests an answer.",
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._reader.read",
+                        "start_line": 3,
+                        "end_line": 3,
+                    },
+                    {
+                        "kind": "call",
+                        "target": "self._provider.complete",
+                        "start_line": 3,
+                        "end_line": 3,
+                    },
+                ],
+            }
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider = _provider(json.dumps(payload))
+    use_case = ExplainSource(FilesystemSourceReader(tmp_path), provider)
+
+    result = use_case(Path("explain.py"))
+
+    assert provider.call_count == 1
+    assert len(result.symbols) == 1
+    assert result.symbols[0].text == "Reads a source snapshot and requests an answer."
+    assert not result.incomplete
+
+
+@pytest.mark.integration
+def test_explain_omits_repeated_symbol_target_without_leaking_claim_or_targets(
+    tmp_path: Path,
+) -> None:
+    source_text = (
+        "class ExplainSource:\n"
+        "    def __call__(self, path):\n"
+        "        first = self._reader.read(path)\n"
+        "        second = self._reader.read(path)\n"
+    )
+    (tmp_path / "explain.py").write_bytes(source_text.encode())
+    claim_text = "PRIVATE_CLAIM: Reads input and requests a private answer."
+    payload = {
+        "purpose": [],
+        "flow": [],
+        "symbols": [
+            {
+                "symbol": "ExplainSource",
+                "claim": claim_text,
+                "confidence": "likely",
+                "evidence": [
+                    {
+                        "kind": "call",
+                        "target": "self._reader.read",
+                        "start_line": 3,
+                        "end_line": 3,
+                    },
+                    {
+                        "kind": "call",
+                        "target": "self._reader.read",
+                        "start_line": 4,
+                        "end_line": 4,
+                    },
+                ],
+            }
+        ],
+        "limitations": [],
+        "context_insufficient": False,
+    }
+    provider_response = json.dumps(payload)
+    provider = _provider(provider_response)
+    use_case = ExplainSource(FilesystemSourceReader(tmp_path), provider)
+
+    result = use_case(Path("explain.py"))
+    rendered = render_explanation(result)
+    serialized = serialize_explanation_json(result, "explain.py")
+    diagnostic_json = json.dumps(json.loads(serialized)["result"]["diagnostics"])
+
+    assert provider.call_count == 1
+    assert result.symbols == ()
+    assert result.incomplete
+    assert "symbol_action_evidence_insufficient" in diagnostic_json
+    assert claim_text not in rendered
+    assert claim_text not in diagnostic_json
+    assert "PRIVATE_CLAIM" not in diagnostic_json
+    assert "self._reader.read" not in rendered
+    assert "self._reader.read" not in diagnostic_json
+    assert provider_response not in serialized
 
 
 @pytest.mark.integration

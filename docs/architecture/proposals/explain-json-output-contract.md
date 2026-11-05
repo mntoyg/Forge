@@ -173,15 +173,18 @@ not inferred from `incomplete` or human-readable prose.
 
 For symbol claims only, the parser applies a narrow structural guard to common
 English coordinated-action forms where `and` may be followed by `then` before
-a recognized action verb plus an explicit determiner. It requires at least one
-non-overlapping validated line range per detected coordinated action plus one
-for the initial clause. The guard compares counts; it does not assign any range
-to a specific action. If the evidence ranges fall short, the entire claim is
-omitted with `SYMBOL_ACTION_EVIDENCE_INSUFFICIENT`. This deliberately bounded
-vocabulary can miss other ways to combine actions. Multiple non-overlapping
-ranges still do not prove semantic support or entailment. A noun phrase such
-as “source and request metadata” is not treated as a second action unless it
-matches the verb-plus-determiner form.
+a recognized action verb plus an explicit determiner. It requires one distinct
+validated `(kind, target)` evidence anchor for each recognized coordinated
+action plus one for the initial clause. Repeated anchors with the same kind and
+target count once even when they cite different lines; different targets count
+separately even when their ranges share a line. The guard compares counts; it
+does not assign an anchor to a specific action. If the distinct-anchor count
+falls short, the entire claim is omitted with
+`SYMBOL_ACTION_EVIDENCE_INSUFFICIENT`. This deliberately bounded vocabulary
+can miss other ways to combine actions. Distinct anchors still do not prove
+semantic support or entailment. A noun phrase such as “source and request
+metadata” is not treated as a second action unless it matches the
+verb-plus-determiner form.
 
 Examples (other envelope fields omitted):
 

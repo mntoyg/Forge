@@ -185,7 +185,7 @@ def _diagnostic_text(diagnostic: ExplanationDiagnostic) -> str:
     if kind is ExplanationDiagnosticKind.SYMBOL_ACTION_EVIDENCE_INSUFFICIENT:
         return (
             f"{count} symbol claim{plural} {verb} omitted because coordinated "
-            "actions did not have enough separate cited line ranges."
+            "actions did not have enough distinct validated evidence anchors."
         )
     if kind is ExplanationDiagnosticKind.CONFIDENCE_UNRECOGNIZED:
         return (

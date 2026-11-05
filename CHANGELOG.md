@@ -32,6 +32,9 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
 
 ### Changed
 
+- Count coordinated symbol-action evidence by unique validated `(kind,
+  target)` anchors. Distinct targets on the same line can support the count;
+  repeated targets do not, even across different lines.
 - Tighten `forge explain` symbol guidance so each stated responsibility is
   supported by an in-scope use site, with focused fake-provider regression
   coverage for invalid Purpose evidence and narrow symbol roles.
@@ -69,8 +72,10 @@ Categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   rejecting method declarations as call evidence, and capping provider
   `certain` confidence labels at `likely`.
 - Omit symbol claims with recognized coordinated actions when they cite too few
-  distinct line ranges, with a fixed safe text and JSON diagnostic. This
-  structural guard does not prove semantic support.
+  distinct validated evidence anchors, with a fixed safe text and JSON
+  diagnostic. Anchors are distinct by kind and target; different targets can
+  share a line, while repeated targets do not add evidence. This structural
+  guard does not prove semantic support.
 - Prompt provider-backed `forge explain` Purpose claims to reuse the exact
   provider-call anchor from Main flow. The parser now requires every Purpose
   claim to include a locally valid call anchor matching an independently
