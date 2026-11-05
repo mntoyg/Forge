@@ -66,8 +66,10 @@ directory name; it never includes the absolute path or parent directories.
 
 `debug` and `inspect` accept `--format text|json`; text remains the default.
 Successful JSON runs emit one UTF-8 JSON line and suppress progress output.
-`debug --plain --format json` is a usage error. Errors retain their existing
-text diagnostics and exit mapping in this interim phase. FR-4.4 is not complete.
+The `debug --help` output documents the option, and
+`debug --plain --format json` emits a plain usage error on stderr with exit 2.
+Other errors retain their existing text diagnostics and exit mapping in this
+interim phase. FR-4.4 is not complete.
 
 ### Phase 2B2 — JSON error output (next)
 

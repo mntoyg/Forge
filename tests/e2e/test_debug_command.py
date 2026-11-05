@@ -34,6 +34,7 @@ from forge.domain.errors import (
     SourceTooLargeError,
 )
 from forge.domain.source import ChangeRecord, FileHistory, SourceFile
+from forge.main import app as forge_app
 from tests.support.fakes import (
     FakeProvider,
     FakeRepositoryInspector,
@@ -218,8 +219,11 @@ def test_plain_and_json_formats_are_rejected_together() -> None:
         ["app.py", "--plain", "--format", "json"],
     )
 
-    assert result.exit_code != ExitCode.OK
-    assert "--plain can only be used with --format text" in result.stderr
+    assert result.exit_code == ExitCode.BAD_INPUT
+    assert result.stdout == ""
+    assert result.stderr == (
+        "forge: usage error: --plain can only be used with --format text.\n"
+    )
 
 
 # --- exit code 1: ran, but produced no result ------------------------------
@@ -425,11 +429,12 @@ def test_the_help_text_actually_reaches_the_user() -> None:
     Without it, the help could stop being attached to the command and every
     other help test would still pass.
     """
-    result = runner.invoke(_app(_analyzing()), ["--help"])
+    result = runner.invoke(forge_app, ["debug", "--help"], color=False)
 
     assert result.exit_code == 0
     assert "Analyse a source file" in result.stdout
     assert "--format" in result.stdout
+    assert "text|json" in result.stdout
 
 
 # --- history reaches the user -----------------------------------------------

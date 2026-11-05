@@ -82,6 +82,9 @@ Findings do not change the exit code: a file with twenty problems still exits \
 0, because the command succeeded. Exit codes report whether Forge worked, not \
 whether your code is good.
 
+Use --format text|json to choose output; text is the default. --plain is \
+available only with text output.
+
   0  analysis completed          3  not configured
   1  could not produce a result  4  provider failed
   2  unusable input
@@ -250,7 +253,11 @@ def register(app: typer.Typer, analyze: Analyze) -> None:
         ] = "text",
     ) -> None:
         if plain and output_format == "json":
-            raise typer.BadParameter("--plain can only be used with --format text.")
+            print(
+                "forge: usage error: --plain can only be used with --format text.",
+                file=sys.stderr,
+            )
+            raise typer.Exit(code=ExitCode.BAD_INPUT)
         raise typer.Exit(
             code=debug(
                 analyze,
